@@ -1,0 +1,24 @@
+define Pointed : U = ∃ (A : U) × A
+
+eval Pointed = ∃ (A : U) × A : U
+
+define point : ∀ (p : Pointed) → p .fst = λ p ↦ p .snd
+
+define UnitPoint : Pointed = [ Unit ]
+
+define Triple : U → U → U → U = λ A B C ↦ A × B × C
+
+eval tt , tt , tt : Triple Unit Unit Unit = [ [] [] ] : Triple Unit Unit Unit
+
+eval [ tt tt ] : Triple Unit Unit Unit = [ [] [] ] : Triple Unit Unit Unit
+
+eval UnitPoint .fst = Unit : U
+
+eval UnitPoint .snd = [] : UnitPoint .fst
+
+eval point UnitPoint = [] : UnitPoint .fst
+
+eval (tt , tt , tt : Triple Unit Unit Unit) .snd .snd = [] : Unit
+
+end-of-file "examples/sigma.ptt"
+

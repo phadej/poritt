@@ -1,0 +1,14 @@
+type Unit
+type tt
+
+section "Syntax sugar"
+
+type [] : Unit
+
+options "--no-distill"
+
+eval tt
+
+options "--distill"
+
+eval tt

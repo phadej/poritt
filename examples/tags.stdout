@@ -1,0 +1,5 @@
+section keywords like :true and :false are values of type Tag
+
+Error: examples/tags.ptt:3:5: Cannot infer type of a label
+  • When infering type of :true
+ExitFailure

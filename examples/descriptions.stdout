@@ -1,0 +1,132 @@
+type Desc : U
+
+eval Desc = Desc : U
+
+type `1 : Desc
+
+eval `1 = `1 : Desc
+
+type `X `1 : Desc
+
+eval `X `1 = `X `1 : Desc
+
+type `S Unit (λ _ ↦ `1) : Desc
+
+eval `S Unit (λ _ ↦ `1) = `S Unit (λ _ ↦ `1) : Desc
+
+define indDescType
+  : U
+  = ∀
+    (d : Desc) (M : Desc → U) →
+    M `1 →
+    (∀ (S : U) (D : S → Desc) → (∀ (s : S) → M (D s)) → M (`S S D)) →
+    (∀ (D : Desc) → M D → M (`X D)) → M d
+
+define indDescTerm
+  : indDescType
+  = λ d M case1 caseS caseX ↦ indDesc d M case1 caseS caseX
+
+eval indDescTerm
+  = λ d M case1 caseS caseX ↦ indDesc d M case1 caseS caseX
+  : indDescType
+
+eval indDescTerm `1
+  = λ M case1 caseS caseX ↦ case1
+  : ∀
+    (M : Desc → U) →
+    M `1 →
+    (∀ (S : U) (D : S → Desc) → (∀ (s : S) → M (D s)) → M (`S S D)) →
+    (∀ (D : Desc) → M D → M (`X D)) → M `1
+
+eval indDescTerm (`X `1)
+  = λ M case1 caseS caseX ↦ caseX `1 case1
+  : ∀
+    (M : Desc → U) →
+    M `1 →
+    (∀ (S : U) (D : S → Desc) → (∀ (s : S) → M (D s)) → M (`S S D)) →
+    (∀ (D : Desc) → M D → M (`X D)) → M (`X `1)
+
+eval indDescTerm (`S Unit (λ _ ↦ `X `1))
+  = λ M case1 caseS caseX ↦ caseS Unit (λ _ ↦ `X `1) (λ s ↦ caseX `1 case1)
+  : ∀
+    (M : Desc → U) →
+    M `1 →
+    (∀ (S : U) (D : S → Desc) → (∀ (s : S) → M (D s)) → M (`S S D)) →
+    (∀ (D : Desc) → M D → M (`X D)) → M (`S Unit (λ _ ↦ `X `1))
+
+define idDesc
+  : Desc → Desc
+  = λ d ↦ indDesc d (λ _ ↦ Desc) `1 (λ S D _ ↦ `S S D) (λ D _ ↦ `X D)
+
+eval idDesc `1 = `1 : Desc
+
+eval idDesc (`X `1) = `X `1 : Desc
+
+eval idDesc (`S Unit (λ _ ↦ `X `1)) = `S Unit (λ _ ↦ `X `1) : Desc
+
+include "lib/leibniz.ptt"
+
+define Id : ∀ {A : U} → A → A → U = λ x y ↦ ∀ (C : A → U) → C x → C y
+
+define refl : ∀ {A : U} (x : A) → Id x x = λ x C Cx ↦ Cx
+
+macro %refl 
+  = λ _ Cx ↦ Cx
+
+define sym
+  : ∀ (A : U) (x : A) (y : A) → Id x y → Id y x
+  = λ A x y x=y ↦ x=y (λ z ↦ Id z x) (refl x)
+
+define trans
+  : ∀ (A : U) (x : A) (y : A) (z : A) → Id x y → Id y z → Id x z
+  = λ A x y z x=y y=z ↦ y=z (λ v ↦ Id x v) x=y
+
+end-of-file "examples/lib/leibniz.ptt"
+
+define evalDesc'
+  : Desc → U → U
+  = λ d X ↦ indDesc d (λ _ ↦ U) Unit (λ S D F ↦ ∃ (s : S) × F s) (λ D F ↦ X × F)
+
+type %refl : Id {Desc → U → U} evalDesc evalDesc' : Id evalDesc evalDesc'
+
+define All'
+  : ∀ (D : Desc) (X : U) → (X → U) → evalDesc D X → U
+  = λ D' X P ↦
+    indDesc
+      D'
+      (λ D ↦ evalDesc D X → U)
+      (λ xs ↦ Unit)
+      (λ S D Dm xs ↦ Dm (xs .fst) (xs .snd))
+      (λ D Dm xs ↦ P (xs .fst) × Dm (xs .snd))
+
+type %refl
+    : Id {∀ (D : Desc) (X : U) (P : X → U) (xs : evalDesc D X) → U} All All'
+  : Id All All'
+
+define all'
+  : ∀
+    (D : Desc) (X : U) (P : X → U) →
+    (∀ (x : X) → P x) → ∀ (xs : evalDesc D X) → All D X P xs
+  = λ D' X P p ↦
+    indDesc
+      D'
+      (λ D ↦ ∀ (xs : evalDesc D X) → All D X P xs)
+      (λ xs ↦ [])
+      (λ S D allD xs ↦ allD (xs .fst) (xs .snd))
+      (λ D allD xs ↦ p (xs .fst) , allD (xs .snd))
+
+type %refl
+    : Id
+      {∀
+        (D : Desc)
+        (X : U)
+        (P : X → U)
+        (p : ∀ (x : X) → P x)
+        (xs : evalDesc D X) →
+        All D X P xs}
+      all
+      all'
+  : Id all all'
+
+end-of-file "examples/descriptions.ptt"
+

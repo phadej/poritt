@@ -1,0 +1,4 @@
+define id : ∀ (A : U) → A → A = λ _ x ↦ x
+
+Error: id is already defined
+ExitFailure

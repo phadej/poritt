@@ -1,0 +1,22 @@
+define Bool  : U    = #[ :false :true ]
+define true  : Bool = :true
+define false : Bool = :false
+
+inline true
+inline false
+
+define if : Bool -> forall (A : U) -> A -> A -> A
+          = [ (\_ t f -> f) (\_ t f -> t) ]
+
+define not : Bool -> Bool
+           = [:true :false]
+define and : Bool -> Bool -> Bool
+           = [ (\_ -> :false) (\y -> y) ]
+define or  : Bool -> Bool -> Bool
+           = [ (\y -> y)      (\_ -> :true) ]
+
+define eqBool : Bool -> Bool -> Bool
+              = [ [:true :false] [:false :true ] ]
+
+define eqUnit : Unit -> Unit -> Bool
+              = \ _ _ -> :true

@@ -1,0 +1,10 @@
+define CodeU : U = Code ⟦ U ⟧
+
+define id1 : ∀ (A : U) → A → A = λ _ x ↦ x
+
+define id2 : ∀ (B : CodeU) → Code B → Code B = λ B y ↦ ⟦ id1 $B $y ⟧
+
+define id3 : ∀ (C : U) → C → C = λ C z ↦ id1 C z
+
+end-of-file "examples/staging/id.ptt"
+

@@ -1,0 +1,7 @@
+define the : forall (A : U) (x : A) -> A
+           = \A x -> x : A
+
+define CodeU = Code [| U |]
+
+define codeId : forall (A : CodeU) -> Code [| $A -> $A |]
+              = \ A -> [| \x -> the $A x |]

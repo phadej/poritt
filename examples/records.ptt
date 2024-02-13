@@ -1,0 +1,135 @@
+include "lib/bool.ptt"
+include "lib/nat.ptt"
+include "lib/list.ptt"
+include "lib/leibniz.ptt"
+
+section "Records"
+
+-- with enumerations and forall we can simulate records
+define RecDef : U = exists (A : U) * (A -> U)
+
+define mkRecord
+  : RecDef -> U
+  = \def -> forall (field : def .fst) -> def .snd field
+
+-- and thanks to list syntax sugar, the definitions are quite ok.
+
+-- example record
+define Foo = mkRecord (#[:foo :bar :quu] , [Bool Nat Unit])
+
+-- example values
+define foo1 : Foo = [true two tt]
+define foo2 : Foo = [true three tt]
+
+-- we can extract values by applying the "field name"
+type %refl : Id {Nat} (foo1 :bar) two
+
+section "Equality"
+
+define eqFoo : Foo -> Foo -> Bool
+  = \x y -> and (eqBool (x :foo) (y :foo))
+           (and (eqNat  (x :bar) (y :bar))
+           (and (eqUnit (x :quu) (y :quu))
+            true))
+
+section "NP generics"
+
+define I : U -> U = \x -> x
+
+define NP : forall (k : U) (F : k -> U) (xs : List k) -> U
+          = \ k F -> foldr k U (\ x acc -> F x * acc) Unit
+
+define Generic : U -> U
+  = \A -> exists (desc : List U) * (A -> NP U I desc) * (NP U I desc -> A)
+
+define genericEq'
+  : forall (xs : List U) -> NP U (\x -> x -> x -> Bool) xs -> NP U I xs -> NP U I xs -> Bool
+  = indList U (\ys       -> NP U (\x -> x -> x -> Bool) ys -> NP U I ys -> NP U I ys -> Bool)
+      (\ es ls rs -> :true)
+      (\ z zs rec es ls rs -> and
+        (es .fst (ls .fst) (rs .fst))
+        (rec (es .snd) (ls .snd) (rs .snd)))
+
+define genericEq
+  : forall (A : U) (g : Generic A) -> NP U (\x -> x -> x -> Bool) (g .fst) -> A -> A -> Bool
+  = \ _ g eq x y -> genericEq' (g .fst) eq (g .snd .fst x) (g .snd .fst y)
+
+section "Generic Foo equality"
+
+define FooDesc : List U = :cons Bool (:cons Nat (:cons Unit :nil))
+
+define fromFoo
+  : Foo -> NP U I FooDesc
+  = \x -> [ (x :foo) (x :bar) (x :quu) ]
+
+define toFoo
+  : NP U I FooDesc -> Foo
+  = \x -> [ (x .fst) (x .snd .fst) (x .snd .snd .fst) ]
+
+define GenericFoo : Generic Foo = FooDesc , fromFoo , toFoo
+
+define eqFooG : Foo -> Foo -> Bool
+  = genericEq Foo GenericFoo [eqBool eqNat eqUnit]
+
+section "Staged NP-generics"
+
+define CodeU : U = Code [| U |]
+define C : CodeU -> U = \x -> Code x
+
+define Staged : U -> U
+  = \A -> exists (CA : CodeU) (desc : List CodeU)
+     * (Code CA -> forall (r : CodeU) -> (NP CodeU C desc -> Code r) -> Code r)
+     * (NP CodeU C desc -> Code CA)
+
+define stagedEq'
+  : forall (xs : List CodeU) -> NP CodeU (\x -> Code [| $x -> $x -> Bool |]) xs -> NP CodeU C xs -> NP CodeU C xs -> C [| Bool |]
+  = indList CodeU (\ys       -> NP CodeU (\x -> Code [| $x -> $x -> Bool |]) ys -> NP CodeU C ys -> NP CodeU C ys -> C [| Bool |])
+      (\_ _ _ -> [| :true |])
+      (\ z zs rec es ls rs -> [| and
+        ($(es .fst) $(ls .fst) $(rs .fst))
+        $((rec (es .snd) (ls .snd) (rs .snd))) |])
+
+define stagedEq
+  : forall (A : U) (g : Staged A) -> NP CodeU (\x -> Code [| $x -> $x -> Bool |]) (g .snd .fst) -> Code (g .fst) -> Code (g .fst) -> Code [| Bool |]
+  = \_ g eq x y ->
+      g .snd .snd .fst x [| Bool |] \x' ->
+      g .snd .snd .fst y [| Bool |] \y' ->
+      stagedEq' (g .snd .fst) eq x' y'
+
+section "Staged Foo equality"
+
+define FooCodeDesc : List CodeU = :cons [| Bool |] (:cons [| Nat |] (:cons [| Unit |] :nil))
+
+define sfromFoo
+   : Code [| Foo |] -> forall (r : CodeU) -> (NP CodeU C FooCodeDesc -> Code r) -> Code r
+   = \x _r kont -> kont [ [| $x :foo |] [| $x :bar |] [| $x :quu |] ]
+
+
+define stoFoo
+  : NP CodeU C FooCodeDesc -> Code [| Foo |]
+  = \x -> [| [ $(x .fst) $(x .snd .fst) $(x .snd .snd .fst) ] |]
+
+define StagedFoo : Staged Foo = [| Foo |] , FooCodeDesc , sfromFoo , stoFoo
+
+-- defined eqFooS
+--   : Foo → Foo → Bool
+--   = λ x y ↦ and (eqBool (x :foo) (y :foo))
+--            (and (eqNat (x :bar) (y :bar))
+--            (and (eqUnit (x :quu) (y :quu))
+--            :true))
+
+define eqFooS : Foo -> Foo -> Bool
+   = \x y -> $(stagedEq Foo StagedFoo [ [| eqBool|] [| eqNat |] [| eqUnit |] ] [| x |] [| y |])
+
+section "Tests"
+
+type %refl : Id {Foo -> Foo -> Bool} eqFoo eqFooS
+type %refl : Id {Foo -> Foo -> Bool} eqFoo eqFooG
+
+type %refl : Id {Bool} (eqFoo  foo1 foo1) :true
+type %refl : Id {Bool} (eqFooS foo1 foo1) :true
+type %refl : Id {Bool} (eqFooG foo1 foo1) :true
+
+type %refl : Id {Bool} (eqFoo  foo1 foo2) :false
+type %refl : Id {Bool} (eqFooS foo1 foo2) :false
+type %refl : Id {Bool} (eqFooG foo1 foo2) :false

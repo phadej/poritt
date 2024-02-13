@@ -1,0 +1,59 @@
+-- Description for natural numbers:
+-- constructors, fields, and the description itself.
+define NatC : U            = #[ :zero :succ   ]
+define NatF : NatC -> Desc =  [ `1    (`X `1) ]
+define NatD : Desc         = `S NatC NatF
+
+-- Natural numbers
+define Nat : U = mu NatD
+eval Nat
+
+define zero : Nat = :zero
+define succ : Nat -> Nat = \ n -> :succ n
+
+define one   = succ zero
+define two   = succ one
+define three = succ two
+define four  = succ three
+define five  = succ four
+
+define indNat
+  : forall (M : Nat -> U)
+           (Mzero : M zero)
+           (Msucc : forall (n : Nat) -> M n -> M (succ n))
+           (e : Nat) -> M e
+  = \ M Mzero Msucc e ->
+    ind e M \ d ->
+    (switch (d .fst) (\ c' -> forall (y : evalDesc (NatF c') Nat) -> All (NatF c') Nat M y -> M (con (c' , y)))
+       { :succ -> \ n Mn -> Msucc (n .fst) (Mn .fst)
+       ; :zero -> \ _ _ -> Mzero
+       })
+    (d .snd)
+
+define iterNat
+  : forall (A : U) -> A -> (A -> A) -> Nat -> A
+  = \ A z s -> indNat (\ _ -> A) z (\ _ n -> s n)
+
+define paraNat
+  : forall (A : U) -> A -> (Nat -> A -> A) -> Nat -> A
+  = \ A z s -> indNat (\ _ -> A) z (\ n a -> s n a)
+
+define caseNat
+  : Nat -> forall (A : U) -> A -> (Nat -> A) -> A
+  = \ m A z s -> paraNat A z (\n _ -> s n) m
+
+define plus : Nat -> Nat -> Nat
+            = \ n m -> iterNat Nat m succ n
+
+define mult : Nat -> Nat -> Nat
+            = \ n m -> iterNat Nat zero (plus m) n
+
+include "bool.ptt"
+
+define isZero
+  : Nat -> Bool
+  = \n -> caseNat n Bool true (\_ -> false)
+
+define eqNat
+  : Nat -> Nat -> Bool
+  = iterNat (Nat -> Bool) isZero (\rec m -> caseNat m Bool false rec)

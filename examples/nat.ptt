@@ -1,0 +1,22 @@
+include "lib/nat.ptt"
+include "lib/leibniz.ptt"
+
+section "numbers"
+
+eval two
+eval three
+
+section "Nat iteration"
+
+eval iterNat
+
+section "Arithmetic examples"
+
+eval plus two two
+eval mult two three
+eval mult three two
+
+section "Syntax sugar"
+
+type :zero : Nat
+type (\n -> :succ n) : Nat -> Nat

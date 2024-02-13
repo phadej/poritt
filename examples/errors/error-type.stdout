@@ -1,0 +1,9 @@
+Error: examples/errors/error-type.ptt:2:22: Couldn't match types
+  • expected: A
+  • actual: A → A
+  • not convertible: U : A /= A → A
+  • When checking that f has type A
+  • When checking that λ f ↦ f has type (A → A) → A
+  • When checking that λ A f ↦ f has type ∀ (A : U) → (A → A) → A
+  • When infering type of (λ A f ↦ f) : ∀ (A : U) → (A → A) → A
+ExitFailure

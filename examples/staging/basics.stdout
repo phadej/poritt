@@ -1,0 +1,93 @@
+include "../lib/bool.ptt"
+
+define Bool : U = #[:false :true]
+
+define true : Bool = :true
+
+define false : Bool = :false
+
+inline true
+
+inline false
+
+define if : Bool → ∀ (A : U) → A → A → A = [ (λ _ t f ↦ f) (λ _ t f ↦ t) ]
+
+define not : Bool → Bool = [ :true :false ]
+
+define and : Bool → Bool → Bool = [ (λ _ ↦ :false) (λ y ↦ y) ]
+
+define or : Bool → Bool → Bool = [ (λ y ↦ y) (λ _ ↦ :true) ]
+
+define eqBool : Bool → Bool → Bool = [ [ :true :false ] [ :false :true ] ]
+
+define eqUnit : Unit → Unit → Bool = λ _ _ ↦ :true
+
+end-of-file "examples/staging/../lib/bool.ptt"
+
+include "../lib/leibniz.ptt"
+
+define Id : ∀ {A : U} → A → A → U = λ x y ↦ ∀ (C : A → U) → C x → C y
+
+define refl : ∀ {A : U} (x : A) → Id x x = λ x C Cx ↦ Cx
+
+macro %refl 
+  = λ _ Cx ↦ Cx
+
+define sym
+  : ∀ (A : U) (x : A) (y : A) → Id x y → Id y x
+  = λ A x y x=y ↦ x=y (λ z ↦ Id z x) (refl x)
+
+define trans
+  : ∀ (A : U) (x : A) (y : A) (z : A) → Id x y → Id y z → Id x z
+  = λ A x y z x=y y=z ↦ y=z (λ v ↦ Id x v) x=y
+
+end-of-file "examples/staging/../lib/leibniz.ptt"
+
+define CodeU : U = Code ⟦ U ⟧
+
+define CU : Code ⟦ U ⟧ = ⟦ U ⟧
+
+define U1 : U = U
+
+define U2 : U = U
+
+define timely : ∀ (A : CodeU) → Code ⟦ $A → $A ⟧ = λ A ↦ ⟦ λ x ↦ x ⟧
+
+define appE
+  : ∀ (A : CodeU) (B : CodeU) → Code ⟦ $A → $B ⟧ → Code A → Code B
+  = λ A B f x ↦ ⟦ $f $x ⟧
+
+define depAppE
+  : ∀
+    (A : CodeU) (B : Code ⟦ $A → U ⟧) →
+    Code ⟦ ∀ (x : $A) → $B x ⟧ → ∀ (x : Code A) → Code ⟦ $B $x ⟧
+  = λ _ _ f x ↦ ⟦ $f $x ⟧
+
+define twice
+  : ∀ (A : CodeU) → (Code A → Code A) → Code ⟦ $A → $A ⟧
+  = λ A f ↦ ⟦ λ x ↦ $(f (f ⟦ x ⟧)) ⟧
+
+define twiceid : Code ⟦ Bool → Bool ⟧ = twice ⟦ Bool ⟧ (λ x ↦ ⟦ not $x ⟧)
+
+define twiceid1 : Bool → Bool = λ x ↦ not (not x)
+
+define twiceid2 : Bool → Bool = λ x ↦ not (not x)
+
+type %refl : Id {Code ⟦ Bool ⟧} ⟦ true ⟧ ⟦ true ⟧
+  : Id {Code ⟦ Bool ⟧} ⟦ true ⟧ ⟦ true ⟧
+
+Error: examples/staging/basics.ptt:34:5: Couldn't match types
+  • expected: C ⟦ not false ⟧
+  • actual: C ⟦ true ⟧
+  • TODO: convSElim not convertible 
+    SApp Ecit (SGbl "not") (SEmb (SGbl "false"))
+    SGbl "true"
+  • When checking that Cx has type C ⟦ not false ⟧
+  • When checking that λ Cx ↦ Cx has type C ⟦ true ⟧ → C ⟦ not false ⟧
+  • When checking that
+    λ _ Cx ↦ Cx
+    has type
+    Id {Code ⟦ Bool ⟧} ⟦ true ⟧ ⟦ not false ⟧
+  • When infering type of
+    (λ _ Cx ↦ Cx) : Id {Code ⟦ Bool ⟧} ⟦ true ⟧ ⟦ not false ⟧
+ExitFailure

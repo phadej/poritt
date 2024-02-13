@@ -1,0 +1,132 @@
+include "../lib/nat.ptt"
+
+define NatC : U = #[:zero :succ]
+
+define NatF : NatC → Desc = [ `1 (`X `1) ]
+
+define NatD : Desc = `S NatC NatF
+
+define Nat : U = μ NatD
+
+eval Nat = μ (`S #[:zero :succ] [ `1 (`X `1) ]) : U
+
+define zero : Nat = :zero
+
+define succ : Nat → Nat = λ n ↦ :succ n
+
+define one : Nat = succ zero
+
+define two : Nat = succ one
+
+define three : Nat = succ two
+
+define four : Nat = succ three
+
+define five : Nat = succ four
+
+define indNat
+  : ∀
+    (M : Nat → U) →
+    M zero → (∀ (n : Nat) → M n → M (succ n)) → ∀ (e : Nat) → M e
+  = λ M Mzero Msucc e ↦
+    ind
+      e
+      M
+      (λ d ↦
+         (switch (d .fst) (λ c' ↦
+                             ∀
+                               (y : evalDesc (NatF c') Nat) →
+                               All (NatF c') Nat M y → M (con (c' , y)))
+            {:zero ↦ λ _ _ ↦ Mzero; :succ ↦ λ n Mn ↦ Msucc (n .fst) (Mn .fst)})
+           (d .snd))
+
+define iterNat
+  : ∀ (A : U) → A → (A → A) → Nat → A
+  = λ A z s ↦ indNat (λ _ ↦ A) z (λ _ n ↦ s n)
+
+define paraNat
+  : ∀ (A : U) → A → (Nat → A → A) → Nat → A
+  = λ A z s ↦ indNat (λ _ ↦ A) z (λ n a ↦ s n a)
+
+define caseNat
+  : Nat → ∀ (A : U) → A → (Nat → A) → A
+  = λ m A z s ↦ paraNat A z (λ n _ ↦ s n) m
+
+define plus : Nat → Nat → Nat = λ n m ↦ iterNat Nat m succ n
+
+define mult : Nat → Nat → Nat = λ n m ↦ iterNat Nat zero (plus m) n
+
+include "bool.ptt"
+
+define Bool : U = #[:false :true]
+
+define true : Bool = :true
+
+define false : Bool = :false
+
+inline true
+
+inline false
+
+define if : Bool → ∀ (A : U) → A → A → A = [ (λ _ t f ↦ f) (λ _ t f ↦ t) ]
+
+define not : Bool → Bool = [ :true :false ]
+
+define and : Bool → Bool → Bool = [ (λ _ ↦ :false) (λ y ↦ y) ]
+
+define or : Bool → Bool → Bool = [ (λ y ↦ y) (λ _ ↦ :true) ]
+
+define eqBool : Bool → Bool → Bool = [ [ :true :false ] [ :false :true ] ]
+
+define eqUnit : Unit → Unit → Bool = λ _ _ ↦ :true
+
+end-of-file "examples/staging/../lib/bool.ptt"
+
+define isZero : Nat → Bool = λ n ↦ caseNat n Bool :true (λ _ ↦ :false)
+
+define eqNat
+  : Nat → Nat → Bool
+  = iterNat (Nat → Bool) isZero (λ rec m ↦ caseNat m Bool :false rec)
+
+end-of-file "examples/staging/../lib/nat.ptt"
+
+include "../lib/bool.ptt"
+
+end-of-file "examples/staging/../lib/bool.ptt"
+
+define iterNot : Nat → Bool → Bool = λ n m ↦ iterNat Bool m (λ acc ↦ not acc) n
+
+define iterNot3 : Bool → Bool = iterNot three
+
+define iterNotCode
+  : Nat → Code ⟦ Bool ⟧ → Code ⟦ Bool ⟧
+  = λ n m ↦ iterNat (Code ⟦ Bool ⟧) m (λ acc ↦ ⟦ not $acc ⟧) n
+
+define iterNot3' : Bool → Bool = λ p ↦ not (not (not p))
+
+include "../lib/leibniz.ptt"
+
+define Id : ∀ {A : U} → A → A → U = λ x y ↦ ∀ (C : A → U) → C x → C y
+
+define refl : ∀ {A : U} (x : A) → Id x x = λ x C Cx ↦ Cx
+
+macro %refl 
+  = λ _ Cx ↦ Cx
+
+define sym
+  : ∀ (A : U) (x : A) (y : A) → Id x y → Id y x
+  = λ A x y x=y ↦ x=y (λ z ↦ Id z x) (refl x)
+
+define trans
+  : ∀ (A : U) (x : A) (y : A) (z : A) → Id x y → Id y z → Id x z
+  = λ A x y z x=y y=z ↦ y=z (λ v ↦ Id x v) x=y
+
+end-of-file "examples/staging/../lib/leibniz.ptt"
+
+type %refl : Id {Bool} (iterNot3 true) (iterNot3' true)
+  : Id (iterNot3 true) (iterNot3' true)
+
+type %refl : Id {Bool → Bool} iterNot3 iterNot3' : Id iterNot3 iterNot3'
+
+end-of-file "examples/staging/iternot.ptt"
+

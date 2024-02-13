@@ -1,0 +1,4 @@
+Error: "examples/tutorial.ptt" (line 121, column 20):
+unexpected {
+expecting identifier, hole, label, enum index, U, Desc, `1, Unit, tt, _, (, #, \, let, [|, $, [, forall, exists, switch, `S, `X, indDesc, mu, con, ind or Code
+ExitFailure

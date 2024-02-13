@@ -1,0 +1,23 @@
+define Id : ∀ (A : U) → A → A → U = λ A x y ↦ ∀ (C : A → U) → C x → C y
+
+define idtype : U = ∀ (A : U) → A → A
+
+define id : idtype = λ _ A ↦ A
+
+eval (λ _ Cx ↦ Cx) : Id idtype (id idtype id) id
+  = λ _ Cx ↦ Cx
+  : Id idtype (id idtype id) id
+
+Error: examples/errors/error-conv-02.ptt:13:9: Checking against U
+  • type: U
+  • term: [ :tt ]
+  • When checking that [ :tt ] has type U
+  • When checking that [ :tt ] → idtype has type U
+  • When checking that
+    ∀ (f : [ :tt ] → idtype) → Id idtype (f :tt idtype (f :tt)) (f :tt)
+    has type
+    U
+  • When infering type of
+    (λ _ _ Cx ↦ Cx)
+      : ∀ (f : [ :tt ] → idtype) → Id idtype (f :tt idtype (f :tt)) (f :tt)
+ExitFailure

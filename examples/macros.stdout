@@ -1,0 +1,12 @@
+macro %apply f t
+  = f t
+
+macro %apply f t
+  = f t
+
+define id : ∀ (A : U) → A → A = λ _ x ↦ x
+
+eval %apply id #[:tt] :tt = :tt : #[:tt]
+
+end-of-file "examples/macros.ptt"
+

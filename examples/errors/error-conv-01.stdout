@@ -1,0 +1,11 @@
+define Id : ∀ (A : U) → A → A → U = λ A x y ↦ ∀ (C : A → U) → C x → C y
+
+Error: examples/errors/error-conv-01.ptt:5:16: Couldn't match types
+  • expected: C :1
+  • actual: C :0
+  • enum idx mismatch: :1 /= :0
+  • When checking that Cx has type C :1
+  • When checking that λ Cx ↦ Cx has type C :0 → C :1
+  • When checking that λ _ Cx ↦ Cx has type Id #[:x :y] :0 :1
+  • When infering type of (λ _ Cx ↦ Cx) : Id #[:x :y] :x :y
+ExitFailure

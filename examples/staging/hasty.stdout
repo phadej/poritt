@@ -1,0 +1,10 @@
+Error: examples/staging/hasty.ptt:4:56: Variable used at different stage
+  • variable: A
+  • expected: 1
+  • actual:   0
+  • When infering type of A
+  • When infering type of $A
+  • When checking that $A has type U
+  • When checking that Code A → $A has type U
+  • When checking that ∀ (A : Code ⟦ U ⟧) → Code A → $A has type U
+ExitFailure
