@@ -11,10 +11,10 @@ module PoriTT.Value (
     valZ,
     -- ** Evaluation context
     EvalEnv,
-    EvalEnv',
     EvalElim (..),
+    evalZ,
+    velim,
     emptyEvalEnv,
-    emptyEvalEnv',
     -- ** Evaluation error
     EvalError (..),
     -- * Staging values
@@ -152,31 +152,25 @@ instance Sinkable (Spine pass) where
 
 -- Terms in context
 type EvalElim :: TermPass -> Ctx -> Type
-data EvalElim pass ctx
-    = VElim (VElim pass ctx)
-    | SElim (Lvl ctx)
+data EvalElim pass ctx = EvalElim (VElim pass ctx) (SElim pass ctx)
 
 deriving instance Show (EvalElim pass ctx)
 
+velim :: VElim pass ctx' -> EvalElim pass ctx'
+velim v = EvalElim v (SErr EvalErrorStg)
+
 instance Sinkable (EvalElim pass) where
-    mapLvl f (VElim e) = VElim (mapLvl f e)
-    mapLvl f (SElim e) = SElim (mapLvl f e)
+    mapLvl f (EvalElim e s) = EvalElim (mapLvl f e) (mapLvl f s)
 
 type EvalEnv :: TermPass -> Ctx -> Ctx -> Type
-type EvalEnv pass ctx ctx' = Env ctx (VElim pass ctx')
-
-type EvalEnv' :: TermPass -> Ctx -> Ctx -> Type
-type EvalEnv' pass ctx ctx' = Env ctx (EvalElim pass ctx')
+type EvalEnv pass ctx ctx' = Env ctx (EvalElim pass ctx')
 
 emptyEvalEnv :: EvalEnv pass EmptyCtx EmptyCtx
 emptyEvalEnv = EmptyEnv
 
-emptyEvalEnv' :: EvalEnv' pass EmptyCtx EmptyCtx
-emptyEvalEnv' = EmptyEnv
-
 type Closure :: (TermPass -> Ctx -> Type) -> TermPass -> Ctx -> Type
 data Closure term pass ctx' where
-    Closure :: EvalEnv' pass ctx ctx' -> term pass (S ctx) -> Closure term pass ctx'
+    Closure :: EvalEnv pass ctx ctx' -> term pass (S ctx) -> Closure term pass ctx'
 
 deriving instance (forall ctx'. Show (term pass ctx')) => Show (Closure term pass ctx)
 
@@ -188,6 +182,9 @@ instance Sinkable (Closure term pass) where
 
 valZ :: Size ctx -> VElim pass (S ctx)
 valZ s = VRgd (lvlZ s) VNil
+
+evalZ :: Size ctx -> EvalElim pass (S ctx)
+evalZ s = EvalElim (valZ s) (svalZ s)
 
 -------------------------------------------------------------------------------
 -- Symbolic terms
@@ -218,6 +215,7 @@ type SElim :: TermPass -> Ctx -> Type
 data SElim pass ctx where
     SErr :: EvalError -> SElim pass ctx
     SVar :: Lvl ctx -> SElim pass ctx
+    SRgd :: Int -> SElim pass ctx -- TODO
     SGbl :: Global -> SElim pass ctx
     SApp :: !Icit -> SElim pass ctx -> STerm pass ctx -> SElim pass ctx
     SSel :: SElim pass ctx -> Selector -> SElim pass ctx
@@ -264,5 +262,5 @@ instance Sinkable (SElim pass) where
     mapLvl f (SLet x a b)     = SLet x (mapLvl f a) (mapLvl f b)
     mapLvl f (SAnn t s)       = SAnn (mapLvl f t) (mapLvl f s)
 
-svalZ :: Size ctx -> Lvl (S ctx)
-svalZ s = lvlZ s
+svalZ :: Size ctx -> SElim pass (S ctx)
+svalZ s = SVar (lvlZ s)

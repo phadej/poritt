@@ -46,9 +46,9 @@ emptyLintCtx :: NameScope -> LintCtx EmptyCtx EmptyCtx
 emptyLintCtx ns = LintCtx EmptyEnv EmptyEnv EmptyEnv EmptyEnv stage0 EmptyEnv EmptyEnv ns SZ []
 
 bind :: LintCtx ctx ctx' -> Name -> Name -> VTerm NoMetas ctx' -> LintCtx (S ctx) (S ctx')
-bind ctx x x' a = bind' (sinkLintCtx x' a ctx) x (valZ ctx.size) (sink a)
+bind ctx x x' a = bind' (sinkLintCtx x' a ctx) x (evalZ ctx.size) (sink a)
 
-bind' :: LintCtx ctx ctx' -> Name -> VElim NoMetas ctx' -> VTerm NoMetas ctx' -> LintCtx (S ctx) ctx'
+bind' :: LintCtx ctx ctx' -> Name -> EvalElim NoMetas ctx' -> VTerm NoMetas ctx' -> LintCtx (S ctx) ctx'
 bind' (LintCtx vs ts ts' ss cs xs xs' ns s pp) x v t = LintCtx (vs :> v) (ts :> t) ts' (ss :> cs) cs (xs :> x) xs' ns s pp
 
 weakenLintCtx :: Wk ctx ctx' -> LintCtx ctx' ctx'' -> LintCtx ctx ctx''
@@ -67,6 +67,12 @@ lintError ctx msg extras = Left $ ppHanging
 
 prettyVTermCtx :: LintCtx ctx ctx' -> VTerm NoMetas ctx' -> Doc
 prettyVTermCtx ctx = prettyVTerm ctx.size ctx.nscope ctx.names'
+
+-------------------------------------------------------------------------------
+-- Monad
+-------------------------------------------------------------------------------
+
+-- TODO
 
 -------------------------------------------------------------------------------
 -- Check & Infer
@@ -456,18 +462,21 @@ lintElim' ctx (DeI e m c1 cS cX) = do
             let mv :: VElim NoMetas ctx'
                 mv = vann (evalTerm ctx.size ctx.values m) mt
 
+            let mv' = velim mv
+
             -- ⊢ M `1 ∋ c1
-            lintTerm ctx c1 $ evalTerm ctx.size (EmptyEnv :> mv) descIndMotive1
+            lintTerm ctx c1 $ evalTerm ctx.size (EmptyEnv :> mv') descIndMotive1
 
             -- ⊢ Π (S : U) (D : S → Desc) → (Π (s : S) → M (D s)) → M (`S S D) ∋ cS
-            lintTerm ctx cS $ evalTerm ctx.size (EmptyEnv :> mv) descIndMotiveS
+            lintTerm ctx cS $ evalTerm ctx.size (EmptyEnv :> mv') descIndMotiveS
 
             -- ⊢ Π (D : Desc) → M D → M (`X D) ∋ cX
-            lintTerm ctx cX $ evalTerm ctx.size (EmptyEnv :> mv) descIndMotiveX
+            lintTerm ctx cX $ evalTerm ctx.size (EmptyEnv :> mv') descIndMotiveX
 
             -- ... ∈ M e
             let ev = evalElim ctx.size ctx.values e
-            return $ evalTerm ctx.size (ctx.values :> mv :> ev) (var I1 @@ var IZ)
+                ev' = velim ev
+            return $ evalTerm ctx.size (ctx.values :> mv' :> ev') (var I1 @@ var IZ)
 
         _ -> lintError ctx "Desc induction scrutinee doesn't have type Desc"
             [ "actual:" <+> prettyVTermCtx ctx et
@@ -493,12 +502,15 @@ lintElim' ctx (Ind e m t) = do
             let mv :: VElim NoMetas ctx'
                 mv = vann (evalTerm ctx.size ctx.values m) mt
 
+            let mv' = velim mv
+
             -- ⊢ Π (d : evalDesc D (μ D)) → All D (μ D) M d → M (con d) ∋ t
-            lintTerm ctx t $ evalTerm ctx.size (EmptyEnv :> vann d VDsc :> mv) muMotiveT
+            lintTerm ctx t $ evalTerm ctx.size (EmptyEnv :> velim (vann d VDsc) :> mv') muMotiveT
 
             -- ... ∈ M e
             let ev = evalElim ctx.size ctx.values e
-            return $ evalTerm ctx.size (ctx.values :> mv :> ev) (var I1 @@ var IZ)
+                ev' = velim ev
+            return $ evalTerm ctx.size (ctx.values :> mv' :> ev') (var I1 @@ var IZ)
 
         _ -> lintError ctx "ind doesn't have type mu"
             [ "actual:" <+> prettyVTermCtx ctx et
@@ -525,7 +537,8 @@ lintElim' ctx (Let x e f) = do
     --
     a <- lintElim ctx e
     let e' = evalElim ctx.size ctx.values e
-    lintElim (bind' ctx x e' a) f
+        e'' = velim e' -- TODO
+    lintElim (bind' ctx x e'' a) f
 
 lintElim' ctx (Spl e) = do
     --

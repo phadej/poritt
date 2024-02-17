@@ -104,12 +104,12 @@ bind (CheckCtx xs xs' ns v ts ts' ss cs s wk l pp) x x' a = CheckCtx
     , doc     = pp
     }
   where
-    t = valZ s
+    t = evalZ s
 
 bind'
     :: CheckCtx ctx ctx'
     -> Name                 -- ^ variable name
-    -> VElim NoMetas ctx'   -- ^ value
+    -> EvalElim NoMetas ctx'   -- ^ value
     -> VTerm NoMetas ctx'   -- ^ type
     -> CheckCtx (S ctx) ctx'
 bind' (CheckCtx xs xs' ns v ts ts' ss cs s wk l pp) x t a = CheckCtx
@@ -605,13 +605,16 @@ checkElim' ctx (WSwh e m ts) = do
             let mv :: VElim NoMetas ctx'
                 mv = vann (evalTerm ctx.size ctx.values m') mt
 
+                mv' = velim mv
+
             -- in { :l -> t }
             -- M :l ∋ t
             ts' <- ifor ts0 $ \i t -> do
-                checkTerm ctx t $ evalTerm ctx.size (EmptyEnv :> mv) (var IZ @@ EIx i)
+                checkTerm ctx t $ evalTerm ctx.size (EmptyEnv :> mv') (var IZ @@ EIx i)
 
             let ev = evalElim ctx.size ctx.values e'
-            return (Swh e' m' ts', evalTerm ctx.size (ctx.values :> mv :> ev) (var I1 @@ var IZ))
+                ev' = velim ev
+            return (Swh e' m' ts', evalTerm ctx.size (ctx.values :> mv' :> ev') (var I1 @@ var IZ))
 
         _ -> checkError ctx "Switch case scrutinee doesn't have finite set type"
             [ "actual:" <+> prettyVTermCtx ctx et
@@ -628,20 +631,24 @@ checkElim' ctx (WDeI e m c1 cS cX) = do
             let mv :: VElim NoMetas ctx'
                 mv = vann (evalTerm ctx.size ctx.values m') mt
 
+                mv' = velim mv
+
             -- ⊢ M `1 ∋ c1
-            c1' <- checkTerm ctx c1 $ evalTerm ctx.size (EmptyEnv :> mv) descIndMotive1
+            c1' <- checkTerm ctx c1 $ evalTerm ctx.size (EmptyEnv :> mv') descIndMotive1
 
             -- ⊢ Π (S : U) (D : S → Desc) → (Π (s : S) → M (D s)) → M (`S S D) ∋ cS
-            cS' <- checkTerm ctx cS $ evalTerm ctx.size (EmptyEnv :> mv) descIndMotiveS
+            cS' <- checkTerm ctx cS $ evalTerm ctx.size (EmptyEnv :> mv') descIndMotiveS
 
             -- ⊢ Π (D : Desc) → M D → M (`X D) ∋ cX
-            cX' <- checkTerm ctx cX $ evalTerm ctx.size (EmptyEnv :> mv) descIndMotiveX
+            cX' <- checkTerm ctx cX $ evalTerm ctx.size (EmptyEnv :> mv') descIndMotiveX
 
             -- ∈ M e
             let ev = evalElim ctx.size ctx.values e'
+                ev' = velim ev
+
             return
               ( DeI e' m' c1' cS' cX'
-              , evalTerm ctx.size (ctx.values :> mv :> ev) (var I1 @@ var IZ)
+              , evalTerm ctx.size (ctx.values :> mv' :> ev') (var I1 @@ var IZ)
               )
 
         _ -> checkError ctx "Desc induction scrutinee doesn't have type Desc"
@@ -659,14 +666,17 @@ checkElim' ctx (WInd e m t) = do
             let mv :: VElim NoMetas ctx'
                 mv = vann (evalTerm ctx.size ctx.values m') mt
 
+                mv' = velim mv
+
             -- ⊢ Π (d : evalDesc D (μ D)) → All D (μ D) M d → M (con d) ∋ t
-            t' <- checkTerm ctx t $ evalTerm ctx.size (EmptyEnv :> vann d VDsc :> mv) muMotiveT
+            t' <- checkTerm ctx t $ evalTerm ctx.size (EmptyEnv :> velim (vann d VDsc) :> mv') muMotiveT
 
             -- ... ∈ M e
             let ev = evalElim ctx.size ctx.values e'
+                ev' = velim ev
             return
                 ( Ind e' m' t'
-                , evalTerm ctx.size (ctx.values :> mv :> ev) (var I1 @@ var IZ)
+                , evalTerm ctx.size (ctx.values :> mv' :> ev') (var I1 @@ var IZ)
                 )
 
         _ -> checkError ctx "ind argument doesn't have type mu"
@@ -691,5 +701,6 @@ checkElim' ctx (WAnn t s) = do
 checkElim' ctx (WLet x t s) = do
     (t', tt) <- checkElim ctx t
     let tv = evalElim ctx.size ctx.values t'
-    (s', st) <- checkElim (bind' ctx x tv tt) s
+        tv' = velim tv -- TODO
+    (s', st) <- checkElim (bind' ctx x tv' tt) s
     return (Let x t' s', st)

@@ -65,9 +65,9 @@ emptyDistillCtx :: DistillOpts -> NameScope -> DistillCtx EmptyCtx EmptyCtx
 emptyDistillCtx opts ns = DistillCtx EmptyEnv EmptyEnv EmptyEnv EmptyEnv stage0 EmptyEnv EmptyEnv ns SZ SZ opts
 
 bind :: DistillCtx ctx ctx' -> Name -> Name -> VTerm NoMetas ctx' -> (Name, DistillCtx (S ctx) (S ctx'))
-bind ctx x x' a = bind' (sinkDistillCtx x' a ctx) x (valZ ctx.size') (sink a)
+bind ctx x x' a = bind' (sinkDistillCtx x' a ctx) x (evalZ ctx.size') (sink a)
 
-bind' :: DistillCtx ctx ctx' -> Name -> VElim NoMetas ctx' -> VTerm NoMetas ctx' -> (Name, DistillCtx (S ctx) ctx')
+bind' :: DistillCtx ctx ctx' -> Name -> EvalElim NoMetas ctx' -> VTerm NoMetas ctx' -> (Name, DistillCtx (S ctx) ctx')
 bind' (DistillCtx vs ts ts' ss cs xs xs' ns s s' o) x v t =
     withFreshName ns x $ \ns' x' ->
     (x', DistillCtx (vs :> v) (ts :> t) ts' (ss :> cs) cs (xs :> x') xs' ns' (SS s) s' o)
@@ -324,18 +324,21 @@ distillElim' ctx (DeI e m c1 cS cX) = do
             let mv :: VElim NoMetas ctx'
                 mv = vann (evalTerm ctx.size' ctx.values m) mt
 
+                mv' = velim mv
+
             -- ⊢ M `1 ∋ c1
-            c1' <- distillTerm' ctx c1 $ evalTerm ctx.size' (EmptyEnv :> mv) descIndMotive1
+            c1' <- distillTerm' ctx c1 $ evalTerm ctx.size' (EmptyEnv :> mv') descIndMotive1
 
             -- ⊢ Π (S : U) (D : S → Desc) → (Π (s : S) → M (D s)) → M (`S S D) ∋ cS
-            cS' <- distillTerm' ctx cS $ evalTerm ctx.size' (EmptyEnv :> mv) descIndMotiveS
+            cS' <- distillTerm' ctx cS $ evalTerm ctx.size' (EmptyEnv :> mv') descIndMotiveS
 
             -- ⊢ Π (D : Desc) → M D → M (`X D) ∋ cX
-            cX' <- distillTerm' ctx cX $ evalTerm ctx.size' (EmptyEnv :> mv) descIndMotiveX
+            cX' <- distillTerm' ctx cX $ evalTerm ctx.size' (EmptyEnv :> mv') descIndMotiveX
 
             -- ... ∈ M e
             let ev = evalElim ctx.size' ctx.values e
-            return (RDeI e' m' c1' cS' cX', evalTerm ctx.size' (ctx.values :> mv :> ev) (var I1 @@ var IZ))
+                ev' = velim ev
+            return (RDeI e' m' c1' cS' cX', evalTerm ctx.size' (ctx.values :> mv' :> ev') (var I1 @@ var IZ))
 
         _ -> distillError
 
@@ -351,12 +354,15 @@ distillElim' ctx (Ind e m t) = do
             let mv :: VElim NoMetas ctx'
                 mv = vann (evalTerm ctx.size' ctx.values m) mt
 
+                mv' = velim mv
+
             -- ⊢ Π (d : evalDesc D (μ D)) → All D (μ D) M d → M (con d) ∋ t
-            t' <- distillTerm' ctx t $ evalTerm ctx.size' (EmptyEnv :> vann d VDsc :> mv) muMotiveT
+            t' <- distillTerm' ctx t $ evalTerm ctx.size' (EmptyEnv :> velim (vann d VDsc) :> mv') muMotiveT
 
             -- ... ∈ M e
             let ev = evalElim ctx.size' ctx.values e
-            return (RInd e' m' t', evalTerm ctx.size' (ctx.values :> mv :> ev) (var I1 @@ var IZ))
+                ev' = velim ev
+            return (RInd e' m' t', evalTerm ctx.size' (ctx.values :> mv' :> ev') (var I1 @@ var IZ))
 
         _ -> distillError
 
@@ -369,7 +375,8 @@ distillElim' ctx (Ann t a) = do
 distillElim' ctx (Let x e f) = do
     (e', a) <- distillElim' ctx e
     let ev = evalElim ctx.size' ctx.values e
-    let (x', ctx') = bind' ctx x ev a
+        ev' = velim ev -- TODO
+    let (x', ctx') = bind' ctx x ev' a
     (f', b) <- distillElim' ctx' f
     return (RLet x' e' f', b)
 

@@ -133,10 +133,10 @@ nfElim u s ee t = quoteElim u s (evalElim s ee t)
 -- Staging
 -------------------------------------------------------------------------------
 
-preElim :: Size ctx' -> EvalEnv' pass ctx ctx' -> Elim pass ctx -> Either EvalError (Elim pass ctx')
+preElim :: Size ctx' -> EvalEnv pass ctx ctx' -> Elim pass ctx -> Either EvalError (Elim pass ctx')
 preElim s env e = quoteSElim NZ s $ stageElim s env e
 
-preTerm :: Size ctx' -> EvalEnv' pass ctx ctx' -> Term pass ctx -> Either EvalError (Term pass ctx')
+preTerm :: Size ctx' -> EvalEnv pass ctx ctx' -> Term pass ctx -> Either EvalError (Term pass ctx')
 preTerm s env t = quoteSTerm NZ s $ stageTerm s env t
 
 -------------------------------------------------------------------------------

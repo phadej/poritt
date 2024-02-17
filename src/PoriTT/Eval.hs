@@ -56,11 +56,11 @@ force v                   = v
 -------------------------------------------------------------------------------
 
 run :: Size ctx -> ClosureT pass ctx -> VElim pass ctx -> VTerm pass ctx
-run s (Closure env f) t = evalTerm' s (env :> VElim t) f
+run s (Closure env f) t = evalTerm' s (env :> EvalElim t (SErr EvalErrorStg)) f
 
 -- | Run closure with (neutral) variable as an argument.
 runZ :: Size ctx -> ClosureT pass ctx -> VTerm pass (S ctx)
-runZ s (sink -> Closure env f) = evalTerm' (SS s) (env :> SElim (svalZ s)) f
+runZ s (sink -> Closure env f) = evalTerm' (SS s) (env :> evalZ s) f
 
 -------------------------------------------------------------------------------
 -- Evaluation
@@ -69,10 +69,10 @@ runZ s (sink -> Closure env f) = evalTerm' (SS s) (env :> SElim (svalZ s)) f
 evalTerm :: Size ctx' -> EvalEnv pass ctx ctx' -> Term pass ctx -> VTerm pass ctx'
 evalElim :: Size ctx' -> EvalEnv pass ctx ctx' -> Elim pass ctx -> VElim pass ctx'
 
-evalTerm s env = evalTerm' s (fmap VElim env)
-evalElim s env = evalElim' s (fmap VElim env)
+evalTerm = evalTerm'
+evalElim = evalElim'
 
-evalTerm' :: Size ctx' -> EvalEnv' pass ctx ctx' -> Term pass ctx -> VTerm pass ctx'
+evalTerm' :: Size ctx' -> EvalEnv pass ctx ctx' -> Term pass ctx -> VTerm pass ctx'
 evalTerm' _ env (Lam x i t)   = VLam x i (Closure env t)
 evalTerm' _ _   Uni           = VUni
 evalTerm' _ _   One           = VOne
@@ -93,10 +93,8 @@ evalTerm' s env (Cod a)       = VCod (evalTerm' s env a)
 evalTerm' s env (Quo t)       = VQuo (stageTerm s env t) (evalTerm' s env t)
 evalTerm' s env (WkT w t)     = evalTerm' s (weakenEnv w env) t
 
-evalElim' :: Size ctx' -> EvalEnv' pass ctx ctx' -> Elim pass ctx -> VElim pass ctx'
-evalElim' _ env (Var x)       = case lookupEnv x env of
-    VElim v -> v
-    SElim e -> VRgd e VNil
+evalElim' :: Size ctx' -> EvalEnv pass ctx ctx' -> Elim pass ctx -> VElim pass ctx'
+evalElim' _ env (Var x)       = case lookupEnv x env of EvalElim v _ -> v
 evalElim' _ _ (Met _) = TODO
     -- TODO: we need metacontext.
 evalElim' s _   (Gbl g)         = vgbl s g
@@ -107,25 +105,8 @@ evalElim' s env (Swh e m ts)    = vswh s (evalElim' s env e) (evalTerm' s env m)
 evalElim' s env (DeI e m x y z) = vdei s (evalElim' s env e) (evalTerm' s env m) (evalTerm' s env x) (evalTerm' s env y) (evalTerm' s env z)
 evalElim' s env (Ind e m t)     = vind s (evalElim' s env e) (evalTerm' s env m) (evalTerm' s env t)
 evalElim' s env (Spl e)         = vspl s (evalElim' s env e)
-evalElim' s env (Let _ t r)     = evalElim' s (env :> VElim (evalElim' s env t)) r
+evalElim' s env (Let _ t r)     = evalElim' s (env :> velim (evalElim' s env t)) r
 evalElim' s env (WkE w e)       = evalElim' s (weakenEnv w env) e
-
--- TODO: evalSTerm to avoid having VTerm in VQuo?
-
-{-
-evalSTerm :: Size ctx' -> EvalEnv' pass ctx ctx' -> STerm pass ctx -> VTerm pass ctx'
-evalSTerm _ _   SUni         = VUni
-evalSTerm s env (SLam x i c) = VLam x i (evalClosureT s env c)
-evalSTerm _ _   t            = error (show t)
-
-evalClosureT :: Size ctx' -> EvalEnv' pass ctx ctx' -> ClosureT pass ctx -> ClosureT pass ctx'
-evalClosureT s env (Closure env' t) = Closure (compEvalEnv (sizeEnv env) env' env) t
-
-compEvalEnv :: Size ctx' -> EvalEnv' pass ctx ctx' -> EvalEnv' pass ctx' ctx'' -> EvalEnv' pass ctx ctx''
-compEvalEnv _ EmptyEnv         _    = EmptyEnv
-compEvalEnv s (env :> SElim l) env' = compEvalEnv s env env' :> lookupEnv (lvlToIdx s l) env'
-compEvalEnv s (env :> VElim t) env' = compEvalEnv s env env' :> VElim (quoteTerm UnfoldNone s t)
--}
 
 -------------------------------------------------------------------------------
 -- Eliminations
@@ -190,21 +171,21 @@ vdei :: Size ctx -> VElim pass ctx -> VTerm pass ctx -> VTerm pass ctx -> VTerm 
 -- indDesc `1       M 1ₘ Σₘ Xₘ    = 1ₘ
 vdei s (VAnn VDe1 (force -> VDsc)) m x _ _ = do
     let m' = vann m $ varr VDsc Uni
-    let x' = vann x $ evalTerm' s (EmptyEnv :> VElim m') descIndMotive1
+    let x' = vann x $ evalTerm' s (EmptyEnv :> velim m') descIndMotive1
     x'
 -- indDesc (`Σ S D) M 1ₘ Σₘ Xₘ    = Σₘ S D (λ s → indDesc (D s) M 1ₘ Σₘ Xₘ)
 vdei s (VAnn (VDeS t r) (force -> VDsc)) m x y z = do
     let m' = vann m $ varr VDsc Uni
-    let x' = vann x $ evalTerm' s (EmptyEnv :> VElim m') descIndMotive1
-    let y' = vann y $ evalTerm' s (EmptyEnv :> VElim m') descIndMotiveS
-    let z' = vann z $ evalTerm' s (EmptyEnv :> VElim m') descIndMotiveX
+    let x' = vann x $ evalTerm' s (EmptyEnv :> velim m') descIndMotive1
+    let y' = vann y $ evalTerm' s (EmptyEnv :> velim m') descIndMotiveS
+    let z' = vann z $ evalTerm' s (EmptyEnv :> velim m') descIndMotiveX
     let r' = vann r $ varr t Dsc
-    vapps s y' [t, r, VLam "s" Ecit $ Closure (fmap VElim (EmptyEnv :> m' :> x' :> y' :> z' :> r')) $ Emb $ DeI (var I1 @@ var IZ) (var I5) (var I4) (var I3) (var I2) ]
+    vapps s y' [t, r, VLam "s" Ecit $ Closure (fmap velim (EmptyEnv :> m' :> x' :> y' :> z' :> r')) $ Emb $ DeI (var I1 @@ var IZ) (var I5) (var I4) (var I3) (var I2) ]
 
 -- indDesc (`X D)   M 1ₘ Σₘ Xₘ    = Xₘ D (indDesc D M 1ₘ Σₘ Xₘ)
 vdei s (VAnn (VDeX t) (force -> VDsc)) m x y z = do
     let m' = vann m $ varr VDsc Uni
-    let z' = vann z $ evalTerm' s (EmptyEnv :> VElim m') descIndMotiveX
+    let z' = vann z $ evalTerm' s (EmptyEnv :> velim m') descIndMotiveX
     vapps s z' [t, vemb $ vdei s (vann t VDsc) m x y z]
 
 vdei s (VAnn (VEmb e) _) m x y z = vdei s e m x y z
@@ -225,8 +206,8 @@ vind s (VAnn (VCon d) (force -> VMuu dd)) m c = do
     let m'  = vann m  $ varr (VMuu d) Uni
     let dd' = vann dd VDsc
     let d'  = vann d TODO
-    let c'  = vann c $ evalTerm' s (fmap VElim (EmptyEnv :> dd' :> m')) muMotiveT
-    evalElim' s (fmap VElim (EmptyEnv :> dd' :> m' :> d' :> c')) $
+    let c'  = vann c $ evalTerm' s (fmap velim (EmptyEnv :> dd' :> m')) muMotiveT
+    evalElim' s (fmap velim (EmptyEnv :> dd' :> m' :> d' :> c')) $
         var IZ @@ var I1 @@ (Gbl allTermGlobal @@ var I3 @@ Muu (var I3) @@ var I2 @@ Lam "x" Ecit (Emb (Ind (var IZ) (var I3) (var I1))) @@ var I1)
 
 vind s (VAnn (VEmb e) _) m t = vind s e m t
@@ -257,7 +238,7 @@ vsplCodArg s a = vemb (vspl s (vann a vcodUni))
 -- Staging
 -------------------------------------------------------------------------------
 
-stageTerm :: Size ctx' -> EvalEnv' pass ctx ctx' -> Term pass ctx -> STerm pass ctx'
+stageTerm :: Size ctx' -> EvalEnv pass ctx ctx' -> Term pass ctx -> STerm pass ctx'
 stageTerm s env (Pie x i a b) = SPie x i (stageTerm s env a) (Closure env b)
 stageTerm _ env (Lam x i t)   = SLam x i (Closure env t)
 stageTerm s env (Sgm x i a b) = SSgm x i (stageTerm s env a) (Closure env b)
@@ -278,10 +259,9 @@ stageTerm _ _   (EIx l)       = SEIx l
 stageTerm s env (Emb e)       = SEmb (stageElim s env e)
 stageTerm s env (WkT w t)     = stageTerm s (weakenEnv w env) t
 
-stageElim :: Size ctx' -> EvalEnv' pass ctx ctx' -> Elim pass ctx -> SElim pass ctx'
+stageElim :: Size ctx' -> EvalEnv pass ctx ctx' -> Elim pass ctx -> SElim pass ctx'
 stageElim _ env (Var x)   = case lookupEnv x env of
-    SElim e -> SVar e
-    VElim _ -> SErr EvalErrorStg -- TODO?
+    EvalElim _ e -> e
 stageElim _ _   (Met _m)        = TODO -- not sure what to do here yet.
 stageElim _ _   (Gbl g)         = SGbl g
 stageElim s env (Swh e m ts)    = SSwh (stageElim s env e) (stageTerm s env m) (stageTerm s env <$> ts)
@@ -296,7 +276,7 @@ stageElim s env (WkE w e)       = stageElim s (weakenEnv w env) e
 
 -- | Run closure with (neutral) variable as an argument.
 runSTZ :: Size ctx -> ClosureT pass ctx -> STerm pass (S ctx)
-runSTZ s (sink -> Closure env f) = stageTerm (SS s) (env :> SElim (svalZ s)) f
+runSTZ s (sink -> Closure env f) = stageTerm (SS s) (env :> evalZ s) f
 
 runSEZ :: Size ctx -> ClosureE pass ctx -> SElim pass (S ctx)
-runSEZ s (sink -> Closure env f) = stageElim (SS s) (env :> SElim (svalZ s)) f
+runSEZ s (sink -> Closure env f) = stageElim (SS s) (env :> evalZ s) f

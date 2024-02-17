@@ -254,7 +254,7 @@ convSpine ctx headLvl sp1' sp2' = do
                 let i = EnumIdx i'
                 x <- maybe (Left $ "missing case in left"  <+> prettyLabel l) return $ lookupEnumList i xs
                 y <- maybe (Left $ "missing case in right" <+> prettyLabel l) return $ lookupEnumList i ys
-                convTerm ctx (evalTerm ctx.size (EmptyEnv  :> m) (var IZ @@ EIx i)) x y
+                convTerm ctx (evalTerm ctx.size (EmptyEnv :> velim m) (var IZ @@ EIx i)) x y
 
             return (vswh ctx.size sp m1 xs, vemb (vapp ctx.size Ecit m (vemb sp)))
 
@@ -263,9 +263,9 @@ convSpine ctx headLvl sp1' sp2' = do
         convTerm ctx (evalTerm ctx.size EmptyEnv         descIndMotive)  m1 m2
         let m :: VElim NoMetas ctx
             m = vann m1 $ varr VDsc Uni
-        convTerm ctx (evalTerm ctx.size (EmptyEnv :> m) descIndMotive1) t1 t2
-        convTerm ctx (evalTerm ctx.size (EmptyEnv :> m) descIndMotiveS) s1 s2
-        convTerm ctx (evalTerm ctx.size (EmptyEnv :> m) descIndMotiveX) r1 r2
+        convTerm ctx (evalTerm ctx.size (EmptyEnv :> velim m) descIndMotive1) t1 t2
+        convTerm ctx (evalTerm ctx.size (EmptyEnv :> velim m) descIndMotiveS) s1 s2
+        convTerm ctx (evalTerm ctx.size (EmptyEnv :> velim m) descIndMotiveX) r1 r2
         return (vdei ctx.size sp m1 t1 s1 r1, vemb (vapp ctx.size Ecit m (vemb sp)))
 
     fwd (sp, VMuu d)     (PInd m1 c1) (PInd m2 c2) = do
@@ -276,7 +276,7 @@ convSpine ctx headLvl sp1' sp2' = do
             d' :: VElim NoMetas ctx
             d' = vann d VDsc
 
-        convTerm ctx (evalTerm ctx.size (EmptyEnv :> d' :> m) muMotiveT) c1 c2
+        convTerm ctx (evalTerm ctx.size (EmptyEnv :> velim d' :> velim m) muMotiveT) c1 c2
         return (vind ctx.size sp m1 c1, vemb (vapp ctx.size Ecit m (vemb sp)))
 
     fwd (sp, VCod a)        PSpl         PSpl         =
