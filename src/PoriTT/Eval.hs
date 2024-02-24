@@ -158,7 +158,7 @@ vsel _ (VErr msg)        _ = VErr msg
 
 vswh :: Size ctx -> VElim pass ctx -> VTerm pass ctx -> EnumList (VTerm pass ctx) -> VElim pass ctx
 vswh s (VAnn i@(VEIx i') ty@(force -> VFin _)) m ts = case lookupEnumList i' ts of
-    Just t -> vann t $ vemb $ vapp s Ecit (vann m (varr ty Uni)) i
+    Just t  -> vann t $ vemb $ vapp s Ecit (vann m (varr ty Uni)) i
     Nothing -> VErr EvalErrorSwh
 vswh s (VAnn (VEmb e) _) m ts = vswh s e m ts
 vswh _ (VAnn _ _)        _ _  = VErr EvalErrorSwh

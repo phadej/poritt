@@ -245,7 +245,7 @@ distillTerm' ctx (Emb e) a = do
     (e', b) <- distillElim' ctx e
     case convTerm (mkConvCtx ctx.size' ctx.names' ctx.types' ctx.nscope) VUni a b of
         Right () -> pure e'
-        Left _ -> Nothing
+        Left _   -> Nothing
 
 distillTerm' ctx (WkT w t) a =
     distillTerm' (weakenDistillCtx w ctx) t a
@@ -384,7 +384,7 @@ distillElim' ctx (Spl e) = do
     (e', et) <- distillElim' ctx { cstage = succ ctx.cstage } e
     case force et of
         VCod a -> return (RSpl e', a)
-        _ -> distillError
+        _      -> distillError
 
 distillElim' ctx (WkE w e) =
     distillElim' (weakenDistillCtx w ctx) e

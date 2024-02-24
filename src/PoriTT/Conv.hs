@@ -167,7 +167,7 @@ convTerm' ctx (VMuu d) x              y            = notConvertible ctx (VMuu d)
 
 -- ⊢ Code a ∋ t ≡ s
 convTerm' ctx (VCod a) (VQuo x _)     (VQuo y _)   = do
-    convSTerm NZ ctx a x y
+    convSTerm NZ ctx (vsplCodArg ctx.size a) x y
 convTerm' ctx (VCod _) (VEmb x)       (VEmb y)     = convElim ctx x y
 convTerm' ctx (VCod a) x              y            = notConvertible ctx (VCod a) x y
 
@@ -337,19 +337,21 @@ prettySpinePart _   (PInd _ _)     = "ind"
 prettySpinePart _   PSpl           = "splice"
 
 convSTerm :: Natural -> ConvCtx ctx -> VTerm NoMetas ctx -> STerm NoMetas ctx -> STerm NoMetas ctx -> Either Doc ()
-convSTerm l env (VQuo ty _) x y = convSTerm' l env ty x y
-convSTerm _ _   ty          x y = Left $ "convSTerm not convertible " <> ppStr (show (ty, x ,y))
+convSTerm l env ty x y = convSTerm' l env ty x y
 
-convSTerm' :: Natural -> ConvCtx ctx -> STerm 'NoMetas ctx -> STerm 'NoMetas ctx -> STerm 'NoMetas ctx -> Either Doc ()
+convSTerm' :: Natural -> ConvCtx ctx -> VTerm NoMetas ctx -> STerm 'NoMetas ctx -> STerm 'NoMetas ctx -> Either Doc ()
 convSTerm' l env _ty (SEmb x) (SEmb y) = convSElim' l env x y
 convSTerm' _ _ _ (SEIx x) (SEIx y)
     | x == y = return ()
-convSTerm' _ _   SUni SUni SUni = return ()
-convSTerm' _ _   SUni SOne SOne = return ()
-convSTerm' l ctx SUni (SPie x i a1 b1) (SPie _ j a2 b2) = do
+convSTerm' _ _   VUni SUni SUni = return ()
+convSTerm' _ _   VUni SOne SOne = return ()
+convSTerm' l ctx VUni (SPie _x i a1 _b1) (SPie _ j a2 _hb2) = do
     convIcit ctx i j
-    convSTerm' l ctx SUni a1 a2
+    convSTerm' l ctx VUni a1 a2
     -- TODO check b1 b2
+    -- (A : U) -> Id U A $([| A |])
+    -- convSTerm' l (bind x _ ctx) VUni (runSTZ ctx.size b1) (runSTZ ctx.size b2)
+
 convSTerm' _ _ ty x y = Left $ "convSTerm not convertible" <> ppStr (show (ty, x, y))
 
 convSElim' :: Natural -> ConvCtx ctx -> SElim NoMetas ctx -> SElim NoMetas ctx -> Either Doc ()
@@ -366,8 +368,8 @@ convSElim' _ env (SVar x) (SVar y)
 
 convSElim' NZ     env (SSpl _ x) (SSpl _ y) = convElim env x y
 convSElim' (NS l) env (SSpl x _) (SSpl y _) = convSElim' l env x y
-convSElim' l      ctx (SApp i f x) (SApp j g y) = do
+convSElim' l      ctx (SApp i f _x) (SApp j g _y) = do
   convIcit ctx i j
   convSElim' l ctx f g
   -- TODO: check x y
-convSElim' _ env x y = Left $ "TODO: convSElim not convertible " <> ppStr ("\n" ++ show x ++ "\n" ++ show y)
+convSElim' _ _env x y = Left $ "TODO: convSElim not convertible " <> ppStr ("\n" ++ show x ++ "\n" ++ show y)

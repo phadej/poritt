@@ -35,18 +35,18 @@ import PoriTT.Well
 -- | Elaboration context.
 --
 data CheckCtx ctx ctx' = CheckCtx
-    { names   :: !(Env ctx Name)
-    , names'  :: !(Env ctx' Name)
-    , nscope  :: !NameScope
-    , values  :: !(EvalEnv NoMetas ctx ctx')
-    , types   :: !(Env ctx (VTerm NoMetas ctx'))
-    , types'  :: !(Env ctx' (VTerm NoMetas ctx'))
-    , stages  :: Env ctx Stage
-    , cstage  :: Stage
-    , size    :: !(Size ctx')
-    , wk      :: Wk ctx' ctx               -- ^ weakening from target context to source context. This is possible, as target context is the same except the let bound values are missing.
-    , loc     :: !(Loc)
-    , doc     :: ![Doc]
+    { names  :: !(Env ctx Name)
+    , names' :: !(Env ctx' Name)
+    , nscope :: !NameScope
+    , values :: !(EvalEnv NoMetas ctx ctx')
+    , types  :: !(Env ctx (VTerm NoMetas ctx'))
+    , types' :: !(Env ctx' (VTerm NoMetas ctx'))
+    , stages :: Env ctx Stage
+    , cstage :: Stage
+    , size   :: !(Size ctx')
+    , wk     :: Wk ctx' ctx               -- ^ weakening from target context to source context. This is possible, as target context is the same except the let bound values are missing.
+    , loc    :: !(Loc)
+    , doc    :: ![Doc]
     }
 
 -- | Empty elaboration context.

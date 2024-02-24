@@ -28,9 +28,9 @@ import Unsafe.Coerce (unsafeCoerce)
 import PoriTT.Base
 import PoriTT.Enum
 import PoriTT.Icit
+import PoriTT.Meta
 import PoriTT.Name
 import PoriTT.Term
-import PoriTT.Meta
 
 import {-# SOURCE #-} PoriTT.Global (Global)
 

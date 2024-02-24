@@ -32,16 +32,16 @@ data DumpOpts = DumpOpts
   deriving (Show, Generic)
 
 data Opts = Opts
-    { evalFull     :: !Bool  -- ^ Evaluate the terms fully
-    , echo         :: !Bool  -- ^ Echo the poritt statements
-    , dump         :: !DumpOpts
-    , prettyOpts   :: !(PPOpts' ThreeWay)
-    , elaborate    :: !Bool
+    { evalFull    :: !Bool  -- ^ Evaluate the terms fully
+    , echo        :: !Bool  -- ^ Echo the poritt statements
+    , dump        :: !DumpOpts
+    , prettyOpts  :: !(PPOpts' ThreeWay)
+    , elaborate   :: !Bool
     -- elaborateOpts ?
-    , distill      :: !Bool
-    , distillOpts  :: !DistillOpts
-    , simplify     :: !Bool
-    , simplOpts    :: !SimplOpts
+    , distill     :: !Bool
+    , distillOpts :: !DistillOpts
+    , simplify    :: !Bool
+    , simplOpts   :: !SimplOpts
     }
   deriving (Show, Generic)
 

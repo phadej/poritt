@@ -389,8 +389,8 @@ prettyVTermZ opts unfold ns v a = case quoteTerm unfold SZ v of
 prettyVElimZ :: Opts -> Unfold -> NameScope -> VElim NoMetas EmptyCtx -> Doc
 prettyVElimZ opts unfold ns (VAnn t a) = prettyVTermZ opts unfold ns t a
 prettyVElimZ opts unfold ns e          = case quoteElim unfold SZ e of
-    Left err        -> ppStr (show err)           -- This shouldn't happen if type-checker is correct.
-    Right e'        -> prettyElimZ' opts ns e'
+    Left err -> ppStr (show err)           -- This shouldn't happen if type-checker is correct.
+    Right e' -> prettyElimZ' opts ns e'
 
 printDoc :: Doc -> MainM ()
 printDoc d = do

@@ -81,59 +81,59 @@ data Token
   deriving (Eq)
 
 showToken :: Token -> String
-showToken (TkIdent n) = "identifier " ++ show (prettyName n)
-showToken (TkLabel l) = "label " ++ show (prettyLabel l)
-showToken (TkEnumIdx i) = "enum index " ++ show (prettyEnumIdx i)
+showToken (TkIdent n)    = "identifier " ++ show (prettyName n)
+showToken (TkLabel l)    = "label " ++ show (prettyLabel l)
+showToken (TkEnumIdx i)  = "enum index " ++ show (prettyEnumIdx i)
 showToken (TkSelector s) = "selector " ++ show (prettySelector s)
-showToken (TkHole n) = "hole " ++ show (prettyName n)
-showToken (TkString s) = show s
-showToken TkDefine    = "define"
-showToken TkEval      = "eval"
-showToken TkType      = "type"
-showToken TkLet       = "let"
-showToken TkIn        = "in"
-showToken TkInfo      = "info"
-showToken TkInline    = "inline"
-showToken TkMacro     = "macro"
-showToken TkInclude   = "include"
-showToken TkSection   = "section"
-showToken TkOptions   = "options"
-showToken TkU         = "U"
-showToken TkForall    = "forall"
-showToken TkExists    = "exists"
-showToken TkSwitch    = "switch"
-showToken TkMu        = "mu"
-showToken TkInd       = "ind"
-showToken TkCon       = "con"
-showToken TkDesc      = "Desc"
-showToken TkCode      = "Code"
-showToken TkUnit      = "Unit"
-showToken TkTt        = "tt"
-showToken TkDesc1     = "`1"
-showToken TkDescS     = "`S"
-showToken TkDescX     = "`X"
-showToken TkDescInd   = "indDesc"
-showToken TkLParen    = "("
-showToken TkRParen    = ")"
-showToken TkLBracket  = "["
-showToken TkRBracket  = "]"
-showToken TkLBrace    = "{"
-showToken TkRBrace    = "}"
-showToken TkLQuote    = "[|"
-showToken TkRQuote    = "|]"
-showToken TkVBar      = "|"
-showToken TkDollar    = "$"
-showToken TkHash      = "#"
-showToken TkArrow     = "->"
-showToken TkBackSlash = "\\"
-showToken TkColon     = ":"
-showToken TkSemi      = ";"
-showToken TkComma     = ","
-showToken TkAst       = "*"
-showToken TkEquals    = "="
-showToken TkAnon      = "_"
-showToken TkEOF       = "end-of-file"
-showToken (TkError _) = "ERROR!"
+showToken (TkHole n)     = "hole " ++ show (prettyName n)
+showToken (TkString s)   = show s
+showToken TkDefine       = "define"
+showToken TkEval         = "eval"
+showToken TkType         = "type"
+showToken TkLet          = "let"
+showToken TkIn           = "in"
+showToken TkInfo         = "info"
+showToken TkInline       = "inline"
+showToken TkMacro        = "macro"
+showToken TkInclude      = "include"
+showToken TkSection      = "section"
+showToken TkOptions      = "options"
+showToken TkU            = "U"
+showToken TkForall       = "forall"
+showToken TkExists       = "exists"
+showToken TkSwitch       = "switch"
+showToken TkMu           = "mu"
+showToken TkInd          = "ind"
+showToken TkCon          = "con"
+showToken TkDesc         = "Desc"
+showToken TkCode         = "Code"
+showToken TkUnit         = "Unit"
+showToken TkTt           = "tt"
+showToken TkDesc1        = "`1"
+showToken TkDescS        = "`S"
+showToken TkDescX        = "`X"
+showToken TkDescInd      = "indDesc"
+showToken TkLParen       = "("
+showToken TkRParen       = ")"
+showToken TkLBracket     = "["
+showToken TkRBracket     = "]"
+showToken TkLBrace       = "{"
+showToken TkRBrace       = "}"
+showToken TkLQuote       = "[|"
+showToken TkRQuote       = "|]"
+showToken TkVBar         = "|"
+showToken TkDollar       = "$"
+showToken TkHash         = "#"
+showToken TkArrow        = "->"
+showToken TkBackSlash    = "\\"
+showToken TkColon        = ":"
+showToken TkSemi         = ";"
+showToken TkComma        = ","
+showToken TkAst          = "*"
+showToken TkEquals       = "="
+showToken TkAnon         = "_"
+showToken TkEOF          = "end-of-file"
+showToken (TkError _)    = "ERROR!"
 
 -------------------------------------------------------------------------------
 -- Lexer state
@@ -142,6 +142,7 @@ showToken (TkError _) = "ERROR!"
 data LexerState = LS
     { contents :: {-# UNPACK #-} !Text
     , location :: !Loc
+    , indent   :: !Bool
     }
 
 instance Monad m => P.Stream LexerState m (Loc, Token) where
@@ -155,19 +156,20 @@ initLexerState :: FilePath -> ByteString -> LexerState
 initLexerState fn bs = LS
     { contents = decodeUtf8Lenient bs
     , location = startLoc fn
+    , indent   = False
     }
 
 decodeUtf8Lenient :: ByteString -> Text
 decodeUtf8Lenient = TE.decodeUtf8With TEE.lenientDecode
 
 skipSpace :: LexerState -> LexerState
-skipSpace (LS bs loc)
+skipSpace (LS bs loc indent)
     | Just sfx' <- T.stripPrefix "--" sfx
     , (pfx'', sfx'') <- T.span (/= '\n') sfx'
-    = skipSpace $ LS sfx'' (loc `advanceLoc` pfx `advanceLoc` "--" `advanceLoc` pfx'')
+    = skipSpace $ LS sfx'' (loc `advanceLoc` pfx `advanceLoc` "--" `advanceLoc` pfx'') indent
 
     | otherwise
-    = LS sfx (loc `advanceLoc` pfx)
+    = LS sfx (loc `advanceLoc` pfx) indent
   where
     (pfx, sfx) = T.span isSpace bs
 
@@ -189,30 +191,30 @@ isIdentChar c
 -------------------------------------------------------------------------------
 
 scan :: LexerState -> (Token, LexerState)
-scan ls@(LS contents loc) = case T.uncons contents of
+scan ls@(LS contents loc indent) = case T.uncons contents of
     Nothing                -> (TkEOF,       ls)
-    Just ('(' , contents') -> (TkLParen,    LS contents' (advanceLoc loc "("))
-    Just (')' , contents') -> (TkRParen,    LS contents' (advanceLoc loc ")"))
+    Just ('(' , contents') -> (TkLParen,    LS contents' (advanceLoc loc "(") indent)
+    Just (')' , contents') -> (TkRParen,    LS contents' (advanceLoc loc ")") indent)
     Just ('[' , contents') -> case T.uncons contents' of
-        Just ('|', contents'') -> (TkLQuote,    LS contents'' (advanceLoc loc "[|"))
-        _                      -> (TkLBracket,  LS contents'  (advanceLoc loc "["))
+        Just ('|', contents'') -> (TkLQuote,    LS contents'' (advanceLoc loc "[|") indent)
+        _                      -> (TkLBracket,  LS contents'  (advanceLoc loc "[") indent)
     Just ('|' , contents') -> case T.uncons contents' of
-        Just (']', contents'') -> (TkRQuote,    LS contents'' (advanceLoc loc "|]"))
-        _                      -> (TkVBar,      LS contents'  (advanceLoc loc "|"))
-    Just (']' , contents') -> (TkRBracket,  LS contents' (advanceLoc loc "]"))
-    Just ('{' , contents') -> (TkLBrace,    LS contents' (advanceLoc loc "{"))
-    Just ('}' , contents') -> (TkRBrace,    LS contents' (advanceLoc loc "}"))
-    Just ('$' , contents') -> (TkDollar,    LS contents' (advanceLoc loc "$"))
-    Just ('#' , contents') -> (TkHash,      LS contents' (advanceLoc loc "#"))
-    Just (';' , contents') -> (TkSemi,      LS contents' (advanceLoc loc ";"))
-    Just ('\\', contents') -> (TkBackSlash, LS contents' (advanceLoc loc "\\"))
+        Just (']', contents'') -> (TkRQuote,    LS contents'' (advanceLoc loc "|]") indent)
+        _                      -> (TkVBar,      LS contents'  (advanceLoc loc "|") indent)
+    Just (']' , contents') -> (TkRBracket,  LS contents' (advanceLoc loc "]") indent)
+    Just ('{' , contents') -> (TkLBrace,    LS contents' (advanceLoc loc "{") indent)
+    Just ('}' , contents') -> (TkRBrace,    LS contents' (advanceLoc loc "}") indent)
+    Just ('$' , contents') -> (TkDollar,    LS contents' (advanceLoc loc "$") indent)
+    Just ('#' , contents') -> (TkHash,      LS contents' (advanceLoc loc "#") indent)
+    Just (';' , contents') -> (TkSemi,      LS contents' (advanceLoc loc ";")indent)
+    Just ('\\', contents') -> (TkBackSlash, LS contents' (advanceLoc loc "\\") indent)
     Just ('"' , contents') -> case T.span (/= '"') contents' of
         (pfx, sfx) -> case T.uncons sfx of
             Nothing        -> (TkError "Unterminated string literal", ls)
-            Just (_, sfx') -> (TkString pfx, LS sfx' $ loc `advanceLoc` "\"" `advanceLoc` pfx `advanceLoc` "\"")
+            Just (_, sfx') -> (TkString pfx, LS sfx' (loc `advanceLoc` "\"" `advanceLoc` pfx `advanceLoc` "\"") indent)
     Just (c,    _        )
         | isIdentChar c -> case T.span isIdentChar contents of
-            (pfx, sfx)     -> (classify pfx, LS sfx (advanceLoc loc pfx))
+            (pfx, sfx)     -> (classify pfx, LS sfx (advanceLoc loc pfx) indent)
 
         | otherwise        -> (TkError $ "Unknown character: " ++ show c, ls)
 
