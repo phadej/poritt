@@ -56,27 +56,36 @@ end-of-file "examples/lib/list.ptt"
 
 include "lib/bool.ptt"
 
-define Bool : U = #[:false :true]
+Bool : U
+Bool = #[:false :true]
 
-define true : Bool = :true
+true : Bool
+true = :true
 
-define false : Bool = :false
+false : Bool
+false = :false
 
 inline true
 
 inline false
 
-define if : Bool → ∀ (A : U) → A → A → A = [ (λ _ t f ↦ f) (λ _ t f ↦ t) ]
+if : Bool → ∀ (A : U) → A → A → A
+if = [ (λ _ t f ↦ f) (λ _ t f ↦ t) ]
 
-define not : Bool → Bool = [ :true :false ]
+not : Bool → Bool
+not = [ :true :false ]
 
-define and : Bool → Bool → Bool = [ (λ _ ↦ :false) (λ y ↦ y) ]
+and : Bool → Bool → Bool
+and = [ (λ _ ↦ :false) (λ y ↦ y) ]
 
-define or : Bool → Bool → Bool = [ (λ y ↦ y) (λ _ ↦ :true) ]
+or : Bool → Bool → Bool
+or = [ (λ y ↦ y) (λ _ ↦ :true) ]
 
-define eqBool : Bool → Bool → Bool = [ [ :true :false ] [ :false :true ] ]
+eqBool : Bool → Bool → Bool
+eqBool = [ [ :true :false ] [ :false :true ] ]
 
-define eqUnit : Unit → Unit → Bool = λ _ _ ↦ :true
+eqUnit : Unit → Unit → Bool
+eqUnit = λ _ _ ↦ :true
 
 end-of-file "examples/lib/bool.ptt"
 

@@ -14,8 +14,8 @@ type `S Unit (λ _ ↦ `1) : Desc
 
 eval `S Unit (λ _ ↦ `1) = `S Unit (λ _ ↦ `1) : Desc
 
-define indDescType
-  : U
+indDescType : U
+indDescType
   = ∀
     (d : Desc) (M : Desc → U) →
     M `1 →

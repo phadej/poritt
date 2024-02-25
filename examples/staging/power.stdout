@@ -14,15 +14,20 @@ define zero : Nat = :zero
 
 define succ : Nat → Nat = λ n ↦ :succ n
 
-define one : Nat = succ zero
+one : Nat
+one = succ zero
 
-define two : Nat = succ one
+two : Nat
+two = succ one
 
-define three : Nat = succ two
+three : Nat
+three = succ two
 
-define four : Nat = succ three
+four : Nat
+four = succ three
 
-define five : Nat = succ four
+five : Nat
+five = succ four
 
 define indNat
   : ∀
@@ -58,27 +63,36 @@ define mult : Nat → Nat → Nat = λ n m ↦ iterNat Nat zero (plus m) n
 
 include "bool.ptt"
 
-define Bool : U = #[:false :true]
+Bool : U
+Bool = #[:false :true]
 
-define true : Bool = :true
+true : Bool
+true = :true
 
-define false : Bool = :false
+false : Bool
+false = :false
 
 inline true
 
 inline false
 
-define if : Bool → ∀ (A : U) → A → A → A = [ (λ _ t f ↦ f) (λ _ t f ↦ t) ]
+if : Bool → ∀ (A : U) → A → A → A
+if = [ (λ _ t f ↦ f) (λ _ t f ↦ t) ]
 
-define not : Bool → Bool = [ :true :false ]
+not : Bool → Bool
+not = [ :true :false ]
 
-define and : Bool → Bool → Bool = [ (λ _ ↦ :false) (λ y ↦ y) ]
+and : Bool → Bool → Bool
+and = [ (λ _ ↦ :false) (λ y ↦ y) ]
 
-define or : Bool → Bool → Bool = [ (λ y ↦ y) (λ _ ↦ :true) ]
+or : Bool → Bool → Bool
+or = [ (λ y ↦ y) (λ _ ↦ :true) ]
 
-define eqBool : Bool → Bool → Bool = [ [ :true :false ] [ :false :true ] ]
+eqBool : Bool → Bool → Bool
+eqBool = [ [ :true :false ] [ :false :true ] ]
 
-define eqUnit : Unit → Unit → Bool = λ _ _ ↦ :true
+eqUnit : Unit → Unit → Bool
+eqUnit = λ _ _ ↦ :true
 
 end-of-file "examples/staging/../lib/bool.ptt"
 
@@ -94,7 +108,8 @@ define power
   : Nat → Nat → Nat
   = λ n m ↦ iterNat Nat (succ zero) (λ acc ↦ mult m acc) n
 
-define power5 : Nat → Nat = power five
+power5 : Nat → Nat
+power5 = power five
 
 define powerCode
   : Nat → Code ⟦ Nat ⟧ → Code ⟦ Nat ⟧

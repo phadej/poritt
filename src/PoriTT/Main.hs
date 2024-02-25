@@ -266,13 +266,17 @@ batchFile fn = execStateT $ do
 
         put $ env { globals = Map.insert name g env.globals, pending = Nothing }
 
-        printDoc $ ppSoftHanging
-            (ppAnnotate ACmd "define" <+> prettyName name)
+        when (isNothing env.pending) $ printDoc $ ppSoftHanging
+            (prettyName name)
             [ ":" <+> prettyVTermZ opts UnfoldNone names et VUni
-            , "=" <+> case e' of
-                Ann t _ -> prettyTermZ opts names t et
-                _       -> prettyElimZ opts names e'
             ]
+
+        printDoc $ ppSoftHanging
+                (prettyName name)
+                [ "=" <+> case e' of
+                    Ann t _ -> prettyTermZ opts names t et
+                    _       -> prettyElimZ opts names e'
+                ]
 
     stmt (DefineStmt' name ty t) = do
         echo "define" (prettyName name)

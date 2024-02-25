@@ -1,6 +1,7 @@
 define the : ∀ (A : U) → A → A = λ A x ↦ x
 
-define CodeU : U = Code ⟦ U ⟧
+CodeU : U
+CodeU = Code ⟦ U ⟧
 
 define codeId : ∀ (A : CodeU) → Code ⟦ $A → $A ⟧ = λ A ↦ ⟦ λ x ↦ the $A x ⟧
 

@@ -10,7 +10,8 @@ defined Nat
 
 type succ (succ zero) : Nat
 
-define two : Nat = succ (succ zero)
+two : Nat
+two = succ (succ zero)
 
 type two : Nat
 

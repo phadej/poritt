@@ -1,33 +1,33 @@
 Bool : U
-define Bool : U = #[:false :true]
+Bool = #[:false :true]
 
 true : Bool
-define true : Bool = :true
+true = :true
 
 false : Bool
-define false : Bool = :false
+false = :false
 
 inline true
 
 inline false
 
 if : Bool → ∀ (A : U) → A → A → A
-define if : Bool → ∀ (A : U) → A → A → A = [ (λ _ t f ↦ f) (λ _ t f ↦ t) ]
+if = [ (λ _ t f ↦ f) (λ _ t f ↦ t) ]
 
 not : Bool → Bool
-define not : Bool → Bool = [ :true :false ]
+not = [ :true :false ]
 
 and : Bool → Bool → Bool
-define and : Bool → Bool → Bool = [ (λ _ ↦ :false) (λ y ↦ y) ]
+and = [ (λ _ ↦ :false) (λ y ↦ y) ]
 
 or : Bool → Bool → Bool
-define or : Bool → Bool → Bool = [ (λ y ↦ y) (λ _ ↦ :true) ]
+or = [ (λ y ↦ y) (λ _ ↦ :true) ]
 
 eqBool : Bool → Bool → Bool
-define eqBool : Bool → Bool → Bool = [ [ :true :false ] [ :false :true ] ]
+eqBool = [ [ :true :false ] [ :false :true ] ]
 
 eqUnit : Unit → Unit → Bool
-define eqUnit : Unit → Unit → Bool = λ _ _ ↦ :true
+eqUnit = λ _ _ ↦ :true
 
 end-of-file "examples/lib/bool.ptt"
 

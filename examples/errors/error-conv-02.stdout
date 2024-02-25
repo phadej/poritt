@@ -1,6 +1,7 @@
 define Id : ∀ (A : U) → A → A → U = λ A x y ↦ ∀ (C : A → U) → C x → C y
 
-define idtype : U = ∀ (A : U) → A → A
+idtype : U
+idtype = ∀ (A : U) → A → A
 
 define id : idtype = λ _ A ↦ A
 
