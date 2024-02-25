@@ -1,10 +1,11 @@
-define sig : ∀ (A : U) → (A → U) → U = λ A B ↦ ∃ (x : A) × B x
+sig : ∀ (A : U) → (A → U) → U
+sig = λ A B ↦ ∃ (x : A) × B x
 
-define indSig
+indSig
   : ∀
     (A : U) (B : A → U) (e : sig A B) (M : sig A B → U) →
     (∀ (x : A) (y : B x) → M (x , y)) → M e
-  = λ A B e M m ↦ m (e .fst) (e .snd)
+indSig = λ A B e M m ↦ m (e .fst) (e .snd)
 
 end-of-file "examples/lib/sigma.ptt"
 

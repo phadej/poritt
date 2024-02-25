@@ -1,5 +1,6 @@
 -- Sigma type
-define sig : forall (A : U) (B : A -> U) -> U = \ A B -> exists (x : A) * B x
+sig : forall (A : U) (B : A -> U) -> U
+sig A B = exists (x : A) * B x
 
 -- Sigma induction
 --
@@ -8,11 +9,11 @@ define sig : forall (A : U) (B : A -> U) -> U = \ A B -> exists (x : A) * B x
 --  * expected: M e
 --  * actual: M (e .fst , e .snd)
 --
-define indSig
+indSig
   : forall (A : U)
            (B : A -> U)
            (e : sig A B)
            (M : sig A B -> U)
            (m : forall (x : A) (y : B x) -> M (x , y))
         -> M e
-  = \ A B e M m -> m (e .fst) (e .snd)
+indSig = \ A B e M m -> m (e .fst) (e .snd)
