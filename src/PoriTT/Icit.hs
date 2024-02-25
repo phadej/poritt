@@ -20,4 +20,3 @@ data Arg a
     = ArgSel Selector
     | ArgApp Icit a
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
-
