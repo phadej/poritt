@@ -77,8 +77,9 @@ data Token
     | TkDollar            -- ^ dollar: @$@
     | TkHash              -- ^ hash: @#@
     | TkEOF               -- ^ end-of-file token
+    | TkVSemi             -- ^ virtual semiquote
     | TkError String
-  deriving (Eq)
+  deriving (Eq, Show)
 
 showToken :: Token -> String
 showToken (TkIdent n)    = "identifier " ++ show (prettyName n)
@@ -133,6 +134,7 @@ showToken TkAst          = "*"
 showToken TkEquals       = "="
 showToken TkAnon         = "_"
 showToken TkEOF          = "end-of-file"
+showToken TkVSemi        = "virtual ;"
 showToken (TkError _)    = "ERROR!"
 
 -------------------------------------------------------------------------------
@@ -142,21 +144,36 @@ showToken (TkError _)    = "ERROR!"
 data LexerState = LS
     { contents :: {-# UNPACK #-} !Text
     , location :: !Loc
-    , indent   :: !Bool
+    , pending  :: !(Maybe (Loc, Token))
     }
+  deriving Show
 
 instance Monad m => P.Stream LexerState m (Loc, Token) where
-    uncons (skipSpace -> ls)
-        | T.null ls.contents = return Nothing
-        | otherwise          = case scan ls of
-            (TkEOF, _) -> return Nothing
-            (tok, ls') -> return (Just ((ls.location, tok), ls'))
+    uncons = return . unconsLexerState
+    
+unconsLexerState :: LexerState -> Maybe ((Loc, Token), LexerState)
+unconsLexerState (skipSpace -> ls)
+    | Just pending <- ls.pending
+    = (Just (pending, ls { pending = Nothing }))
+
+    | T.null ls.contents
+    = Nothing
+
+    | otherwise
+    = case scan ls of
+        (TkEOF, _) -> Nothing
+        (tok, ls') -> Just (f ls.location tok ls')
+        where
+        f :: Loc -> Token -> LexerState -> ((Loc, Token), LexerState)
+        f loc tok ls'
+            | loc.locColumn <= 1 = ((loc, TkVSemi), ls' { pending = Just (loc, tok) }) 
+            | otherwise          = ((loc, tok), ls')
 
 initLexerState :: FilePath -> ByteString -> LexerState
 initLexerState fn bs = LS
     { contents = decodeUtf8Lenient bs
     , location = startLoc fn
-    , indent   = False
+    , pending  = Nothing
     }
 
 decodeUtf8Lenient :: ByteString -> Text

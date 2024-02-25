@@ -1,6 +1,6 @@
 module PoriTT.Parser (
     Stmt (..),
-    stmtP,
+    stmtsP,
     eofP,
 ) where
 
@@ -33,6 +33,9 @@ data Stmt
   deriving Show
 
 type Parser = P.Parsec LexerState ()
+
+stmtsP :: Parser [Stmt]
+stmtsP = catMaybes <$> P.sepBy (Just <$> stmtP <|> pure Nothing) (tokenP TkVSemi)
 
 stmtP :: Parser Stmt
 stmtP = asum

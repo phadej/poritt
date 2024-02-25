@@ -76,7 +76,7 @@ define twiceid2 : Bool → Bool = λ x ↦ not (not x)
 type %refl : Id {Code ⟦ Bool ⟧} ⟦ true ⟧ ⟦ true ⟧
   : Id {Code ⟦ Bool ⟧} ⟦ true ⟧ ⟦ true ⟧
 
-Error: examples/staging/basics.ptt:34:5: Couldn't match types
+Error: examples/staging/basics.ptt:34:6: Couldn't match types
   • expected: C ⟦ not false ⟧
   • actual: C ⟦ true ⟧
   • TODO: convSElim not convertible 

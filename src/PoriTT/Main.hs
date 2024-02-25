@@ -107,7 +107,7 @@ readStatements fn = do
 
         -- parse statements
         statements' <- either (printError . ppStr . show) return $
-            P.parse (many stmtP <* eofP) fn (initLexerState fn bs)
+            P.parse (stmtsP <* eofP) fn (initLexerState fn bs)
 
         let statements = statements' ++ [DoneStmt fn]
 
