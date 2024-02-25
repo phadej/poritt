@@ -1,18 +1,24 @@
 include "../lib/nat.ptt"
 
-define NatC : U = #[:zero :succ]
+NatC : U
+NatC = #[:zero :succ]
 
-define NatF : NatC → Desc = [ `1 (`X `1) ]
+NatF : NatC → Desc
+NatF = [ `1 (`X `1) ]
 
-define NatD : Desc = `S NatC NatF
+NatD : Desc
+NatD = `S NatC NatF
 
-define Nat : U = μ NatD
+Nat : U
+Nat = μ NatD
 
 eval Nat = μ (`S #[:zero :succ] [ `1 (`X `1) ]) : U
 
-define zero : Nat = :zero
+zero : Nat
+zero = :zero
 
-define succ : Nat → Nat = λ n ↦ :succ n
+succ : Nat → Nat
+succ = λ n ↦ :succ n
 
 one : Nat
 one = succ zero
@@ -29,10 +35,11 @@ four = succ three
 five : Nat
 five = succ four
 
-define indNat
+indNat
   : ∀
     (M : Nat → U) →
     M zero → (∀ (n : Nat) → M n → M (succ n)) → ∀ (e : Nat) → M e
+indNat
   = λ M Mzero Msucc e ↦
     ind
       e
@@ -45,21 +52,20 @@ define indNat
             {:zero ↦ λ _ _ ↦ Mzero; :succ ↦ λ n Mn ↦ Msucc (n .fst) (Mn .fst)})
            (d .snd))
 
-define iterNat
-  : ∀ (A : U) → A → (A → A) → Nat → A
-  = λ A z s ↦ indNat (λ _ ↦ A) z (λ _ n ↦ s n)
+iterNat : ∀ (A : U) → A → (A → A) → Nat → A
+iterNat = λ A z s ↦ indNat (λ _ ↦ A) z (λ _ n ↦ s n)
 
-define paraNat
-  : ∀ (A : U) → A → (Nat → A → A) → Nat → A
-  = λ A z s ↦ indNat (λ _ ↦ A) z (λ n a ↦ s n a)
+paraNat : ∀ (A : U) → A → (Nat → A → A) → Nat → A
+paraNat = λ A z s ↦ indNat (λ _ ↦ A) z (λ n a ↦ s n a)
 
-define caseNat
-  : Nat → ∀ (A : U) → A → (Nat → A) → A
-  = λ m A z s ↦ paraNat A z (λ n _ ↦ s n) m
+caseNat : Nat → ∀ (A : U) → A → (Nat → A) → A
+caseNat = λ m A z s ↦ paraNat A z (λ n _ ↦ s n) m
 
-define plus : Nat → Nat → Nat = λ n m ↦ iterNat Nat m succ n
+plus : Nat → Nat → Nat
+plus = λ n m ↦ iterNat Nat m succ n
 
-define mult : Nat → Nat → Nat = λ n m ↦ iterNat Nat zero (plus m) n
+mult : Nat → Nat → Nat
+mult = λ n m ↦ iterNat Nat zero (plus m) n
 
 include "bool.ptt"
 
@@ -96,11 +102,11 @@ eqUnit = λ _ _ ↦ :true
 
 end-of-file "examples/staging/../lib/bool.ptt"
 
-define isZero : Nat → Bool = λ n ↦ caseNat n Bool :true (λ _ ↦ :false)
+isZero : Nat → Bool
+isZero = λ n ↦ caseNat n Bool :true (λ _ ↦ :false)
 
-define eqNat
-  : Nat → Nat → Bool
-  = iterNat (Nat → Bool) isZero (λ rec m ↦ caseNat m Bool :false rec)
+eqNat : Nat → Nat → Bool
+eqNat = iterNat (Nat → Bool) isZero (λ rec m ↦ caseNat m Bool :false rec)
 
 end-of-file "examples/staging/../lib/nat.ptt"
 
