@@ -290,7 +290,7 @@ batchFile fn = execStateT $ do
         put $ env { pending = Just (name, t'') }
 
         printDoc $ ppSoftHanging
-            (prettyName name)
+            (ppAnnotate ACmd $ prettyName name)
             [ ":" <+> prettyTermZ opts names t' VUni
             ]
 
@@ -331,12 +331,12 @@ batchFile fn = execStateT $ do
         put $ env { globals = Map.insert name g env.globals, pending = Nothing }
 
         when (isNothing env.pending) $ printDoc $ ppSoftHanging
-            (prettyName name)
+            (ppAnnotate ACmd $ prettyName name)
             [ ":" <+> prettyVTermZ opts UnfoldNone names et VUni
             ]
 
         printDoc $ ppSoftHanging
-                (prettyName name)
+                (ppAnnotate ACmd $ prettyName name)
                 [ "=" <+> case e' of
                     Ann t _ -> prettyTermZ opts names t et
                     _       -> prettyElimZ opts names e'

@@ -1,14 +1,20 @@
-define ListC : U = #[:nil :cons]
+ListC : U
+ListC = #[:nil :cons]
 
-define ListF : U → ListC → Desc = λ A ↦ [ `1 (`S A (λ _ ↦ `X `1)) ]
+ListF : U → ListC → Desc
+ListF = λ A ↦ [ `1 (`S A (λ _ ↦ `X `1)) ]
 
-define ListD : U → Desc = λ A ↦ `S ListC (ListF A)
+ListD : U → Desc
+ListD = λ A ↦ `S ListC (ListF A)
 
-define List : U → U = λ A ↦ μ (ListD A)
+List : U → U
+List = λ A ↦ μ (ListD A)
 
-define nil : ∀ (A : U) → List A = λ _ ↦ :nil
+nil : ∀ (A : U) → List A
+nil = λ _ ↦ :nil
 
-define cons : ∀ (A : U) → A → List A → List A = λ _ x xs ↦ :cons x xs
+cons : ∀ (A : U) → A → List A → List A
+cons = λ _ x xs ↦ :cons x xs
 
 macro %nil 
   = con [ :nil ]
@@ -16,8 +22,8 @@ macro %nil
 macro %cons x xs
   = con [ :cons x xs ]
 
-define foldr
-  : ∀ (A : U) (B : U) → (A → B → B) → B → List A → B
+foldr : ∀ (A : U) (B : U) → (A → B → B) → B → List A → B
+foldr
   = λ A B consC nilC e ↦
     ind
       e
@@ -31,11 +37,12 @@ define foldr
             {:nil ↦ λ _ _ ↦ nilC; :cons ↦ λ x acc ↦ consC (x .fst) (acc .fst)})
            (d .snd))
 
-define indList
+indList
   : ∀
     (A : U) (M : List A → U) →
     M (nil A) →
     (∀ (x : A) (xs : List A) → M xs → M (cons A x xs)) → ∀ (e : List A) → M e
+indList
   = λ A M Mnil Mcons e ↦
     ind
       e
