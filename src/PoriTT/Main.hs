@@ -53,6 +53,7 @@ data Environment = Environment
     , globals  :: Map Name Global
     , macros   :: Map Name Macro
     , included :: Set FilePath
+    , pending  :: Maybe (Name, Raw) -- TODO: make term pipeline
     , opts     :: Opts
     }
 
@@ -86,6 +87,7 @@ builtinEnvironment hdl opts = do
             ]
         , macros = Map.empty
         , included = Set.empty
+        , pending = Nothing
         }
 
 nameScopeFromEnv :: Environment -> NameScope
@@ -122,6 +124,13 @@ echo cmd args extras = do
     let opts  = env.opts
     when opts.echo $ printDoc $ ppSoftHanging (ppAnnotate AEch cmd <+> args) extras
 
+checkNoPending :: MainM ()
+checkNoPending = do
+    Environment { pending = p } <- get
+    case p of
+        Nothing -> return ()
+        Just (n, ty)  -> printError $ "Pending definition of " <+> prettyName n <+> ":" <+> prettyRaw 0 ty
+
 batchFile
     :: FilePath              -- ^ input file
     -> Environment             -- ^ evaluation state
@@ -131,7 +140,9 @@ batchFile fn = execStateT $ do
 
     for_ statements $ \s -> do
         stmt s
-        printDoc ""
+        case s of
+            TypeDefineStmt {} -> return ()
+            _                 -> printDoc ""
   where
     lint :: Doc -> Elim NoMetas EmptyCtx -> VTerm NoMetas EmptyCtx -> MainM ()
     lint pass e et = do
@@ -202,6 +213,7 @@ batchFile fn = execStateT $ do
 
     stmt :: Stmt -> MainM ()
     stmt (TypeDefineStmt name ty) = do
+        checkNoPending
         echo "declare" (prettyName name)
             [ ":" <+> prettyRaw 0 ty
             ]
@@ -215,7 +227,7 @@ batchFile fn = execStateT $ do
 
         (e', et) <- pipeline (RAnn ty RUni)
 
-        -- TODO: Add pending definition
+        put $ env { pending = Just (name, ty) }
 
         printDoc $ ppSoftHanging
             (prettyName name)
@@ -236,7 +248,11 @@ batchFile fn = execStateT $ do
         when (nameScopeMember name names) $
             printError $ prettyName name <+> "is already defined"
 
-        (e', et) <- pipeline e
+        (e', et) <- case env.pending of
+            Nothing          -> pipeline e
+            Just (name', ty) -> do
+                unless (name == name') $ printError $ "Pending definition of " <+> prettyName name' <+> ":" <+> prettyRaw 0 ty
+                pipeline (RAnn e ty)
 
         let ev = evalElim SZ emptyEvalEnv e'
         let g :: Global
@@ -248,7 +264,7 @@ batchFile fn = execStateT $ do
                 , inline = False
                 }
 
-        put $ env { globals = Map.insert name g env.globals }
+        put $ env { globals = Map.insert name g env.globals, pending = Nothing }
 
         printDoc $ ppSoftHanging
             (ppAnnotate ACmd "define" <+> prettyName name)

@@ -1,23 +1,29 @@
 Bool : U
-Bool = #[ :false :true ] : U
-define true  : Bool = :true
-define false : Bool = :false
+Bool = #[ :false :true ]
+
+true : Bool
+true = :true
+
+false : Bool
+false = :false
 
 inline true
 inline false
 
-define if : Bool -> forall (A : U) -> A -> A -> A
-          = [ (\_ t f -> f) (\_ t f -> t) ]
+if : Bool -> forall (A : U) -> A -> A -> A
+if = [ (\_ t f -> f) (\_ t f -> t) ]
 
-define not : Bool -> Bool
-           = [:true :false]
-define and : Bool -> Bool -> Bool
-           = [ (\_ -> :false) (\y -> y) ]
-define or  : Bool -> Bool -> Bool
-           = [ (\y -> y)      (\_ -> :true) ]
+not : Bool -> Bool
+not = [:true :false]
 
-define eqBool : Bool -> Bool -> Bool
-              = [ [:true :false] [:false :true ] ]
+and : Bool -> Bool -> Bool
+and = [ (\_ -> :false) (\y -> y) ]
 
-define eqUnit : Unit -> Unit -> Bool
-              = \ _ _ -> :true
+or : Bool -> Bool -> Bool
+or = [ (\y -> y)      (\_ -> :true) ]
+
+eqBool : Bool -> Bool -> Bool
+eqBool = [ [:true :false] [:false :true ] ]
+
+eqUnit : Unit -> Unit -> Bool
+eqUnit = \ _ _ -> :true
