@@ -294,10 +294,12 @@ batchFile fn = execStateT $ do
             [ ":" <+> prettyTermZ opts names t' VUni
             ]
 
-    stmt (DefineStmt name e) = do
+    stmt (DefineStmt name xs e_) = do
         echo "define" (prettyName name)
-            [ "=" <+> prettyRaw 0 e
+            [ ppStr (show xs) <+> "=" <+> prettyRaw 0 e_
             ]
+
+        let e = foldr (\(i, x) t -> RLam x i t) e_ xs
 
         env <- get
         let opts  = env.opts

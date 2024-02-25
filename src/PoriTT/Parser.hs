@@ -19,18 +19,18 @@ import qualified Text.Parsec.Pos as P
 
 -- | PoriTT statements
 data Stmt
-    = DefineStmt Name Raw       -- ^ define top level binding: @foo = e@ or @foo x y = t@
-    | TypeDefineStmt Name Raw   -- ^ type declaration: @foo : T@
-    | DefineStmt' Name Raw Raw  -- ^ or @define bar : T = t@
-    | EvalStmt Raw              -- ^ evaluate expression: @eval e@
-    | TypeStmt Raw              -- ^ type-check expression: @type e@
-    | InfoStmt Name             -- ^ information about a name: @info x@
-    | InlineStmt Name           -- ^ mark binding to be inlined: @inline x@
-    | MacroStmt Name [Name] Raw -- ^ define new macro: @macro bar x y z = t@
-    | IncludeStmt FilePath      -- ^ include source file: @include "lib.ptt"@
-    | SectionStmt Text          -- ^ section statement: @section "definitions"@
-    | DoneStmt FilePath         -- ^ end-of-file
-    | OptionsStmt [String]      -- ^ options statement
+    = DefineStmt Name [(Icit, Name)] Raw  -- ^ define top level binding: @foo = e@ or @foo x y = t@
+    | TypeDefineStmt Name Raw             -- ^ type declaration: @foo : T@
+    | DefineStmt' Name Raw Raw            -- ^ or @define bar : T = t@
+    | EvalStmt Raw                        -- ^ evaluate expression: @eval e@
+    | TypeStmt Raw                        -- ^ type-check expression: @type e@
+    | InfoStmt Name                       -- ^ information about a name: @info x@
+    | InlineStmt Name                     -- ^ mark binding to be inlined: @inline x@
+    | MacroStmt Name [Name] Raw           -- ^ define new macro: @macro bar x y z = t@
+    | IncludeStmt FilePath                -- ^ include source file: @include "lib.ptt"@
+    | SectionStmt Text                    -- ^ section statement: @section "definitions"@
+    | DoneStmt FilePath                   -- ^ end-of-file
+    | OptionsStmt [String]                -- ^ options statement
   deriving Show
 
 type Parser = P.Parsec LexerState ()
@@ -58,6 +58,7 @@ defineP = do
     name <- nameP
     alt1 name <|> alt2 name
   where
+    alt1 :: Name -> Parser Stmt
     alt1 name = do
         tokenP TkColon
         t <- rawP
@@ -65,25 +66,29 @@ defineP = do
         s <- rawP
         return (DefineStmt' name t s)
 
+    alt2 :: Name -> Parser Stmt
     alt2 name = do
         tokenP TkEquals
         e  <- rawP
-        return (DefineStmt name e)
+        return (DefineStmt name [] e)
 
 defineP' :: Parser Stmt
 defineP' = do
     name <- nameP
     alt1 name <|> alt2 name
   where
+    alt1 :: Name -> Parser Stmt
     alt1 name = do
         tokenP TkColon
         t <- rawP
         return (TypeDefineStmt name t)
 
+    alt2 :: Name -> Parser Stmt
     alt2 name = do
+        xs <- many lamArgP
         tokenP TkEquals
         e  <- rawP
-        return (DefineStmt name e)
+        return (DefineStmt name xs e)
 
 evalP :: Parser Stmt
 evalP = do
@@ -306,7 +311,7 @@ atomP = srcP $ P.choice
     ]
   where
     mkLam :: [(Icit, Name)] -> Raw -> Raw
-    mkLam xs e = foldr (\(i, n) -> RLam n i) e xs -- TODO: Icit argument
+    mkLam xs e = foldr (\(i, n) -> RLam n i) e xs
 
     letDefP :: Parser Raw
     letDefP = P.choice

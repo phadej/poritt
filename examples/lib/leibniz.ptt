@@ -6,12 +6,12 @@ define Id : forall {A : U} (x y : A) -> U
 -- but in some cases we want to write that.
 -- And yet, we almost never need to write the type.
 refl : forall {A : U} (x : A) -> Id {A} x x
-refl = \ {A} x C Cx -> Cx
+refl {A} x C Cx = Cx
 
 macro %refl = \ _ Cx -> Cx
 
 sym : forall (A : U) (x y : A) -> Id {A} x y -> Id {A} y x
-sym = \ A x y x=y -> x=y (\ z -> Id {A} z x) (refl {A} x)
+sym A x y x=y = x=y (\ z -> Id {A} z x) (refl {A} x)
 
 trans : forall (A : U) (x y z : A) -> Id {A} x y -> Id {A} y z -> Id {A} x z
-trans = \ A x y z x=y y=z -> y=z (\ v -> Id {A} x v) x=y
+trans A x y z x=y y=z = y=z (\ v -> Id {A} x v) x=y
