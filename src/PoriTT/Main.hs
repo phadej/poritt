@@ -201,6 +201,29 @@ batchFile fn = execStateT $ do
         return e'
 
     stmt :: Stmt -> MainM ()
+    stmt (TypeDefineStmt name ty) = do
+        echo "declare" (prettyName name)
+            [ ":" <+> prettyRaw 0 ty
+            ]
+
+        env <- get
+        let opts  = env.opts
+        let names = nameScopeFromEnv env
+
+        when (nameScopeMember name names) $
+            printError $ prettyName name <+> "is already defined"
+
+        (e', et) <- pipeline (RAnn ty RUni)
+
+        -- TODO: Add pending definition
+
+        printDoc $ ppSoftHanging
+            (prettyName name)
+            [ ":" <+> case e' of
+                Ann t' _ -> prettyTermZ opts names t' et
+                _        -> prettyElimZ opts names e'
+            ]
+
     stmt (DefineStmt name e) = do
         echo "define" (prettyName name)
             [ "=" <+> prettyRaw 0 e

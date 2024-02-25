@@ -150,7 +150,7 @@ data LexerState = LS
 
 instance Monad m => P.Stream LexerState m (Loc, Token) where
     uncons = return . unconsLexerState
-    
+
 unconsLexerState :: LexerState -> Maybe ((Loc, Token), LexerState)
 unconsLexerState (skipSpace -> ls)
     | Just pending <- ls.pending
@@ -166,7 +166,7 @@ unconsLexerState (skipSpace -> ls)
         where
         f :: Loc -> Token -> LexerState -> ((Loc, Token), LexerState)
         f loc tok ls'
-            | loc.locColumn <= 1 = ((loc, TkVSemi), ls' { pending = Just (loc, tok) }) 
+            | loc.locColumn <= 1 = ((loc, TkVSemi), ls' { pending = Just (loc, tok) })
             | otherwise          = ((loc, tok), ls')
 
 initLexerState :: FilePath -> ByteString -> LexerState

@@ -1,4 +1,5 @@
-define Bool  : U    = #[ :false :true ]
+Bool : U
+Bool = #[ :false :true ] : U
 define true  : Bool = :true
 define false : Bool = :false
 

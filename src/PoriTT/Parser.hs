@@ -19,7 +19,8 @@ import qualified Text.Parsec.Pos as P
 
 -- | PoriTT statements
 data Stmt
-    = DefineStmt Name Raw       -- ^ define top level binding: @define foo = e@
+    = DefineStmt Name Raw       -- ^ define top level binding: @foo = e@ or @foo x y = t@
+    | TypeDefineStmt Name Raw   -- ^ type declaration: @foo : T@
     | DefineStmt' Name Raw Raw  -- ^ or @define bar : T = t@
     | EvalStmt Raw              -- ^ evaluate expression: @eval e@
     | TypeStmt Raw              -- ^ type-check expression: @type e@
@@ -40,6 +41,7 @@ stmtsP = catMaybes <$> P.sepBy (Just <$> stmtP <|> pure Nothing) (tokenP TkVSemi
 stmtP :: Parser Stmt
 stmtP = asum
     [ defineP
+    , defineP'
     , evalP
     , typeP
     , infoP
@@ -62,6 +64,21 @@ defineP = do
         tokenP TkEquals
         s <- rawP
         return (DefineStmt' name t s)
+
+    alt2 name = do
+        tokenP TkEquals
+        e  <- rawP
+        return (DefineStmt name e)
+
+defineP' :: Parser Stmt
+defineP' = do
+    name <- nameP
+    alt1 name <|> alt2 name
+  where
+    alt1 name = do
+        tokenP TkColon
+        t <- rawP
+        return (TypeDefineStmt name t)
 
     alt2 name = do
         tokenP TkEquals
