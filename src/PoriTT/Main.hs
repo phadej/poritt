@@ -53,7 +53,7 @@ data Environment = Environment
     , globals  :: Map Name Global
     , macros   :: Map Name Macro
     , included :: Set FilePath
-    , pending  :: Maybe (Name, Raw) -- TODO: make term pipeline
+    , pending  :: Maybe (Name, VTerm NoMetas EmptyCtx)
     , opts     :: Opts
     }
 
@@ -126,10 +126,11 @@ echo cmd args extras = do
 
 checkNoPending :: MainM ()
 checkNoPending = do
-    Environment { pending = p } <- get
+    env@Environment { opts = opts, pending = p } <- get
+    let names = nameScopeFromEnv env
     case p of
         Nothing -> return ()
-        Just (n, ty)  -> printError $ "Pending definition of " <+> prettyName n <+> ":" <+> prettyRaw 0 ty
+        Just (n, ty)  -> printError $ "Pending definition of " <+> prettyName n <+> ":" <+> prettyVTermZ opts UnfoldNone names ty VUni
 
 batchFile
     :: FilePath              -- ^ input file
@@ -160,9 +161,16 @@ batchFile fn = execStateT $ do
                 , ppBullet <+> prettyVTermZ opts UnfoldNone names et' VUni
                 ]
 
+    -- TODO: use only lintT
+    lintT :: Doc -> Term NoMetas EmptyCtx -> VTerm NoMetas EmptyCtx -> MainM ()
+    lintT _pass t et = do
+        env <- get
+        let names = nameScopeFromEnv env
 
-    pipeline :: Raw -> MainM (Elim NoMetas EmptyCtx, VTerm NoMetas EmptyCtx)
-    pipeline e = do
+        either printError return $ lintTerm (emptyLintCtx names) t et
+
+    pipelineElim :: Raw -> MainM (Elim NoMetas EmptyCtx, VTerm NoMetas EmptyCtx)
+    pipelineElim e = do
         env <- get
         let opts  = env.opts
         let names = nameScopeFromEnv env
@@ -196,6 +204,41 @@ batchFile fn = execStateT $ do
 
         return (e', et)
 
+    pipelineTerm :: Raw -> VTerm NoMetas EmptyCtx -> MainM (Term NoMetas EmptyCtx)
+    pipelineTerm t et = do
+        env <- get
+        let opts  = env.opts
+        let names = nameScopeFromEnv env
+
+        when opts.dump.ps $ printDoc $ ppSoftHanging (ppAnnotate ACmd "ps") [ prettyRaw 0 t ]
+
+        -- resolve names: rename
+        w <- either printErrors return $ resolve (emptyRenameCtx env.globals env.macros) t
+        when opts.dump.rn $  printDoc $ ppSoftHanging (ppAnnotate ACmd "rn") [ prettyWell names EmptyEnv 0 w ]
+
+        -- elaborate, i.e. type-check
+        t1 <- either printError return $ checkTerm (emptyCheckCtx names) w et
+        when opts.dump.tc $ printDoc $ ppSoftHanging (ppAnnotate ACmd "tc") [ prettyTermZ opts names t1 et ]
+        lintT "First" t1 et
+
+        t2 <- either (printError . ppStr . show) return $ preTerm SZ EmptyEnv t1
+        when opts.dump.st $ printDoc $ ppSoftHanging (ppAnnotate ACmd "st") [ prettyTermZ opts names t2 et ]
+        lintT "Staging" t2 et
+
+        t' <- if opts.simplify
+            then do
+                let loop :: Int -> Term NoMetas EmptyCtx -> MainM (Term NoMetas EmptyCtx)
+                    loop n e' | n > opts.simplOpts.iters = return e'
+                    loop n e' = do
+                        e'' <- simplLoopT ("s" <> ppInt n) e' et
+                        loop (n + 1) e''
+
+                loop 1 t2
+
+            else return t2
+
+        return t'
+
     simplLoop :: Doc -> Elim NoMetas EmptyCtx -> VTerm NoMetas EmptyCtx -> MainM (Elim NoMetas EmptyCtx)
     simplLoop iter e et = do
         env <- get
@@ -208,6 +251,21 @@ batchFile fn = execStateT $ do
         lint ("Simplify" <+> iter) e' et
 
         when opts.dump.si $ printDoc $ ppSoftHanging (ppAnnotate ACmd iter) [ prettyElimZ opts names e' ]
+
+        return e'
+
+    simplLoopT :: Doc -> Term NoMetas EmptyCtx -> VTerm NoMetas EmptyCtx -> MainM (Term NoMetas EmptyCtx)
+    simplLoopT iter e et = do
+        env <- get
+        let opts  = env.opts
+        let names = nameScopeFromEnv env
+
+        let e' = simplTerm (emptySimplCtx opts.simplOpts) e
+
+        -- check that we simplified correctly
+        lintT ("Simplify" <+> iter) e' et
+
+        when opts.dump.si $ printDoc $ ppSoftHanging (ppAnnotate ACmd iter) [ prettyTermZ opts names e' et ]
 
         return e'
 
@@ -225,15 +283,15 @@ batchFile fn = execStateT $ do
         when (nameScopeMember name names) $
             printError $ prettyName name <+> "is already defined"
 
-        (e', et) <- pipeline (RAnn ty RUni)
+        t' <- pipelineTerm ty VUni
 
-        put $ env { pending = Just (name, ty) }
+        let t'' = evalTerm SZ emptyEvalEnv t'
+
+        put $ env { pending = Just (name, t'') }
 
         printDoc $ ppSoftHanging
             (prettyName name)
-            [ ":" <+> case e' of
-                Ann t' _ -> prettyTermZ opts names t' et
-                _        -> prettyElimZ opts names e'
+            [ ":" <+> prettyTermZ opts names t' VUni
             ]
 
     stmt (DefineStmt name e) = do
@@ -249,10 +307,14 @@ batchFile fn = execStateT $ do
             printError $ prettyName name <+> "is already defined"
 
         (e', et) <- case env.pending of
-            Nothing          -> pipeline e
+            Nothing          -> pipelineElim e
             Just (name', ty) -> do
-                unless (name == name') $ printError $ "Pending definition of " <+> prettyName name' <+> ":" <+> prettyRaw 0 ty
-                pipeline (RAnn e ty)
+                unless (name == name') $ printError $ "Pending definition of " <+> prettyName name' <+> ":" <+> prettyVTermZ opts UnfoldNone names ty VUni
+                t <- pipelineTerm e ty
+
+                case quoteTerm UnfoldNone SZ ty of
+                    Left err -> printError $ ppStr $ show err
+                    Right ty' -> return (Ann t ty', ty)
 
         let ev = evalElim SZ emptyEvalEnv e'
         let g :: Global
@@ -291,7 +353,7 @@ batchFile fn = execStateT $ do
         when (nameScopeMember name names) $
             printError $ prettyName name <+> "is already defined"
 
-        (e', et) <- pipeline (RAnn t ty)
+        (e', et) <- pipelineElim (RAnn t ty)
 
         let ev = evalElim SZ emptyEvalEnv e'
         let g :: Global
@@ -343,7 +405,7 @@ batchFile fn = execStateT $ do
         let opts  = env.opts
         let names = nameScopeFromEnv env
 
-        (_e', et) <- pipeline e
+        (_e', et) <- pipelineElim e
 
         printDoc $ ppSoftHanging (ppAnnotate ACmd "type" <+> prettyRaw 0 e)
             [ ":" <+> prettyVTermZ opts UnfoldNone names et VUni
@@ -356,7 +418,7 @@ batchFile fn = execStateT $ do
         let opts  = env.opts
         let names = nameScopeFromEnv env
 
-        (e', et) <- pipeline e
+        (e', et) <- pipelineElim e
 
         let u :: Unfold
             u = if opts.evalFull then UnfoldAll else UnfoldElim
