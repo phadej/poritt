@@ -1,5 +1,5 @@
-define Id : forall {A : U} (x y : A) -> U
-          = \ {A} x y -> forall (C : A -> U) -> C x -> C y
+Id : forall {A : U} (x y : A) -> U
+Id {A} x y = forall (C : A -> U) -> C x -> C y
 
 -- Only the type is implicit.
 -- The common use is `refl _`, when the argument can be elaborated.

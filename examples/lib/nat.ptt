@@ -8,7 +8,7 @@ NatF =  [ `1    (`X `1) ]
 NatD = `S NatC NatF
 
 -- Natural numbers
-define Nat = mu NatD
+Nat = mu NatD
 eval Nat
 
 zero : Nat

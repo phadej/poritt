@@ -127,7 +127,8 @@ define iterNot3' : Bool → Bool = λ p ↦ not (not (not p))
 
 include "../lib/leibniz.ptt"
 
-define Id : ∀ {A : U} → A → A → U = λ x y ↦ ∀ (C : A → U) → C x → C y
+Id : ∀ {A : U} → A → A → U
+Id = λ x y ↦ ∀ (C : A → U) → C x → C y
 
 refl : ∀ {A : U} (x : A) → Id x x
 refl = λ x C Cx ↦ Cx
