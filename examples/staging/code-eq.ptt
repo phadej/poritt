@@ -1,0 +1,15 @@
+include "../lib/leibniz.ptt"
+
+type %refl : Id {Code [| U |]} [| Unit -> Unit |] [| Unit -> Unit |]
+
+-- TODO: this should fail
+type %refl : Id {Code [| U |]} [| Unit -> Unit |] [| Unit -> U |]
+
+id : forall {A : U} -> A -> A
+id {_} x = x
+
+type %refl : Id {Code [| U |]} [| id {U} Unit |] [| id {U} Unit |]
+
+type %refl : Id {Code [| Unit |]}
+  [| let x = tt : Unit in x |]
+  [| let x = tt : Unit in x |]

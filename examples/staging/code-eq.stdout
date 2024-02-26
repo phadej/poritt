@@ -1,0 +1,50 @@
+include "../lib/leibniz.ptt"
+
+Id : ∀ {A : U} → A → A → U
+Id = λ x y ↦ ∀ (C : A → U) → C x → C y
+
+refl : ∀ {A : U} (x : A) → Id x x
+refl = λ x C Cx ↦ Cx
+
+macro %refl 
+  = λ _ Cx ↦ Cx
+
+sym : ∀ (A : U) (x : A) (y : A) → Id x y → Id y x
+sym = λ A x y x=y ↦ x=y (λ z ↦ Id z x) (refl x)
+
+trans : ∀ (A : U) (x : A) (y : A) (z : A) → Id x y → Id y z → Id x z
+trans = λ A x y z x=y y=z ↦ y=z (λ v ↦ Id x v) x=y
+
+end-of-file "examples/staging/../lib/leibniz.ptt"
+
+type %refl : Id {Code ⟦ U ⟧} ⟦ Unit → Unit ⟧ ⟦ Unit → Unit ⟧
+  : Id {Code ⟦ U ⟧} ⟦ Unit → Unit ⟧ ⟦ Unit → Unit ⟧
+
+type %refl : Id {Code ⟦ U ⟧} ⟦ Unit → Unit ⟧ ⟦ Unit → U ⟧
+  : Id {Code ⟦ U ⟧} ⟦ Unit → Unit ⟧ ⟦ Unit → U ⟧
+
+id : ∀ {A : U} → A → A
+id = λ x ↦ x
+
+type %refl : Id {Code ⟦ U ⟧} ⟦ id {U} Unit ⟧ ⟦ id {U} Unit ⟧
+  : Id {Code ⟦ U ⟧} ⟦ id {U} Unit ⟧ ⟦ id {U} Unit ⟧
+
+Error: examples/staging/code-eq.ptt:13:6: Couldn't match types
+  • expected: C ⟦ let x = tt : Unit in x ⟧
+  • actual: C ⟦ let x = tt : Unit in x ⟧
+  • TODO: convSElim not convertible 
+    SLet "x" (SAnn STht SOne) (Closure EmptyEnv (Var 0))
+    SLet "x" (SAnn STht SOne) (Closure EmptyEnv (Var 0))
+  • When checking that Cx has type C ⟦ let x = tt : Unit in x ⟧
+  • When checking that
+    λ Cx ↦ Cx
+    has type
+    C ⟦ let x = tt : Unit in x ⟧ → C ⟦ let x = tt : Unit in x ⟧
+  • When checking that
+    λ _ Cx ↦ Cx
+    has type
+    Id {Code ⟦ Unit ⟧} ⟦ let x = tt : Unit in x ⟧ ⟦ let x = tt : Unit in x ⟧
+  • When infering type of
+    (λ _ Cx ↦ Cx)
+      : Id {Code ⟦ Unit ⟧} ⟦ let x = tt : Unit in x ⟧ ⟦ let x = tt : Unit in x ⟧
+ExitFailure
