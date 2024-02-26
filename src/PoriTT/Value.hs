@@ -192,7 +192,7 @@ evalZ s = EvalElim (valZ s) (svalZ s)
 
 type STerm :: TermPass -> Ctx -> Type
 data STerm pass ctx where
-    SPie :: !Name -> !Icit -> STerm pass ctx -> !(ClosureT pass ctx) -> STerm pass ctx
+    SPie :: !Name -> !Icit -> STerm pass ctx -> VTerm pass ctx -> !(ClosureT pass ctx) -> STerm pass ctx
     SLam :: !Name -> !Icit -> !(ClosureT pass ctx) -> STerm pass ctx
     SSgm :: !Name -> !Icit -> STerm pass ctx -> !(ClosureT pass ctx) -> STerm pass ctx
     SMul :: !Icit -> STerm pass ctx -> STerm pass ctx -> STerm pass ctx
@@ -230,7 +230,7 @@ deriving instance Show (STerm pass ctx)
 deriving instance Show (SElim pass ctx)
 
 instance Sinkable (STerm pass) where
-    mapLvl f (SPie x i a b)  = SPie x i (mapLvl f a) (mapLvl f b)
+    mapLvl f (SPie x i a v b) = SPie x i (mapLvl f a) (mapLvl f v) (mapLvl f b)
     mapLvl f (SLam x i clos) = SLam x i (mapLvl f clos)
     mapLvl f (SSgm x i a b)  = SSgm x i (mapLvl f a) (mapLvl f b)
     mapLvl f (SMul i t s)    = SMul i (mapLvl f t) (mapLvl f s)
@@ -251,6 +251,7 @@ instance Sinkable (STerm pass) where
 
 instance Sinkable (SElim pass) where
     mapLvl _ (SErr err)       = SErr err
+    mapLvl _ (SRgd u)         = SRgd u
     mapLvl f (SVar x)         = SVar (mapLvl f x)
     mapLvl _ (SGbl g)         = SGbl g
     mapLvl f (SApp i g t)     = SApp i (mapLvl f g) (mapLvl f t)

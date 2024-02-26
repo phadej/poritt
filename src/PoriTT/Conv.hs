@@ -51,6 +51,9 @@ mkConvCtx = ConvCtx
 prettyVTermCtx :: ConvCtx ctx -> VTerm NoMetas ctx -> Doc
 prettyVTermCtx ctx = prettyVTerm ctx.size ctx.nscope ctx.names
 
+prettySTermCtx :: Natural -> ConvCtx ctx -> STerm NoMetas ctx -> Doc
+prettySTermCtx l ctx = prettySTerm l ctx.size ctx.nscope ctx.names
+
 lookupLvl :: ConvCtx ctx -> Lvl ctx -> Name
 lookupLvl ctx l = lookupEnv (lvlToIdx ctx.size l) ctx.names
 
@@ -63,6 +66,14 @@ notConvertible ctx ty x y = Left $ ppSep
     , prettyVTermCtx ctx ty <+> ":"
     , prettyVTermCtx ctx x <+> "/="
     , prettyVTermCtx ctx y
+    ]
+
+notConvertibleS :: Natural -> ConvCtx ctx -> VTerm NoMetas ctx -> STerm NoMetas ctx -> STerm NoMetas ctx -> Either Doc ()
+notConvertibleS l ctx ty x y = Left $ ppSep
+    [ "not convertible:"
+    , prettyVTermCtx ctx ty <+> ":"
+    , prettySTermCtx l ctx x <+> "/="
+    , prettySTermCtx l ctx y
     ]
 
 notType :: ConvCtx ctx -> VTerm NoMetas ctx -> Either Doc ()
@@ -345,12 +356,11 @@ convSTerm' _ _ _ (SEIx x) (SEIx y)
     | x == y = return ()
 convSTerm' _ _   VUni SUni SUni = return ()
 convSTerm' _ _   VUni SOne SOne = return ()
-convSTerm' l ctx VUni (SPie _x i a1 _b1) (SPie _ j a2 _hb2) = do
+convSTerm' l ctx VUni (SPie x i a1 a b1) (SPie _ j a2 _ b2) = do
     convIcit ctx i j
     convSTerm' l ctx VUni a1 a2
-    -- TODO check b1 b2
-    -- (A : U) -> Id U A $([| A |])
-    -- convSTerm' l (bind x _ ctx) VUni (runSTZ ctx.size b1) (runSTZ ctx.size b2)
+    convSTerm' l (bind x a ctx) VUni (runSTZ ctx.size b1) (runSTZ ctx.size b2)
+convSTerm' l ctx VUni x y = notConvertibleS l ctx VUni x y
 
 convSTerm' _ _ ty x y = Left $ "convSTerm not convertible" <> ppStr (show (ty, x, y))
 

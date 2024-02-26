@@ -8,6 +8,7 @@ module PoriTT.Quote (
     Unfold (..),
     prettyVElim,
     prettyVTerm,
+    prettySTerm,
     nfTerm,
     nfElim,
     preElim,
@@ -87,7 +88,7 @@ quoteSpine u s h (VSpl sp)         = Spl <$> quoteSpine u s h sp
 
 quoteSTerm :: Natural -> Size ctx -> STerm pass ctx -> Either EvalError (Term pass ctx)
 quoteSTerm l      s (SLam n i clos) = Lam n i <$> quoteSTerm l (SS s) (runSTZ s clos)
-quoteSTerm l      s (SPie x i a b)  = Pie x i <$> quoteSTerm l s a <*> quoteSTerm l (SS s) (runSTZ s b)
+quoteSTerm l      s (SPie x i a _ b) = Pie x i <$> quoteSTerm l s a <*> quoteSTerm l (SS s) (runSTZ s b)
 quoteSTerm l      s (SSgm x i a b)  = Sgm x i <$> quoteSTerm l s a <*> quoteSTerm l (SS s) (runSTZ s b)
 quoteSTerm l      s (SMul i t r)    = Mul i <$> quoteSTerm l s t <*> quoteSTerm l s r
 quoteSTerm _      _ SUni            = pure Uni
@@ -107,6 +108,7 @@ quoteSTerm l      s (SEmb e)        = Emb <$> quoteSElim l s e
 
 quoteSElim :: Natural -> Size ctx -> SElim pass ctx -> Either EvalError (Elim pass ctx)
 quoteSElim _      s (SVar x)         = pure $ Var (lvlToIdx s x)
+quoteSElim _      _ (SRgd _)         = Left EvalErrorStg -- TODO
 quoteSElim _      _ (SGbl g)         = pure $ Gbl g
 quoteSElim l      s (SApp i f t)     = App i <$> quoteSElim l s f <*> quoteSTerm l s t
 quoteSElim l      s (SSel e t)       = Sel <$> quoteSElim l s e <*> pure t
@@ -152,3 +154,8 @@ prettyVElim :: Size ctx -> NameScope -> Env ctx Name -> VElim pass ctx -> Doc
 prettyVElim s ns env v = case quoteElim UnfoldNone s v of
     Left err -> ppStr (show err) -- This shouldn't happen if type-checker is correct.
     Right e  -> prettyElim ns env 0 e
+
+prettySTerm :: Natural -> Size ctx -> NameScope -> Env ctx Name -> STerm pass ctx -> Doc
+prettySTerm l s ns env t = case quoteSTerm l s t of
+    Left err -> ppStr (show err) -- This shouldn't happen if type-checker is correct.
+    Right n  -> prettyTerm ns env 0 n

@@ -24,7 +24,7 @@ syn match mttString "\"[^\"]*\""
 syn match mttDelimiter  "(\|)\|\[\|\]\||\|;\|_\|{\|}\|\$\|#"
 
 " Keyword definitions.
-syn keyword mttStmt    define eval type info inline macro include section options
+syn keyword mttStmt    define eval type info inline macro include section options fail
 syn keyword mttType    forall -> exists * U mu Desc Code Unit
 syn keyword mttKeyword let in switch ind con `1 `S `X indDesc tt
 

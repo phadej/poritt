@@ -24,6 +24,7 @@ data Stmt
     | DefineStmt' Name Raw Raw            -- ^ or @define bar : T = t@
     | EvalStmt Raw                        -- ^ evaluate expression: @eval e@
     | TypeStmt Raw                        -- ^ type-check expression: @type e@
+    | FailStmt Raw                        -- ^ expression should fail to typecheck: @fail e@
     | InfoStmt Name                       -- ^ information about a name: @info x@
     | InlineStmt Name                     -- ^ mark binding to be inlined: @inline x@
     | MacroStmt Name [Name] Raw           -- ^ define new macro: @macro bar x y z = t@
@@ -44,6 +45,7 @@ stmtP = asum
     , defineP'
     , evalP
     , typeP
+    , failP
     , infoP
     , inlineP
     , macroP
@@ -101,6 +103,12 @@ typeP = do
     tokenP TkType
     e <- rawP
     return (TypeStmt e)
+
+failP :: Parser Stmt
+failP = do
+    tokenP TkFail
+    e <- rawP
+    return (FailStmt e)
 
 infoP :: Parser Stmt
 infoP = do

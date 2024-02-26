@@ -413,6 +413,30 @@ batchFile fn = execStateT $ do
             [ ":" <+> prettyVTermZ opts UnfoldNone names et VUni
             ]
 
+    stmt (FailStmt e) = do
+        echo "fail" (prettyRaw 0 e) []
+
+        env <- get
+        let opts  = env.opts
+        let names = nameScopeFromEnv env
+
+        when opts.dump.ps $ printDoc $ ppSoftHanging (ppAnnotate ACmd "ps") [ prettyRaw 0 e ]
+
+        -- resolve names: rename
+        w <- either printErrors return $ resolve (emptyRenameCtx env.globals env.macros) e
+        when opts.dump.rn $  printDoc $ ppSoftHanging (ppAnnotate ACmd "rn") [ prettyWell names EmptyEnv 0 w ]
+
+        -- elaborate, i.e. type-check
+        case checkElim (emptyCheckCtx names) w of
+            Right (e', et) -> printError $ ppSoftHanging ("Unexpected type-check success")
+                [ ":" <+> prettyVTermZ opts UnfoldNone names et VUni
+                , "=" <+> case e' of
+                    Ann t' _ -> prettyTermZ opts names t' et
+                    _        -> prettyElimZ opts names e'
+                ]
+            Left err -> printDoc $ ppSoftHanging (ppAnnotate ACmd "fail" <+> prettyRaw 0 e)
+                [ err ]
+
     stmt (EvalStmt e) = do
         echo "eval" (prettyRaw 0 e) []
 

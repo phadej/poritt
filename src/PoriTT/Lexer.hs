@@ -36,6 +36,7 @@ data Token
     | TkType              -- ^ keyword @type@
     | TkInfo              -- ^ keyword @info@
     | TkInline            -- ^ keyword @inline@
+    | TkFail              -- ^ keyword @fail@
     | TkMacro             -- ^ keyword @macro@
     | TkInclude           -- ^ keyword @include@
     | TkSection           -- ^ keyword @section@
@@ -91,6 +92,7 @@ showToken (TkString s)   = show s
 showToken TkDefine       = "define"
 showToken TkEval         = "eval"
 showToken TkType         = "type"
+showToken TkFail         = "fail"
 showToken TkLet          = "let"
 showToken TkIn           = "in"
 showToken TkInfo         = "info"
@@ -238,6 +240,7 @@ scan ls@(LS contents loc indent) = case T.uncons contents of
 classify :: Text -> Token
 classify "define"  = TkDefine
 classify "type"    = TkType
+classify "fail"    = TkFail
 classify "eval"    = TkEval
 classify "info"    = TkInfo
 classify "inline"  = TkInline

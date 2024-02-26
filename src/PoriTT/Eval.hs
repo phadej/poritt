@@ -239,7 +239,7 @@ vsplCodArg s a = vemb (vspl s (vann a vcodUni))
 -------------------------------------------------------------------------------
 
 stageTerm :: Size ctx' -> EvalEnv pass ctx ctx' -> Term pass ctx -> STerm pass ctx'
-stageTerm s env (Pie x i a b) = SPie x i (stageTerm s env a) (Closure env b)
+stageTerm s env (Pie x i a b) = SPie x i (stageTerm s env a) (evalTerm s env a) (Closure env b)
 stageTerm _ env (Lam x i t)   = SLam x i (Closure env t)
 stageTerm s env (Sgm x i a b) = SSgm x i (stageTerm s env a) (Closure env b)
 stageTerm s env (Mul i t r)   = SMul i (stageTerm s env t) (stageTerm s env r)
