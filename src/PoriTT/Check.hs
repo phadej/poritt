@@ -14,6 +14,7 @@ import PoriTT.Builtins
 import PoriTT.Conv
 import PoriTT.Enum
 import PoriTT.Eval
+import PoriTT.ExceptState
 import PoriTT.Global
 import PoriTT.Icit
 import PoriTT.Lint
@@ -221,7 +222,7 @@ checkInfer :: CheckCtx ctx ctx' -> Well (HasTerms NoMetas) ctx -> VTerm NoMetas 
 checkInfer ctx e            a = do
     (e', et) <- checkElim ctx e
     -- traceM $ "CONV: " ++ show (ctx.names', e, et, a)
-    case convTerm (mkConvCtx ctx.size ctx.names' ctx.types' ctx.nscope) VUni a et of
+    case evalExceptState (convTerm (mkConvCtx ctx.size ctx.names' ctx.types' ctx.nscope) VUni a et) () of
         Right () -> pure (Emb e')
         Left err -> checkError ctx "Couldn't match types"
             [ "expected:" <+> prettyVTermCtx ctx a

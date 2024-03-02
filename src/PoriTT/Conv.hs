@@ -36,7 +36,7 @@ data ConvCtx pass ctx = ConvCtx
 bind :: Name -> VTerm pass ctx -> ConvCtx pass ctx -> ConvCtx pass (S ctx)
 bind x t (ConvCtx s xs ts gs) = ConvCtx (SS s) (xs :> x) (mapSink ts :> sink t) gs
 
-type ConvM = Either Doc
+type ConvM = ExceptState Doc ()
 
 _newRigid :: ConvCtx pass ctx -> VTerm pass ctx -> ConvM (ConvCtx pass ctx, RigidVar ctx)
 _newRigid ctx ty = undefined ctx ty

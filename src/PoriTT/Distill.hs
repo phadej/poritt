@@ -16,6 +16,7 @@ import PoriTT.Builtins
 import PoriTT.Conv
 import PoriTT.Enum
 import PoriTT.Eval
+import PoriTT.ExceptState
 import PoriTT.Global
 import PoriTT.Icit
 import PoriTT.Name
@@ -243,7 +244,7 @@ distillTerm' _ (Quo _) _ =
 
 distillTerm' ctx (Emb e) a = do
     (e', b) <- distillElim' ctx e
-    case convTerm (mkConvCtx ctx.size' ctx.names' ctx.types' ctx.nscope) VUni a b of
+    case evalExceptState (convTerm (mkConvCtx ctx.size' ctx.names' ctx.types' ctx.nscope) VUni a b) () of
         Right () -> pure e'
         Left _   -> Nothing
 

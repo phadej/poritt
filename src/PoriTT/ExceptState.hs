@@ -8,8 +8,6 @@ module PoriTT.ExceptState (
 
 import PoriTT.Base
 
-import Control.Monad (ap)
-
 type ExceptState' e s a = s -> (# e | (# s, a #) #)
 
 newtype ExceptState e s a = ExceptState_ (ExceptState' e s a)
@@ -39,12 +37,21 @@ instance Functor (ExceptState e s) where
 
 instance Applicative (ExceptState e s) where
     pure x = ExceptState (\s -> (# | (# s, x #) #))
-    (<*>) = ap
+
+    f <*> x = ExceptState $ \s -> case runExceptState_ f s of
+        (# err | #)          ->(# err | #)
+        (# | (# s', f' #) #) -> case runExceptState_ x s' of
+            (# err | #)           -> (# err | #)
+            (# | (# s'', x' #) #) -> (# | (# s'', f' x' #) #)
+
     a *> b = ExceptState $ \s -> case runExceptState_ a s of
         (# err | #)          ->(# err | #)
         (# | (# s', _ #) #) -> runExceptState_ b s'
 
+    -- TODO: liftA2
+
 instance Monad (ExceptState e s) where
+    return = pure
     m >>= k = ExceptState $ \s -> case runExceptState_ m s of
         (# err | #)          ->(# err | #)
         (# | (# s', x #) #) -> runExceptState_ (k x) s'
@@ -54,3 +61,6 @@ instance Monad (ExceptState e s) where
 instance MonadState s (ExceptState e s) where
     put s = ExceptState $ \_ -> (#| (# s, () #) #)
     get   = ExceptState $ \s -> (#| (# s, s #) #)
+
+instance MonadThrowError e (ExceptState e s) where
+    throwError err = ExceptState $ \_ -> (# err | #)

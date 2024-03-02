@@ -25,6 +25,7 @@ import PoriTT.Check
 import PoriTT.Conv
 import PoriTT.Distill
 import PoriTT.Eval
+import PoriTT.ExceptState
 import PoriTT.Global
 import PoriTT.Info
 import PoriTT.Lexer
@@ -133,7 +134,7 @@ checkNoPending = do
         Just (n, ty)  -> printError $ "Pending definition of " <+> prettyName n <+> ":" <+> prettyVTermZ opts UnfoldNone names ty VUni
 
 batchFile
-    :: FilePath              -- ^ input file
+    :: FilePath                -- ^ input file
     -> Environment             -- ^ evaluation state
     -> IO (Environment)        -- ^ new evaluation state
 batchFile fn = execStateT $ do
@@ -152,7 +153,7 @@ batchFile fn = execStateT $ do
         let names = nameScopeFromEnv env
 
         et' <- either printError return $ lintElim (emptyLintCtx names) e
-        case (convTerm (mkConvCtx SZ EmptyEnv EmptyEnv names) VUni et et') of
+        case evalExceptState (convTerm (mkConvCtx SZ EmptyEnv EmptyEnv names) VUni et et') () of
             Right _  -> pure ()
             Left msg -> printError $ ppVCat
                 [ pass <+> "lint failed"

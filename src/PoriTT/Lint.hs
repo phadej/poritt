@@ -11,6 +11,7 @@ import PoriTT.Builtins
 import PoriTT.Conv
 import PoriTT.Enum
 import PoriTT.Eval
+import PoriTT.ExceptState
 import PoriTT.Global
 import PoriTT.Icit
 import PoriTT.Name
@@ -344,7 +345,7 @@ lintTerm' ctx (Emb e)     a    = do
     --  ⊢ A ∋ e
     --
     b <- lintElim ctx e
-    case convTerm (mkConvCtx ctx.size ctx.names' ctx.types' ctx.nscope) VUni a b of
+    case evalExceptState (convTerm (mkConvCtx ctx.size ctx.names' ctx.types' ctx.nscope) VUni a b) () of
         Right () -> pure ()
         Left err -> lintError ctx "Couldn't match types"
             [ "expected:" <+> prettyVTermCtx ctx a
