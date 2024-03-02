@@ -27,6 +27,7 @@ import Unsafe.Coerce (unsafeCoerce)
 
 import PoriTT.Base
 import PoriTT.Enum
+import PoriTT.Rigid
 import PoriTT.Icit
 import PoriTT.Meta
 import PoriTT.Name
@@ -215,7 +216,7 @@ type SElim :: TermPass -> Ctx -> Type
 data SElim pass ctx where
     SErr :: EvalError -> SElim pass ctx
     SVar :: Lvl ctx -> SElim pass ctx
-    SRgd :: Int -> SElim pass ctx -- TODO
+    SRgd :: RigidVar ctx -> SElim pass ctx -- TODO
     SGbl :: Global -> SElim pass ctx
     SApp :: !Icit -> SElim pass ctx -> STerm pass ctx -> SElim pass ctx
     SSel :: SElim pass ctx -> Selector -> SElim pass ctx
@@ -251,7 +252,7 @@ instance Sinkable (STerm pass) where
 
 instance Sinkable (SElim pass) where
     mapLvl _ (SErr err)       = SErr err
-    mapLvl _ (SRgd u)         = SRgd u
+    mapLvl f (SRgd u)         = SRgd (mapLvl f u)
     mapLvl f (SVar x)         = SVar (mapLvl f x)
     mapLvl _ (SGbl g)         = SGbl g
     mapLvl f (SApp i g t)     = SApp i (mapLvl f g) (mapLvl f t)

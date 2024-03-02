@@ -34,6 +34,9 @@ instance Renamable RigidVar where
 instance RenamableA RigidVar where
     grename _ (RigidVar x) = pure (RigidVar x)
 
+instance Sinkable RigidVar where
+    mapLvl _ (RigidVar x) = RigidVar x
+
 -------------------------------------------------------------------------------
 -- RigidMap
 -------------------------------------------------------------------------------
