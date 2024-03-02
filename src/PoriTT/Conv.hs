@@ -32,7 +32,7 @@ data ConvCtx pass ctx = ConvCtx
     , names  :: Env ctx Name
     , types  :: Env ctx (VTerm pass ctx)
     , nscope :: NameScope
-    , rigids :: RigidMap ctx (VTerm pass ctx)
+    , rigids :: RigidMap ctx (VTerm pass ctx) -- We could add names here to have nicer rigid printing
     }
 
 bind :: Name -> VTerm pass ctx -> ConvCtx pass ctx -> ConvCtx pass (S ctx)
@@ -117,7 +117,7 @@ convTerm ctx ty x y = do
     convTerm' ctx ty x y
 
 -- | Beta-eta conversion checking of eliminations.
-convElim :: ConvCtx pass ctx -> VElim pass ctx -> VElim pass ctx -> ConvM ()
+convElim :: ConvCtx pass ctx -> VElim pass ctx -> VElim pass ctx -> ConvM (VTerm pass ctx)
 convElim ctx x y = do
     -- we define a helper function, so we can trace when needed.
     -- traceM $ "CONV: " ++ show (ppSep [prettyVTermCtx ctx ty, " |-" <+> prettyVTermCtx ctx x, "=?=" <+> prettyVTermCtx ctx y])
@@ -146,7 +146,7 @@ convTerm' _   VUni VOne             VOne           = pure ()
 convTerm' ctx VUni (VPie x i a1 b1) (VPie _ j a2 b2) = convIcit ctx i j >> convTerm ctx VUni a1 a2 >> convTerm (bind x a1 ctx) VUni (runZ ctx.size b1) (runZ ctx.size b2)
 convTerm' ctx VUni (VSgm x i a1 b1) (VSgm _ j a2 b2) = convIcit ctx i j >> convTerm ctx VUni a1 a2 >> convTerm (bind x a1 ctx) VUni (runZ ctx.size b1) (runZ ctx.size b2)
 convTerm' ctx VUni (VMuu x)         (VMuu y)       = convTerm ctx VDsc x y
-convTerm' ctx VUni (VEmb (VRgd x sp1)) (VEmb (VRgd y sp2))   = convNeutral ctx x sp1 y sp2
+convTerm' ctx VUni (VEmb (VRgd x sp1)) (VEmb (VRgd y sp2))   = void $ convNeutral ctx x sp1 y sp2
 convTerm' _   VUni (VFin ls1)       (VFin ls2)     = if ls1 == ls2 then pure () else mismatch "finite set" (prettyLabels ls1) (prettyLabels ls2)
 convTerm' ctx VUni (VCod x)         (VCod y)       = convTerm ctx vcodUni x y
 convTerm' ctx VUni x                y              = notConvertible ctx VUni x y
@@ -178,7 +178,7 @@ convTerm' _   (VFin _)  (VEIx i1)    (VEIx i2)    = if i1 == i2 then pure () els
 convTerm' _   (VFin ls) _            _
     -- eta expansion singletons: treat all elements equally
     | length ls == 1                              = pure ()
-convTerm' ctx (VFin _)  (VEmb x)     (VEmb y)     = convElim ctx x y
+convTerm' ctx (VFin _)  (VEmb x)     (VEmb y)     = void (convElim ctx x y)
 convTerm' ctx (VFin ls) x            y            = notConvertible ctx (VFin ls) x y
 
 -- ⊢ Desc ∋ t ≡ s
@@ -188,24 +188,24 @@ convTerm' ctx VDsc (VDeS t1 s1)   (VDeS t2 s2)   = do
     convTerm ctx (VPie "S" Ecit t1 (Closure EmptyEnv Dsc)) s1 s2
 convTerm' ctx VDsc (VDeX t1)      (VDeX t2)      = do
     convTerm ctx VDsc t1 t2
-convTerm' ctx VDsc (VEmb x)       (VEmb y)       = convElim ctx x y
+convTerm' ctx VDsc (VEmb x)       (VEmb y)       = void (convElim ctx x y)
 convTerm' ctx VDsc x              y              = notConvertible ctx VDsc x y
 
 -- ⊢ μ d ∋ t ≡ s
 convTerm' ctx (VMuu d) (VCon x)       (VCon y)     = do
     let xty = vapps ctx.size (vgbl ctx.size evalDescGlobal) [d, VMuu d]
     convTerm ctx (vemb xty) x y
-convTerm' ctx (VMuu _) (VEmb x)       (VEmb y)     = convElim ctx x y
+convTerm' ctx (VMuu _) (VEmb x)       (VEmb y)     = void (convElim ctx x y)
 convTerm' ctx (VMuu d) x              y            = notConvertible ctx (VMuu d) x y
 
 -- ⊢ Code a ∋ t ≡ s
 convTerm' ctx (VCod a) (VQuo x _)     (VQuo y _)   = do
     convSTerm NZ ctx (vsplCodArg ctx.size a) x y
-convTerm' ctx (VCod _) (VEmb x)       (VEmb y)     = convElim ctx x y
+convTerm' ctx (VCod _) (VEmb x)       (VEmb y)     = void (convElim ctx x y)
 convTerm' ctx (VCod a) x              y            = notConvertible ctx (VCod a) x y
 
 -- Only neutral terms can be convertible under neutral type
-convTerm' ctx (VEmb VRgd {})     (VEmb x) (VEmb y) = convElim ctx x y
+convTerm' ctx (VEmb VRgd {})     (VEmb x) (VEmb y) = void (convElim ctx x y)
 convTerm' ctx (VEmb (VRgd h sp)) x y = notConvertible ctx (VEmb (VRgd h sp)) x y
 
 convTerm' _   (VEmb (VErr msg)) _ _ = throwError $ ppStr $ show msg
@@ -223,16 +223,16 @@ convTerm' ctx ty@VQuo {} _ _ = notType ctx ty
 convTerm' ctx ty@VTht {} _ _ = notType ctx ty
 
 
-convElim' :: ConvCtx pass ctx -> VElim pass ctx -> VElim pass ctx -> ConvM ()
+convElim' :: ConvCtx pass ctx -> VElim pass ctx -> VElim pass ctx -> ConvM (VTerm pass ctx)
 -- Globals
-convElim' _  (VGbl g1 VNil _) (VGbl g2 VNil _)
-    | g1.name == g2.name   = pure ()
+convElim' env (VGbl g1 VNil _) (VGbl g2 VNil _)
+    | g1.name == g2.name   = pure (unsafeCoerce (sinkSize env.size g1.typ))
 -- otherwise we check the values
 convElim' ctx (VGbl _ _ t)   u             = convElim ctx t u
 convElim' ctx t              (VGbl _ _ u)  = convElim ctx t u
 convElim' ctx (VRgd h1 sp1)  (VRgd h2 sp2) = convNeutral ctx h1 sp1 h2 sp2
-convElim' ctx (VAnn t ty)    e             = convTerm ctx ty t (vemb e)
-convElim' ctx e              (VAnn t ty)   = convTerm ctx ty (vemb e) t
+convElim' ctx (VAnn t ty)    e             = convTerm ctx ty t (vemb e) >> return ty
+convElim' ctx e              (VAnn t ty)   = convTerm ctx ty (vemb e) t >> return ty
 convElim' _   (VErr msg)     _             = throwError $ ppStr $ show msg
 convElim' _   _              (VErr msg)    = throwError $ ppStr $ show msg
 convElim' _   (VFlx _ _)     _             = throwError "flex"
@@ -242,7 +242,7 @@ convElim' _   _              (VFlx _ _)    = throwError "flex"
 etaLam :: Size ctx -> Icit -> VElim pass ctx -> VTerm pass (S ctx)
 etaLam s i f = vemb (vapp (SS s) i (sink f) (vemb (valZ s)))
 
-convNeutral :: ConvCtx pass ctx -> Lvl ctx -> Spine pass ctx -> Lvl ctx -> Spine pass ctx -> ConvM ()
+convNeutral :: ConvCtx pass ctx -> Lvl ctx -> Spine pass ctx -> Lvl ctx -> Spine pass ctx -> ConvM (VTerm pass ctx)
 convNeutral ctx x sp1 y sp2
     | x == y    = do
         -- traceM "convNeutral"
@@ -252,15 +252,15 @@ convNeutral ctx x sp1 y sp2
         convSpine ctx x sp1 sp2
     | otherwise = mismatch "spine head" (prettyName (lookupLvl ctx x)) (prettyName (lookupLvl ctx y))
 
-convSpine :: forall ctx pass. ConvCtx pass ctx -> Lvl ctx -> Spine pass ctx -> Spine pass ctx -> ConvM ()
+convSpine :: forall ctx pass. ConvCtx pass ctx -> Lvl ctx -> Spine pass ctx -> Spine pass ctx -> ConvM (VTerm pass ctx)
 convSpine ctx headLvl sp1' sp2' = do
     bwd [] sp1' sp2'
   where
     headTy = lookupEnv (lvlToIdx ctx.size headLvl) ctx.types
 
-    bwd :: [(SpinePart pass ctx, SpinePart pass ctx)] -> Spine pass ctx -> Spine pass ctx -> ConvM ()
+    bwd :: [(SpinePart pass ctx, SpinePart pass ctx)] -> Spine pass ctx -> Spine pass ctx -> ConvM (VTerm pass ctx)
     bwd acc sp1 sp2 = case (unsnocSpine sp1, unsnocSpine sp2) of
-        (Nothing, Nothing)           -> void $ foldParts fwd (VRgd headLvl VNil, headTy) acc
+        (Nothing, Nothing)           -> snd <$> foldParts fwd (VRgd headLvl VNil, headTy) acc
         (Just (xs, x), Just (ys, y)) -> bwd ((x,y) : acc) xs ys
         _                            -> mismatch "spine length" (ppInt (spineLength sp1')) (ppInt (spineLength sp2'))
 
@@ -378,20 +378,50 @@ convSTerm l env ty x y = convSTerm' l env ty x y
 
 convSTerm' :: Natural -> ConvCtx pass ctx -> VTerm pass ctx -> STerm pass ctx -> STerm pass ctx -> ConvM ()
 convSTerm' l env _ty (SEmb x) (SEmb y) = void (convSElim' l env x y)
-convSTerm' _ _ _ (SEIx x) (SEIx y)
-    | x == y = return ()
-convSTerm' _ _   VUni SUni SUni = return ()
-convSTerm' _ _   VUni SOne SOne = return ()
+
+convSTerm' _ _   VUni SUni               SUni = return ()
+convSTerm' _ _   VUni SOne               SOne = return ()
 convSTerm' l ctx VUni (SPie x i a1 a b1) (SPie _ j a2 _ b2) = do
     convIcit ctx i j
     convSTerm' l ctx VUni a1 a2
     convSTerm' l (bind x a ctx) VUni (runSTZ ctx.size b1) (runSTZ ctx.size b2)
-convSTerm' l ctx VUni x y = notConvertibleST l ctx VUni x y
+convSTerm' l ctx ty@VUni a b = notConvertibleST l ctx ty a b
 
-convSTerm' _ _ VOne STht STht = return ()
+-- TODO
+convSTerm' l env ty@VPie {} a b = notConvertibleST l env ty a b 
+
+-- TODO
+convSTerm' l env ty@VSgm {} a b = notConvertibleST l env ty a b 
+
+convSTerm' _ _   VOne STht STht = return ()
 convSTerm' l env VOne a b = notConvertibleST l env VOne a b
 
-convSTerm' _ _ ty x y = throwError $ "convSTerm not convertible" <> ppStr (show (ty, x, y))
+-- TODO
+convSTerm' _ _      (VFin _) (SEIx x) (SEIx y)
+    | x == y = return ()
+convSTerm' l env ty@VFin {}  a        b = notConvertibleST l env ty a b 
+
+-- TODO
+convSTerm' l env ty@VDsc {} a b = notConvertibleST l env ty a b 
+
+-- TODO
+convSTerm' l env ty@VMuu {} a b = notConvertibleST l env ty a b 
+
+-- TODO
+convSTerm' l env ty@VCod {} a b = notConvertibleST l env ty a b 
+
+convSTerm' l env ty@VEmb {} a b = notConvertibleST l env ty a b 
+
+-- value constructors cannot be types
+convSTerm' _ ctx ty@VLam {} _ _ = notType ctx ty
+convSTerm' _ ctx ty@VDe1 {} _ _ = notType ctx ty
+convSTerm' _ ctx ty@VDeS {} _ _ = notType ctx ty
+convSTerm' _ ctx ty@VDeX {} _ _ = notType ctx ty
+convSTerm' _ ctx ty@VCon {} _ _ = notType ctx ty
+convSTerm' _ ctx ty@VMul {} _ _ = notType ctx ty
+convSTerm' _ ctx ty@VEIx {} _ _ = notType ctx ty
+convSTerm' _ ctx ty@VQuo {} _ _ = notType ctx ty
+convSTerm' _ ctx ty@VTht {} _ _ = notType ctx ty
 
 convSElim' :: Natural -> ConvCtx pass ctx -> SElim pass ctx -> SElim pass ctx -> ConvM (VTerm pass ctx)
 convSElim' _ _ (SErr err) _ = throwError $ ppStr $ show err
@@ -400,7 +430,7 @@ convSElim' _ _ _ (SErr err) = throwError $ ppStr $ show err
 convSElim' _ _ (SGbl x) (SGbl y)
     | x.name == y.name
     = return (unsafeCoerce x.typ)
-convSElim' l env a@(SGbl _) b = notConvertibleSE l env a b
+convSElim' l env a@SGbl {} b = notConvertibleSE l env a b
 
 convSElim' _ env (SVar x) (SVar y)
     | x == y
@@ -408,53 +438,55 @@ convSElim' _ env (SVar x) (SVar y)
 
     | otherwise
     = mismatch "variable" (prettyName (lookupLvl env x)) (prettyName (lookupLvl env y))
-convSElim' l env a@(SVar _) b = notConvertibleSE l env a b
+convSElim' l env a@SVar {} b = notConvertibleSE l env a b
 
 convSElim' NZ     env (SSpl _ x) (SSpl _ y) = do
     convElim env x y
-    return (VCod TODO)
 convSElim' (NS l) env (SSpl x _) (SSpl y _) = do
     ty <- convSElim' l env x y
-    return (VCod ty)
-convSElim' l env a@(SSpl _ _) b = notConvertibleSE l env a b
+    return (vsplCodArg env.size ty)
+convSElim' l env a@SSpl {} b = notConvertibleSE l env a b
 
-convSElim' l      ctx (SApp i f t) (SApp j g s) = do
+convSElim' l      ctx (SApp i f t v) (SApp j g s _) = do
     convIcit ctx i j
     ty <- convSElim' l ctx f g
     case ty of
         VPie _ _i a b -> do
             convSTerm' l ctx a t s
-            return (run ctx.size b (VErr EvalErrorStg))
+            return (run ctx.size b (vann v ty))
         _             -> throwError ("Function application head does not have a pi-type" <+> ppSep
             [ "actual:" <+> prettyVTermCtx ctx ty
             ])
-  -- TODO: check x y
-convSElim' l      env a@(SApp _ _ _) b = notConvertibleSE l env a b
+convSElim' l      env a@SApp {} b = notConvertibleSE l env a b
 
-convSElim' l      env a@(SSel _ _) b = notConvertibleSE l env a b
+-- TODO
+convSElim' l      env a@SSel {} b = notConvertibleSE l env a b
 
-convSElim' l      env a@(SDeI _ _ _ _ _) b = notConvertibleSE l env a b
+-- TODO
+convSElim' l      env a@SDeI {} b = notConvertibleSE l env a b
 
-convSElim' l      env a@(SInd _ _ _) b = notConvertibleSE l env a b
+-- TODO
+convSElim' l      env a@SInd {} b = notConvertibleSE l env a b
 
-convSElim' l      env a@(SSwh _ _ _) b = notConvertibleSE l env a b
+-- TODO
+convSElim' l      env a@SSwh {} b = notConvertibleSE l env a b
 
 convSElim' l      env (SLet _ t u) (SLet _ s v) = do
     ty <- convSElim' l env t s
     (env', r) <- newRigid env ty
     let x = EvalElim (VErr TODO) (SRgd r)
     convSElim' l env' (runSE env.size u x) (runSE env.size v x)
-convSElim' l      env a@(SLet _ _ _) b = notConvertibleSE l env a b
+convSElim' l      env a@SLet {} b = notConvertibleSE l env a b
 
 convSElim' _ env (SRgd x) (SRgd y)
     | x == y
     = case lookupRigidMap x env.rigids of
             Just ty -> return ty
             Nothing -> throwError ("rigid variable without a type")
-convSElim' l      env a@(SRgd _) b = notConvertibleSE l env a b
+convSElim' l      env a@SRgd {} b = notConvertibleSE l env a b
 
 convSElim' l      env (SAnn t a v) (SAnn s b _) = do
     convSTerm' l env VUni a b
     convSTerm' l env v    t s
     return v
-convSElim' l      env a@(SAnn _ _ _) b = notConvertibleSE l env a b
+convSElim' l      env a@SAnn {} b = notConvertibleSE l env a b

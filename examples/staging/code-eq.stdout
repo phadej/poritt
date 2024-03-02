@@ -47,6 +47,34 @@ type %refl
     ⟦ let x = Unit : U in id {U} Unit ⟧
     ⟦ let x = Unit : U in id {U} Unit ⟧
 
+fail %refl
+    : Id
+      {Code ⟦ U ⟧}
+      ⟦ let x = Unit in id {U} Unit ⟧
+      ⟦ let x = Unit in id {U} x ⟧
+  examples/staging/code-eq.ptt:12:6: Couldn't match types
+    • expected: C ⟦ let x = Unit : U in id {U} x ⟧
+    • actual: C ⟦ let x = Unit : U in id {U} Unit ⟧
+    • not convertible (at level 0): U : !0 /= Unit
+    • When checking that Cx has type C ⟦ let x = Unit : U in id {U} x ⟧
+    • When checking that
+      λ Cx ↦ Cx
+      has type
+      C ⟦ let x = Unit : U in id {U} Unit ⟧ → C ⟦ let x = Unit : U in id {U} x ⟧
+    • When checking that
+      λ _ Cx ↦ Cx
+      has type
+      Id
+        {Code ⟦ U ⟧}
+        ⟦ let x = Unit : U in id {U} Unit ⟧
+        ⟦ let x = Unit : U in id {U} x ⟧
+    • When infering type of
+      (λ _ Cx ↦ Cx)
+        : Id
+          {Code ⟦ U ⟧}
+          ⟦ let x = Unit in id {U} Unit ⟧
+          ⟦ let x = Unit in id {U} x ⟧
+
 type %refl
     : Id {Code ⟦ Unit ⟧} ⟦ let x = tt : Unit in x ⟧ ⟦ let x = tt : Unit in x ⟧
   : Id {Code ⟦ Unit ⟧} ⟦ let x = tt : Unit in x ⟧ ⟦ let x = tt : Unit in x ⟧

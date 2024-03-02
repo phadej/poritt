@@ -218,7 +218,7 @@ data SElim pass ctx where
     SVar :: Lvl ctx -> SElim pass ctx
     SRgd :: RigidVar ctx -> SElim pass ctx -- TODO
     SGbl :: Global -> SElim pass ctx
-    SApp :: !Icit -> SElim pass ctx -> STerm pass ctx -> SElim pass ctx
+    SApp :: !Icit -> SElim pass ctx -> STerm pass ctx -> VTerm pass ctx -> SElim pass ctx
     SSel :: SElim pass ctx -> Selector -> SElim pass ctx
     SSwh :: SElim pass ctx -> STerm pass ctx -> EnumList (STerm pass ctx) -> SElim pass ctx
     SDeI :: SElim pass ctx -> STerm pass ctx -> STerm pass ctx -> STerm pass ctx -> STerm pass ctx -> SElim pass ctx
@@ -255,7 +255,7 @@ instance Sinkable (SElim pass) where
     mapLvl f (SRgd u)         = SRgd (mapLvl f u)
     mapLvl f (SVar x)         = SVar (mapLvl f x)
     mapLvl _ (SGbl g)         = SGbl g
-    mapLvl f (SApp i g t)     = SApp i (mapLvl f g) (mapLvl f t)
+    mapLvl f (SApp i g t v)   = SApp i (mapLvl f g) (mapLvl f t) (mapLvl f v)
     mapLvl f (SSel e t)       = SSel (mapLvl f e) t
     mapLvl f (SSwh xs m rs)   = SSwh (mapLvl f xs) (mapLvl f m) (fmap (mapLvl f) rs)
     mapLvl f (SInd e m t)     = SInd (mapLvl f e) (mapLvl f m) (mapLvl f t)

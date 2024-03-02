@@ -111,7 +111,7 @@ quoteSElim :: Natural -> Size ctx -> SElim pass ctx -> Either EvalError (Elim pa
 quoteSElim _      s (SVar x)         = pure $ Var (lvlToIdx s x)
 quoteSElim _      _ (SRgd r)         = pure $ Rgd r
 quoteSElim _      _ (SGbl g)         = pure $ Gbl g
-quoteSElim l      s (SApp i f t)     = App i <$> quoteSElim l s f <*> quoteSTerm l s t
+quoteSElim l      s (SApp i f t _)   = App i <$> quoteSElim l s f <*> quoteSTerm l s t
 quoteSElim l      s (SSel e t)       = Sel <$> quoteSElim l s e <*> pure t
 quoteSElim l      s (SSwh e m ts)    = Swh <$> quoteSElim l s e <*> quoteSTerm l s m <*> traverse (quoteSTerm l s) ts
 quoteSElim l      s (SInd e m t)     = Ind <$> quoteSElim l s e <*> quoteSTerm l s m <*> quoteSTerm l s t
