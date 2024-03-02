@@ -22,3 +22,7 @@ type %refl : Id {Code [| Unit |]}
 fail %refl : Id {Code [| Unit |]}
   [| let x = tt : Unit in let y = tt : Unit in x |]
   [| let u = tt : Unit in let v = tt : Unit in v |]
+
+type
+  let x = tt in
+  $(let unused = %refl : Id {Code [| Unit |]} [| x |] [| x |] in [| tt |])
