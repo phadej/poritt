@@ -377,40 +377,53 @@ convSTerm :: Natural -> ConvCtx pass ctx -> VTerm pass ctx -> STerm pass ctx -> 
 convSTerm l env ty x y = convSTerm' l env ty x y
 
 convSTerm' :: Natural -> ConvCtx pass ctx -> VTerm pass ctx -> STerm pass ctx -> STerm pass ctx -> ConvM ()
-convSTerm' l env _ty (SEmb x) (SEmb y) = void (convSElim' l env x y)
+convSTerm' l env    _       (SEmb x)           (SEmb y) =
+    void (convSElim' l env x y)
 
-convSTerm' _ _   VUni SUni               SUni = return ()
-convSTerm' _ _   VUni SOne               SOne = return ()
-convSTerm' l ctx VUni (SPie x i a1 a b1) (SPie _ j a2 _ b2) = do
+convSTerm' _ _      VUni    SUni               SUni =
+    return ()
+convSTerm' _ _      VUni    SOne               SOne =
+    return ()
+convSTerm' l ctx    VUni    (SPie x i a1 a b1) (SPie _ j a2 _ b2) = do
     convIcit ctx i j
     convSTerm' l ctx VUni a1 a2
     convSTerm' l (bind x a ctx) VUni (runSTZ ctx.size b1) (runSTZ ctx.size b2)
-convSTerm' l ctx ty@VUni a b = notConvertibleST l ctx ty a b
+convSTerm' l ctx ty@VUni    a                  b =
+    notConvertibleST l ctx ty a b
 
 -- TODO
-convSTerm' l env ty@VPie {} a b = notConvertibleST l env ty a b 
+convSTerm' l env ty@VPie {} a                  b =
+    notConvertibleST l env ty a b
 
 -- TODO
-convSTerm' l env ty@VSgm {} a b = notConvertibleST l env ty a b 
+convSTerm' l env ty@VSgm {} a                  b =
+    notConvertibleST l env ty a b
 
-convSTerm' _ _   VOne STht STht = return ()
-convSTerm' l env VOne a b = notConvertibleST l env VOne a b
+convSTerm' _ _      VOne    STht               STht =
+    return ()
+convSTerm' l env ty@VOne    a                  b =
+    notConvertibleST l env ty a b
 
 -- TODO
-convSTerm' _ _      (VFin _) (SEIx x) (SEIx y)
+convSTerm' _ _      (VFin _) (SEIx x)          (SEIx y)
     | x == y = return ()
-convSTerm' l env ty@VFin {}  a        b = notConvertibleST l env ty a b 
+convSTerm' l env ty@VFin {}  a                 b =
+    notConvertibleST l env ty a b
 
 -- TODO
-convSTerm' l env ty@VDsc {} a b = notConvertibleST l env ty a b 
+convSTerm' l env ty@VDsc {} a                  b =
+    notConvertibleST l env ty a b
 
 -- TODO
-convSTerm' l env ty@VMuu {} a b = notConvertibleST l env ty a b 
+convSTerm' l env ty@VMuu {} a                  b =
+    notConvertibleST l env ty a b
 
 -- TODO
-convSTerm' l env ty@VCod {} a b = notConvertibleST l env ty a b 
+convSTerm' l env ty@VCod {} a                  b =
+    notConvertibleST l env ty a b
 
-convSTerm' l env ty@VEmb {} a b = notConvertibleST l env ty a b 
+convSTerm' l env ty@VEmb {} a                  b =
+    notConvertibleST l env ty a b
 
 -- value constructors cannot be types
 convSTerm' _ ctx ty@VLam {} _ _ = notType ctx ty
@@ -429,7 +442,7 @@ convSElim' _ _ _ (SErr err) = throwError $ ppStr $ show err
 
 convSElim' _ _ (SGbl x) (SGbl y)
     | x.name == y.name
-    = return (unsafeCoerce x.typ)
+    = return (unsafeCoerce x.typ) -- TODO
 convSElim' l env a@SGbl {} b = notConvertibleSE l env a b
 
 convSElim' _ env (SVar x) (SVar y)
