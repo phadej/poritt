@@ -12,26 +12,34 @@ import PoriTT.Base
 import PoriTT.Builtins
 import PoriTT.Enum
 import PoriTT.Eval
+import PoriTT.ExceptState
 import PoriTT.Global
 import PoriTT.Icit
 import PoriTT.Name
 import PoriTT.Nice
 import PoriTT.PP
 import PoriTT.Quote
+import PoriTT.Rigid
 import PoriTT.Term
 import PoriTT.Used
 import PoriTT.Value
 
 -- | Conversion context.
-data ConvCtx ctx = ConvCtx
+data ConvCtx pass ctx = ConvCtx
     { size   :: Size ctx
     , names  :: Env ctx Name
-    , types  :: Env ctx (VTerm NoMetas ctx)
+    , types  :: Env ctx (VTerm pass ctx)
     , nscope :: NameScope
+    -- rigids :: RigidMap ctx (VTerm pass ctx)
     }
 
-bind :: Name -> VTerm NoMetas ctx -> ConvCtx ctx -> ConvCtx (S ctx)
+bind :: Name -> VTerm pass ctx -> ConvCtx pass ctx -> ConvCtx pass (S ctx)
 bind x t (ConvCtx s xs ts gs) = ConvCtx (SS s) (xs :> x) (mapSink ts :> sink t) gs
+
+type ConvM = Either Doc
+
+_newRigid :: ConvCtx pass ctx -> VTerm pass ctx -> ConvM (ConvCtx pass ctx, RigidVar ctx)
+_newRigid ctx ty = undefined ctx ty
 
 -- | Create conversion context.
 --
@@ -45,22 +53,22 @@ bind x t (ConvCtx s xs ts gs) = ConvCtx (SS s) (xs :> x) (mapSink ts :> sink t) 
 --
 -- * and a global 'NameScope' (for pretty-printing)
 --
-mkConvCtx :: Size ctx -> Env ctx Name -> Env ctx (VTerm NoMetas ctx) -> NameScope -> ConvCtx ctx
+mkConvCtx :: Size ctx -> Env ctx Name -> Env ctx (VTerm pass ctx) -> NameScope -> ConvCtx pass ctx
 mkConvCtx = ConvCtx
 
-prettyVTermCtx :: ConvCtx ctx -> VTerm NoMetas ctx -> Doc
+prettyVTermCtx :: ConvCtx pass ctx -> VTerm pass ctx -> Doc
 prettyVTermCtx ctx = prettyVTerm ctx.size ctx.nscope ctx.names
 
-prettySTermCtx :: Natural -> ConvCtx ctx -> STerm NoMetas ctx -> Doc
+prettySTermCtx :: Natural -> ConvCtx pass ctx -> STerm pass ctx -> Doc
 prettySTermCtx l ctx = prettySTerm l ctx.size ctx.nscope ctx.names
 
-lookupLvl :: ConvCtx ctx -> Lvl ctx -> Name
+lookupLvl :: ConvCtx pass ctx -> Lvl ctx -> Name
 lookupLvl ctx l = lookupEnv (lvlToIdx ctx.size l) ctx.names
 
-mismatch :: Doc -> Doc -> Doc -> Either Doc a
+mismatch :: Doc -> Doc -> Doc -> ConvM a
 mismatch t x y = Left $ t <+> "mismatch:" <+> x <+> "/=" <+> y
 
-notConvertible :: ConvCtx ctx -> VTerm NoMetas ctx -> VTerm NoMetas ctx -> VTerm NoMetas ctx -> Either Doc ()
+notConvertible :: ConvCtx pass ctx -> VTerm pass ctx -> VTerm pass ctx -> VTerm pass ctx -> ConvM ()
 notConvertible ctx ty x y = Left $ ppSep
     [ "not convertible:"
     , prettyVTermCtx ctx ty <+> ":"
@@ -68,15 +76,16 @@ notConvertible ctx ty x y = Left $ ppSep
     , prettyVTermCtx ctx y
     ]
 
-notConvertibleS :: Natural -> ConvCtx ctx -> VTerm NoMetas ctx -> STerm NoMetas ctx -> STerm NoMetas ctx -> Either Doc ()
+notConvertibleS :: Natural -> ConvCtx pass ctx -> VTerm pass ctx -> STerm pass ctx -> STerm pass ctx -> ConvM ()
 notConvertibleS l ctx ty x y = Left $ ppSep
     [ "not convertible:"
+    , "at level" <+> ppStr (show l)
     , prettyVTermCtx ctx ty <+> ":"
     , prettySTermCtx l ctx x <+> "/="
     , prettySTermCtx l ctx y
     ]
 
-notType :: ConvCtx ctx -> VTerm NoMetas ctx -> Either Doc ()
+notType :: ConvCtx pass ctx -> VTerm pass ctx -> ConvM ()
 notType ctx ty = Left $ ppSep
     [ "CONV PANIC: NOT A TYPE"
     , prettyVTermCtx ctx ty
@@ -88,14 +97,14 @@ notType ctx ty = Left $ ppSep
 -- The conversion checking is (somewhat) type-directed, we need
 -- types for do eta-expansion.
 --
-convTerm :: ConvCtx ctx -> VTerm NoMetas ctx -> VTerm NoMetas ctx -> VTerm NoMetas ctx -> Either Doc ()
+convTerm :: ConvCtx pass ctx -> VTerm pass ctx -> VTerm pass ctx -> VTerm pass ctx -> ConvM ()
 convTerm ctx ty x y = do
     -- we define a helper function, so we can trace when needed.
     -- traceM $ "CONV: " ++ show (ppSep [prettyVTermCtx ctx ty, " |-" <+> prettyVTermCtx ctx x, "=?=" <+> prettyVTermCtx ctx y])
     convTerm' ctx ty x y
 
 -- | Beta-eta conversion checking of eliminations.
-convElim :: ConvCtx ctx -> VElim NoMetas ctx -> VElim NoMetas ctx -> Either Doc ()
+convElim :: ConvCtx pass ctx -> VElim pass ctx -> VElim pass ctx -> ConvM ()
 convElim ctx x y = do
     -- we define a helper function, so we can trace when needed.
     -- traceM $ "CONV: " ++ show (ppSep [prettyVTermCtx ctx ty, " |-" <+> prettyVTermCtx ctx x, "=?=" <+> prettyVTermCtx ctx y])
@@ -105,12 +114,12 @@ convElim ctx x y = do
 -- Workers
 -------------------------------------------------------------------------------
 
-convIcit :: ConvCtx ctx -> Icit -> Icit -> Either Doc ()
+convIcit :: ConvCtx pass ctx -> Icit -> Icit -> ConvM ()
 convIcit _ctx i j
     | i == j    = return ()
     | otherwise = mismatch "icity" (prettyIcit i) (prettyIcit j)
 
-convTerm' :: ConvCtx ctx -> VTerm NoMetas ctx -> VTerm NoMetas ctx -> VTerm NoMetas ctx -> Either Doc ()
+convTerm' :: ConvCtx pass ctx -> VTerm pass ctx -> VTerm pass ctx -> VTerm pass ctx -> ConvM ()
 convTerm' ctx (VEmb (VGbl _ _ t)) x y  = convTerm ctx (vemb t) x y
 convTerm' ctx ty (VEmb (VGbl _ _ x)) y = convTerm ctx ty (vemb x) y
 convTerm' ctx ty x (VEmb (VGbl _ _ y)) = convTerm ctx ty x (vemb y)
@@ -187,6 +196,7 @@ convTerm' ctx (VEmb VRgd {})     (VEmb x) (VEmb y) = convElim ctx x y
 convTerm' ctx (VEmb (VRgd h sp)) x y = notConvertible ctx (VEmb (VRgd h sp)) x y
 
 convTerm' _   (VEmb (VErr msg)) _ _ = Left $ ppStr $ show msg
+convTerm' ctx ty@(VEmb (VFlx _ _)) _ _ = notType ctx ty
 
 -- value constructors cannot be types
 convTerm' ctx ty@VLam {} _ _ = notType ctx ty
@@ -199,7 +209,8 @@ convTerm' ctx ty@VEIx {} _ _ = notType ctx ty
 convTerm' ctx ty@VQuo {} _ _ = notType ctx ty
 convTerm' ctx ty@VTht {} _ _ = notType ctx ty
 
-convElim' :: ConvCtx ctx -> VElim NoMetas ctx -> VElim NoMetas ctx -> Either Doc ()
+
+convElim' :: ConvCtx pass ctx -> VElim pass ctx -> VElim pass ctx -> ConvM ()
 -- Globals
 convElim' _  (VGbl g1 VNil _) (VGbl g2 VNil _)
     | g1.name == g2.name   = pure ()
@@ -211,12 +222,14 @@ convElim' ctx (VAnn t ty)    e             = convTerm ctx ty t (vemb e)
 convElim' ctx e              (VAnn t ty)   = convTerm ctx ty (vemb e) t
 convElim' _   (VErr msg)     _             = Left $ ppStr $ show msg
 convElim' _   _              (VErr msg)    = Left $ ppStr $ show msg
+convElim' _   (VFlx _ _)     _             = Left "flex"
+convElim' _   _              (VFlx _ _)    = Left "flex"
 
 -- Eta expand value of function type.
-etaLam :: Size ctx -> Icit -> VElim NoMetas ctx -> VTerm NoMetas (S ctx)
+etaLam :: Size ctx -> Icit -> VElim pass ctx -> VTerm pass (S ctx)
 etaLam s i f = vemb (vapp (SS s) i (sink f) (vemb (valZ s)))
 
-convNeutral :: ConvCtx ctx -> Lvl ctx -> Spine NoMetas ctx -> Lvl ctx -> Spine NoMetas ctx -> Either Doc ()
+convNeutral :: ConvCtx pass ctx -> Lvl ctx -> Spine pass ctx -> Lvl ctx -> Spine pass ctx -> ConvM ()
 convNeutral ctx x sp1 y sp2
     | x == y    = do
         -- traceM "convNeutral"
@@ -226,19 +239,19 @@ convNeutral ctx x sp1 y sp2
         convSpine ctx x sp1 sp2
     | otherwise = mismatch "spine head" (prettyName (lookupLvl ctx x)) (prettyName (lookupLvl ctx y))
 
-convSpine :: forall ctx. ConvCtx ctx -> Lvl ctx -> Spine NoMetas ctx -> Spine NoMetas ctx -> Either Doc ()
+convSpine :: forall ctx pass. ConvCtx pass ctx -> Lvl ctx -> Spine pass ctx -> Spine pass ctx -> ConvM ()
 convSpine ctx headLvl sp1' sp2' = do
     bwd [] sp1' sp2'
   where
     headTy = lookupEnv (lvlToIdx ctx.size headLvl) ctx.types
 
-    bwd :: [(SpinePart ctx, SpinePart ctx)] -> Spine NoMetas ctx -> Spine NoMetas ctx -> Either Doc ()
+    bwd :: [(SpinePart pass ctx, SpinePart pass ctx)] -> Spine pass ctx -> Spine pass ctx -> ConvM ()
     bwd acc sp1 sp2 = case (unsnocSpine sp1, unsnocSpine sp2) of
         (Nothing, Nothing)           -> void $ foldParts fwd (VRgd headLvl VNil, headTy) acc
         (Just (xs, x), Just (ys, y)) -> bwd ((x,y) : acc) xs ys
         _                            -> mismatch "spine length" (ppInt (spineLength sp1')) (ppInt (spineLength sp2'))
 
-    fwd :: (VElim NoMetas ctx, VTerm NoMetas ctx) -> SpinePart ctx -> SpinePart ctx -> Either Doc (VElim NoMetas ctx, VTerm NoMetas ctx)
+    fwd :: (VElim pass ctx, VTerm pass ctx) -> SpinePart pass ctx -> SpinePart pass ctx -> ConvM (VElim pass ctx, VTerm pass ctx)
     fwd (sp, (VEmb (VGbl _ _ t))) x           y =
         fwd (sp, vemb t) x y
 
@@ -258,7 +271,7 @@ convSpine ctx headLvl sp1' sp2' = do
         | length xs /= length ys               = mismatch "switch case arity" (ppInt (length xs)) (ppInt (length ys))
         | otherwise                            = do
             convTerm ctx (VPie "_" Ecit (VFin ls) (Closure EmptyEnv Uni)) m1 m2
-            let m :: VElim NoMetas ctx
+            let m :: VElim pass ctx
                 m = vann m1 $ varr (VFin ls) Uni
 
             ifor_ ls $ \i' l -> do
@@ -272,7 +285,7 @@ convSpine ctx headLvl sp1' sp2' = do
     fwd (sp, VDsc)   (PDeI m1 t1 s1 r1)
                      (PDeI m2 t2 s2 r2)        = do
         convTerm ctx (evalTerm ctx.size EmptyEnv         descIndMotive)  m1 m2
-        let m :: VElim NoMetas ctx
+        let m :: VElim pass ctx
             m = vann m1 $ varr VDsc Uni
         convTerm ctx (evalTerm ctx.size (EmptyEnv :> velim m) descIndMotive1) t1 t2
         convTerm ctx (evalTerm ctx.size (EmptyEnv :> velim m) descIndMotiveS) s1 s2
@@ -281,10 +294,10 @@ convSpine ctx headLvl sp1' sp2' = do
 
     fwd (sp, VMuu d)     (PInd m1 c1) (PInd m2 c2) = do
         convTerm ctx (VPie "_" Ecit (VMuu d) (Closure EmptyEnv Uni))      m1 m2
-        let m :: VElim NoMetas ctx
+        let m :: VElim pass ctx
             m = vann m1 $ varr (VMuu d) Uni
 
-            d' :: VElim NoMetas ctx
+            d' :: VElim pass ctx
             d' = vann d VDsc
 
         convTerm ctx (evalTerm ctx.size (EmptyEnv :> velim d' :> velim m) muMotiveT) c1 c2
@@ -301,7 +314,7 @@ foldParts :: Monad m => (a -> b -> b -> m a) -> a -> [(b,b)] -> m a
 foldParts _ a []         = return a
 foldParts f a ((x,y):zs) = f a x y >>= \b -> foldParts f b zs
 
-unsnocSpine :: Spine NoMetas ctx -> Maybe (Spine NoMetas ctx, SpinePart ctx)
+unsnocSpine :: Spine pass ctx -> Maybe (Spine pass ctx, SpinePart pass ctx)
 unsnocSpine VNil                 = Nothing
 unsnocSpine (VApp sp i x)        = Just (sp, PApp i x)
 unsnocSpine (VSel sp x)          = Just (sp, PSel x)
@@ -310,7 +323,7 @@ unsnocSpine (VDeI sp m c1 c2 c3) = Just (sp, PDeI m c1 c2 c3)
 unsnocSpine (VInd sp m c)        = Just (sp, PInd m c)
 unsnocSpine (VSpl sp)            = Just (sp, PSpl)
 {-
-snocSpine :: Spine NoMetas ctx -> SpinePart ctx -> Spine NoMetas ctx
+snocSpine :: Spine pass ctx -> SpinePart ctx -> Spine pass ctx
 snocSpine sp (SApp x)          = VApp sp x
 snocSpine sp (SSel s)          = VSel sp s
 snocSpine sp (SSwh m ts)       = VSwh sp m ts
@@ -318,7 +331,7 @@ snocSpine sp (SDeI m c1 c2 c3) = VDeI sp m c1 c2 c3
 snocSpine sp (SInd m t)        = VInd sp m t
 -}
 
-spineLength :: Spine NoMetas ctx -> Int
+spineLength :: Spine pass ctx -> Int
 spineLength = go 0 where
     go !n VNil              = n
     go !n (VApp sp _ _)     = go (n + 1) sp
@@ -329,16 +342,16 @@ spineLength = go 0 where
     go !n (VSpl sp)         = go (n + 1) sp
 
 -- /Verterbrae/
-data SpinePart ctx
-    = PApp !Icit (VTerm NoMetas ctx)
+data SpinePart pass ctx
+    = PApp !Icit (VTerm pass ctx)
     | PSel !Selector
-    | PSwh (VTerm NoMetas ctx) (EnumList (VTerm NoMetas ctx))
-    | PDeI (VTerm NoMetas ctx) (VTerm NoMetas ctx) (VTerm NoMetas ctx) (VTerm NoMetas ctx)
-    | PInd (VTerm NoMetas ctx) (VTerm NoMetas ctx)
+    | PSwh (VTerm pass ctx) (EnumList (VTerm pass ctx))
+    | PDeI (VTerm pass ctx) (VTerm pass ctx) (VTerm pass ctx) (VTerm pass ctx)
+    | PInd (VTerm pass ctx) (VTerm pass ctx)
     | PSpl
   deriving Show
 
-prettySpinePart :: ConvCtx ctx -> SpinePart ctx -> Doc
+prettySpinePart :: ConvCtx pass ctx -> SpinePart pass ctx -> Doc
 prettySpinePart ctx (PApp Ecit v)  = "application" <+> prettyVTermCtx ctx v
 prettySpinePart ctx (PApp Icit v)  = "application" <+> ppBraces (prettyVTermCtx ctx v)
 prettySpinePart _   (PSel s)       = "selector" <+> prettySelector s
@@ -347,10 +360,10 @@ prettySpinePart _   (PDeI _ _ _ _) = "indDesc"
 prettySpinePart _   (PInd _ _)     = "ind"
 prettySpinePart _   PSpl           = "splice"
 
-convSTerm :: Natural -> ConvCtx ctx -> VTerm NoMetas ctx -> STerm NoMetas ctx -> STerm NoMetas ctx -> Either Doc ()
+convSTerm :: Natural -> ConvCtx pass ctx -> VTerm pass ctx -> STerm pass ctx -> STerm pass ctx -> ConvM ()
 convSTerm l env ty x y = convSTerm' l env ty x y
 
-convSTerm' :: Natural -> ConvCtx ctx -> VTerm NoMetas ctx -> STerm 'NoMetas ctx -> STerm 'NoMetas ctx -> Either Doc ()
+convSTerm' :: Natural -> ConvCtx pass ctx -> VTerm pass ctx -> STerm pass ctx -> STerm pass ctx -> ConvM ()
 convSTerm' l env _ty (SEmb x) (SEmb y) = convSElim' l env x y
 convSTerm' _ _ _ (SEIx x) (SEIx y)
     | x == y = return ()
@@ -364,7 +377,7 @@ convSTerm' l ctx VUni x y = notConvertibleS l ctx VUni x y
 
 convSTerm' _ _ ty x y = Left $ "convSTerm not convertible" <> ppStr (show (ty, x, y))
 
-convSElim' :: Natural -> ConvCtx ctx -> SElim NoMetas ctx -> SElim NoMetas ctx -> Either Doc ()
+convSElim' :: Natural -> ConvCtx pass ctx -> SElim pass ctx -> SElim pass ctx -> ConvM ()
 convSElim' _ _ (SGbl x) (SGbl y)
     | x.name == y.name
     = return ()
