@@ -69,3 +69,6 @@ safePred n = Just (n - 1)
 -- | Class of monads were we can only throw errors, but not recover.
 class Monad m => MonadThrowError e m | m -> e where
     throwError :: e -> m a
+
+instance MonadThrowError e (Either e) where
+    throwError = Left

@@ -66,10 +66,10 @@ lookupLvl :: ConvCtx pass ctx -> Lvl ctx -> Name
 lookupLvl ctx l = lookupEnv (lvlToIdx ctx.size l) ctx.names
 
 mismatch :: Doc -> Doc -> Doc -> ConvM a
-mismatch t x y = Left $ t <+> "mismatch:" <+> x <+> "/=" <+> y
+mismatch t x y = throwError $ t <+> "mismatch:" <+> x <+> "/=" <+> y
 
 notConvertible :: ConvCtx pass ctx -> VTerm pass ctx -> VTerm pass ctx -> VTerm pass ctx -> ConvM ()
-notConvertible ctx ty x y = Left $ ppSep
+notConvertible ctx ty x y = throwError $ ppSep
     [ "not convertible:"
     , prettyVTermCtx ctx ty <+> ":"
     , prettyVTermCtx ctx x <+> "/="
@@ -77,7 +77,7 @@ notConvertible ctx ty x y = Left $ ppSep
     ]
 
 notConvertibleS :: Natural -> ConvCtx pass ctx -> VTerm pass ctx -> STerm pass ctx -> STerm pass ctx -> ConvM ()
-notConvertibleS l ctx ty x y = Left $ ppSep
+notConvertibleS l ctx ty x y = throwError $ ppSep
     [ "not convertible:"
     , "at level" <+> ppStr (show l)
     , prettyVTermCtx ctx ty <+> ":"
@@ -86,7 +86,7 @@ notConvertibleS l ctx ty x y = Left $ ppSep
     ]
 
 notType :: ConvCtx pass ctx -> VTerm pass ctx -> ConvM ()
-notType ctx ty = Left $ ppSep
+notType ctx ty = throwError $ ppSep
     [ "CONV PANIC: NOT A TYPE"
     , prettyVTermCtx ctx ty
     ]
@@ -195,7 +195,7 @@ convTerm' ctx (VCod a) x              y            = notConvertible ctx (VCod a)
 convTerm' ctx (VEmb VRgd {})     (VEmb x) (VEmb y) = convElim ctx x y
 convTerm' ctx (VEmb (VRgd h sp)) x y = notConvertible ctx (VEmb (VRgd h sp)) x y
 
-convTerm' _   (VEmb (VErr msg)) _ _ = Left $ ppStr $ show msg
+convTerm' _   (VEmb (VErr msg)) _ _ = throwError $ ppStr $ show msg
 convTerm' ctx ty@(VEmb (VFlx _ _)) _ _ = notType ctx ty
 
 -- value constructors cannot be types
@@ -220,10 +220,10 @@ convElim' ctx t              (VGbl _ _ u)  = convElim ctx t u
 convElim' ctx (VRgd h1 sp1)  (VRgd h2 sp2) = convNeutral ctx h1 sp1 h2 sp2
 convElim' ctx (VAnn t ty)    e             = convTerm ctx ty t (vemb e)
 convElim' ctx e              (VAnn t ty)   = convTerm ctx ty (vemb e) t
-convElim' _   (VErr msg)     _             = Left $ ppStr $ show msg
-convElim' _   _              (VErr msg)    = Left $ ppStr $ show msg
-convElim' _   (VFlx _ _)     _             = Left "flex"
-convElim' _   _              (VFlx _ _)    = Left "flex"
+convElim' _   (VErr msg)     _             = throwError $ ppStr $ show msg
+convElim' _   _              (VErr msg)    = throwError $ ppStr $ show msg
+convElim' _   (VFlx _ _)     _             = throwError "flex"
+convElim' _   _              (VFlx _ _)    = throwError "flex"
 
 -- Eta expand value of function type.
 etaLam :: Size ctx -> Icit -> VElim pass ctx -> VTerm pass (S ctx)
@@ -264,7 +264,7 @@ convSpine ctx headLvl sp1' sp2' = do
         | x == y = case x of
             "fst" -> return (vsel ctx.size sp x, a)
             "snd" -> return (vsel ctx.size sp x, run ctx.size b (vsel ctx.size sp "fst"))
-            _     -> Left $ "conv panic: sigma with" <+> prettySelector x
+            _     -> throwError $ "conv panic: sigma with" <+> prettySelector x
         | otherwise                            = mismatch "selector" (prettySelector x) (prettySelector y)
 
     fwd (sp, VFin ls)    (PSwh m1 xs) (PSwh m2 ys)
@@ -276,8 +276,8 @@ convSpine ctx headLvl sp1' sp2' = do
 
             ifor_ ls $ \i' l -> do
                 let i = EnumIdx i'
-                x <- maybe (Left $ "missing case in left"  <+> prettyLabel l) return $ lookupEnumList i xs
-                y <- maybe (Left $ "missing case in right" <+> prettyLabel l) return $ lookupEnumList i ys
+                x <- maybe (throwError $ "missing case in throwError"  <+> prettyLabel l) return $ lookupEnumList i xs
+                y <- maybe (throwError $ "missing case in right" <+> prettyLabel l) return $ lookupEnumList i ys
                 convTerm ctx (evalTerm ctx.size (EmptyEnv :> velim m) (var IZ @@ EIx i)) x y
 
             return (vswh ctx.size sp m1 xs, vemb (vapp ctx.size Ecit m (vemb sp)))
@@ -304,11 +304,11 @@ convSpine ctx headLvl sp1' sp2' = do
         return (vind ctx.size sp m1 c1, vemb (vapp ctx.size Ecit m (vemb sp)))
 
     fwd (sp, VCod a)        PSpl         PSpl         =
-        -- Left $ "eliminator todo" <+> prettyVTermCtx ctx a -- TODO
+        -- throwError $ "eliminator todo" <+> prettyVTermCtx ctx a -- TODO
         return (vspl ctx.size sp, vsplCodArg ctx.size a)
 
     fwd (_sp, ty)        x            y            =
-        Left $ "eliminator mismatch" <+> prettyVTermCtx ctx ty <+> "|-" <+> prettySpinePart ctx x <+> "/=" <+> prettySpinePart ctx y
+        throwError $ "eliminator mismatch" <+> prettyVTermCtx ctx ty <+> "|-" <+> prettySpinePart ctx x <+> "/=" <+> prettySpinePart ctx y
 
 foldParts :: Monad m => (a -> b -> b -> m a) -> a -> [(b,b)] -> m a
 foldParts _ a []         = return a
@@ -375,7 +375,7 @@ convSTerm' l ctx VUni (SPie x i a1 a b1) (SPie _ j a2 _ b2) = do
     convSTerm' l (bind x a ctx) VUni (runSTZ ctx.size b1) (runSTZ ctx.size b2)
 convSTerm' l ctx VUni x y = notConvertibleS l ctx VUni x y
 
-convSTerm' _ _ ty x y = Left $ "convSTerm not convertible" <> ppStr (show (ty, x, y))
+convSTerm' _ _ ty x y = throwError $ "convSTerm not convertible" <> ppStr (show (ty, x, y))
 
 convSElim' :: Natural -> ConvCtx pass ctx -> SElim pass ctx -> SElim pass ctx -> ConvM ()
 convSElim' _ _ (SGbl x) (SGbl y)
@@ -395,4 +395,4 @@ convSElim' l      ctx (SApp i f _x) (SApp j g _y) = do
   convIcit ctx i j
   convSElim' l ctx f g
   -- TODO: check x y
-convSElim' _ _env x y = Left $ "TODO: convSElim not convertible " <> ppStr ("\n" ++ show x ++ "\n" ++ show y)
+convSElim' _ _env x y = throwError $ "TODO: convSElim not convertible " <> ppStr ("\n" ++ show x ++ "\n" ++ show y)
