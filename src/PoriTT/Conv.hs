@@ -418,9 +418,16 @@ convSElim' (NS l) env (SSpl x _) (SSpl y _) = do
     return (VCod ty)
 convSElim' l env a@(SSpl _ _) b = notConvertibleSE l env a b
 
-convSElim' l      ctx (SApp i f _x) (SApp j g _y) = do
-  convIcit ctx i j
-  convSElim' l ctx f g
+convSElim' l      ctx (SApp i f t) (SApp j g s) = do
+    convIcit ctx i j
+    ty <- convSElim' l ctx f g
+    case ty of
+        VPie _ _i a b -> do
+            convSTerm' l ctx a t s
+            return (run ctx.size b (VErr EvalErrorStg))
+        _             -> throwError ("Function application head does not have a pi-type" <+> ppSep
+            [ "actual:" <+> prettyVTermCtx ctx ty
+            ])
   -- TODO: check x y
 convSElim' l      env a@(SApp _ _ _) b = notConvertibleSE l env a b
 
