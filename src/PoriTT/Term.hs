@@ -14,12 +14,12 @@ import Unsafe.Coerce (unsafeCoerce)
 
 import PoriTT.Base
 import PoriTT.Enum
-import PoriTT.Rigid
 import PoriTT.Icit
 import PoriTT.Meta
 import PoriTT.Name
 import PoriTT.PP
 import PoriTT.Raw
+import PoriTT.Rigid
 
 import {-# SOURCE #-} PoriTT.Global (Global)
 

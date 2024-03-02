@@ -7,7 +7,7 @@ module PoriTT.Opts (
     parseOptsEndo,
 ) where
 
-import Optics.Core (set, (%))
+import Optics.Core ((%))
 
 import qualified Options.Applicative as O
 

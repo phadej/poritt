@@ -1,13 +1,20 @@
 module PoriTT.Rigid (
-    -- * Meta variables
+    -- * Rigid variables
     RigidVar,
     prettyRigidVar,
-    -- * Meta map
+    -- * Rigid map
     RigidMap,
+    -- * Rigid State
+    RigidState,
+    initialRigidState,
+    HasRigidState (..),
+    takeRigidVar,
 ) where
 
 import PoriTT.Base
 import PoriTT.PP
+
+import Optics.Core (castOptic, simple)
 
 import qualified Data.IntMap as IM
 
@@ -48,3 +55,26 @@ newtype RigidMap ctx a = RigidMap (IM.IntMap a)
 
 instance Show a => Show (RigidMap ctx a) where
     showsPrec d (RigidMap m) = showsPrec d (IM.toList m)
+
+-------------------------------------------------------------------------------
+-- RigidState
+-------------------------------------------------------------------------------
+
+newtype RigidState = RigidState Int
+  deriving Show
+
+initialRigidState :: RigidState
+initialRigidState = RigidState 0
+
+class HasRigidState s where
+    rigidState :: Lens' s RigidState
+
+instance HasRigidState RigidState where
+    rigidState = castOptic simple
+
+takeRigidVar :: (MonadState s m, HasRigidState s) => m (RigidVar ctx)
+takeRigidVar = do
+    s <- get
+    let RigidState r = view rigidState s
+    put $! set rigidState (RigidState (r + 1)) s
+    return (RigidVar r)

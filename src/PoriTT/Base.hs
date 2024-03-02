@@ -4,12 +4,14 @@ module PoriTT.Base (
     pattern (:=),
     pattern TODO,
     pattern NZ, pattern NS,
+    MonadThrowError (..),
 ) where
 
 import DeBruijn as X
 
 import Control.Applicative        as X (Alternative (many, some, (<|>)), asum, liftA2, (<**>))
 import Control.Monad              as X (guard, unless, void, when)
+import Control.Monad.State.Class  as X (MonadState (get, put), modify')
 import Data.ByteString            as X (ByteString)
 import Data.Coerce                as X (coerce)
 import Data.Foldable              as X (foldl', for_, toList, traverse_)
@@ -32,9 +34,11 @@ import Data.Traversable           as X (for)
 import Data.Traversable.WithIndex as X (ifor, itraverse)
 import Data.Word                  as X (Word8)
 import Debug.Trace                as X
+import GHC.Exts                   as X (oneShot)
 import GHC.Generics               as X (Generic)
 import GHC.Stack                  as X (HasCallStack)
 import Numeric.Natural            as X (Natural)
+import Optics.Core                as X (Lens', set, view)
 
 type a := b = (a, b)
 
@@ -61,3 +65,7 @@ safePred 0 = Nothing
 safePred n = Just (n - 1)
 
 {-# COMPLETE NZ, NS #-}
+
+-- | Class of monads were we can only throw errors, but not recover.
+class Monad m => MonadThrowError e m | m -> e where
+    throwError :: e -> m a

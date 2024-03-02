@@ -14,11 +14,11 @@ import PoriTT.Base
 import PoriTT.Global
 import PoriTT.Icit
 import PoriTT.Loc
-import PoriTT.Rigid
 import PoriTT.Macro
 import PoriTT.Meta
 import PoriTT.Name
 import PoriTT.PP
+import PoriTT.Rigid
 
 -------------------------------------------------------------------------------
 -- Name resolution context

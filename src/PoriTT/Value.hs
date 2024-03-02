@@ -27,10 +27,10 @@ import Unsafe.Coerce (unsafeCoerce)
 
 import PoriTT.Base
 import PoriTT.Enum
-import PoriTT.Rigid
 import PoriTT.Icit
 import PoriTT.Meta
 import PoriTT.Name
+import PoriTT.Rigid
 import PoriTT.Term
 
 import {-# SOURCE #-} PoriTT.Global (Global)

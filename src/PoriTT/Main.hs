@@ -6,7 +6,7 @@ module PoriTT.Main (
 ) where
 
 import Control.Monad.Trans.Class        (lift)
-import Control.Monad.Trans.State.Strict (StateT (StateT), evalStateT, execStateT, get, put)
+import Control.Monad.Trans.State.Strict (StateT (StateT), evalStateT, execStateT)
 import System.Console.ANSI              (hSupportsANSIColor)
 import System.Directory                 (canonicalizePath)
 import System.Exit                      (exitFailure)
@@ -287,7 +287,10 @@ batchFile fn = execStateT $ do
 
         let t'' = evalTerm SZ emptyEvalEnv t'
 
-        put $ env { pending = Just (name, t'') }
+        let env' :: Environment
+            env' = env { pending = Just (name, t'') }
+
+        put env'
 
         printDoc $ ppSoftHanging
             (ppAnnotate ACmd $ prettyName name)
