@@ -27,7 +27,7 @@ runExceptState_ (ExceptState f) = f
 
 pattern ExceptState :: ExceptState' e s a -> ExceptState e s a
 pattern ExceptState f <- ExceptState_ f
-  where ExceptState f = ExceptState (oneShot f)
+  where ExceptState f = ExceptState_ (oneShot f)
 {-# COMPLETE ExceptState #-}
 
 instance Functor (ExceptState e s) where
