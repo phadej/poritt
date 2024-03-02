@@ -147,6 +147,7 @@ library
     PoriTT.Quote
     PoriTT.Raw
     PoriTT.Rename
+    PoriTT.Rigid
     PoriTT.Simpl
     PoriTT.Stage
     PoriTT.Term

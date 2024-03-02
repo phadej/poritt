@@ -94,9 +94,9 @@ evalTerm' s env (Quo t)       = VQuo (stageTerm s env t) (evalTerm' s env t)
 evalTerm' s env (WkT w t)     = evalTerm' s (weakenEnv w env) t
 
 evalElim' :: Size ctx' -> EvalEnv pass ctx ctx' -> Elim pass ctx -> VElim pass ctx'
-evalElim' _ env (Var x)       = case lookupEnv x env of EvalElim v _ -> v
-evalElim' _ _ (Met _) = TODO
-    -- TODO: we need metacontext.
+evalElim' _ env (Var x)         = case lookupEnv x env of EvalElim v _ -> v
+evalElim' _ _   (Met _)         = TODO -- TODO: we need metacontext.
+evalElim' _ _   (Rgd _)         = TODO -- error?
 evalElim' s _   (Gbl g)         = vgbl s g
 evalElim' s env (Ann t a)       = vann (evalTerm' s env t) (evalTerm' s env a)
 evalElim' s env (App i f t)     = vapp s i (evalElim' s env f) (evalTerm' s env t)
@@ -263,6 +263,7 @@ stageElim :: Size ctx' -> EvalEnv pass ctx ctx' -> Elim pass ctx -> SElim pass c
 stageElim _ env (Var x)   = case lookupEnv x env of
     EvalElim _ e -> e
 stageElim _ _   (Met _m)        = TODO -- not sure what to do here yet.
+stageElim _ _   (Rgd _)         = TODO
 stageElim _ _   (Gbl g)         = SGbl g
 stageElim s env (Swh e m ts)    = SSwh (stageElim s env e) (stageTerm s env m) (stageTerm s env <$> ts)
 stageElim s env (Ann t a)       = SAnn (stageTerm s env t) (stageTerm s env a)

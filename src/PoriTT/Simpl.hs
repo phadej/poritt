@@ -84,6 +84,9 @@ simplElim ctx (Var i)
 simplElim _ (Met m)
     = Met m
 
+simplElim _ (Rgd r)
+    = Rgd r
+
 simplElim ctx (Gbl g)
     | g.inline
     , ctx.cstage == stage0

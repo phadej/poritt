@@ -14,6 +14,7 @@ import PoriTT.Base
 import PoriTT.Global
 import PoriTT.Icit
 import PoriTT.Loc
+import PoriTT.Rigid
 import PoriTT.Macro
 import PoriTT.Meta
 import PoriTT.Name
@@ -107,6 +108,11 @@ resolve' _   (RGbl g)
 resolve' ctx (RMet m) =
     renameError ctx
     ("Metavariable" <+> prettyMetaVar m)
+    [
+    ]
+resolve' ctx (RRgd r) =
+    renameError ctx
+    ("Rigid variable" <+> prettyRigidVar r)
     [
     ]
 

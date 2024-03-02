@@ -14,6 +14,7 @@ import Unsafe.Coerce (unsafeCoerce)
 
 import PoriTT.Base
 import PoriTT.Enum
+import PoriTT.Rigid
 import PoriTT.Icit
 import PoriTT.Meta
 import PoriTT.Name
@@ -55,6 +56,7 @@ type Elim :: TermPass -> Ctx -> Type
 data Elim pass ctx where
     Var :: Idx ctx -> Elim pass ctx
     Met :: MetaVar -> Elim HasMetas ctx
+    Rgd :: RigidVar ctx -> Elim HasMetas ctx
     Gbl :: Global -> Elim pass ctx
     App :: Icit -> Elim pass ctx -> Term pass ctx -> Elim pass ctx
     Sel :: Elim pass ctx -> Selector -> Elim pass ctx
@@ -138,6 +140,7 @@ instance RenamableA (Term pass) where
 instance RenamableA (Elim pass) where
     grename r (Var i)         = Var <$> grename r i
     grename _ (Met m)         = pure (Met m)
+    grename r (Rgd x)         = Rgd <$> grename r x
     grename _ (Gbl g)         = pure (Gbl g)
     grename r (App i f t)     = App i <$> grename r f <*> grename r t
     grename r (Sel e s)       = flip Sel s <$> grename r e
@@ -220,6 +223,7 @@ instance ToRaw (Elim pass) where
     toRaw ns env (Swh e m ts)    = RSwh (toRaw ns env e) (toRaw ns env m) (ifoldr (\i t acc -> (Right i := toRaw ns env t) : acc) [] ts)
     toRaw _  env (Var i)         = RVar (lookupEnv i env)
     toRaw _  _   (Met m)         = RMet m
+    toRaw _  _   (Rgd r)         = RRgd r
     toRaw _  _   (Gbl g)         = RGbl g
     toRaw ns env (App i f t)     = rapp i (toRaw ns env f) (toRaw ns env t)
     toRaw ns env (Sel e s)       = rsel (toRaw ns env e) s

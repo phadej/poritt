@@ -17,6 +17,7 @@ import PoriTT.Loc
 import PoriTT.Meta
 import PoriTT.Name
 import PoriTT.PP
+import PoriTT.Rigid
 
 import {-# SOURCE #-} PoriTT.Global (Global, prettyGlobal)
 
@@ -31,6 +32,9 @@ data Raw where
 
     -- | meta variable: @?x@ (not produced by parser)
     RMet :: MetaVar -> Raw
+
+    -- | rigid variable: @!x@ (not produced by parser)
+    RRgd :: RigidVar ctx -> Raw
 
     -- | global variable: @g@ (not produced by parser)
     RGbl :: Global -> Raw
@@ -106,7 +110,7 @@ data Raw where
     -- | List syntax: @[t s r]@ or @[]@
     RLst :: [Raw] -> Raw
 
-  deriving Show
+deriving instance Show Raw
 
 unRLoc :: Raw -> Raw
 unRLoc (RLoc _ r) = unRLoc r
@@ -177,6 +181,7 @@ prettyRaw _ (REIx i)          = prettyEnumIdx i
 prettyRaw _ (RVar x)          = prettyName x
 prettyRaw _ (RGbl g)          = prettyGlobal g
 prettyRaw _ (RMet m)          = prettyMetaVar m
+prettyRaw _ (RRgd r)          = prettyRigidVar r
 prettyRaw d (RMuu t)          = ppParensIf (d > appp) $ "mu" <+> prettyRaw (appp + 1) t
 prettyRaw d (RCon t)          = ppParensIf (d > appp) $ "con" <+> prettyRaw (appp + 1) t
 prettyRaw d (RInd e m c)      = ppParensIf (d > appp) $ prettyApp "ind" (map (prettyRaw 11) [e,m,c])
