@@ -163,7 +163,7 @@ batchFile fn = execStateT $ do
         let names = nameScopeFromEnv env
 
         et' <- either printError return $ evalExceptState (lintElim (emptyLintCtx names) e) initialRigidState
-        case evalExceptState (convTerm (mkConvCtx SZ EmptyEnv EmptyEnv names) VUni et et') initialRigidState of
+        case evalExceptState (convTerm (mkConvCtx SZ EmptyEnv EmptyEnv names emptyRigidMap) VUni et et') initialRigidState of
             Right _  -> pure ()
             Left msg -> printError $ ppVCat
                 [ pass <+> "lint failed"

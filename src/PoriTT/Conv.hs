@@ -57,8 +57,8 @@ newRigid ctx ty = do
 --
 -- * and a global 'NameScope' (for pretty-printing)
 --
-mkConvCtx :: Size ctx -> Env ctx Name -> Env ctx (VTerm pass ctx) -> NameScope -> ConvCtx pass ctx
-mkConvCtx s xs ts ns = ConvCtx s xs ts ns emptyRigidMap
+mkConvCtx :: Size ctx -> Env ctx Name -> Env ctx (VTerm pass ctx) -> NameScope -> RigidMap ctx (VTerm pass ctx) -> ConvCtx pass ctx
+mkConvCtx = ConvCtx
 
 prettyVTermCtx :: ConvCtx pass ctx -> VTerm pass ctx -> Doc
 prettyVTermCtx ctx = prettyVTerm ctx.size ctx.nscope ctx.names

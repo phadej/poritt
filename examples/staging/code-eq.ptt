@@ -25,4 +25,14 @@ fail %refl : Id {Code [| Unit |]}
 
 type
   let x = tt in
-  $(let unused = %refl : Id {Code [| Unit |]} [| x |] [| x |] in [| tt |])
+  $(let unused = %refl : Id {Code [| Unit |]} [| x |] [| x |] in ([| tt |] : Code [| Unit |]))
+
+type
+  let x = tt in
+  let y = tt in
+  $(let unused = %refl : Id {Code [| Unit |]} [| x |] [| x |] in ([| tt |] : Code [| Unit |]))
+
+fail
+  let x = tt in
+  let y = tt in
+  $(let unused = %refl : Id {Code [| Unit |]} [| x |] [| y |] in ([| tt |] : Code [| Unit |]))

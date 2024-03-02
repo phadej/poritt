@@ -105,3 +105,28 @@ fail %refl
           {Code ⟦ Unit ⟧}
           ⟦ let x = tt : Unit in let y = tt : Unit in x ⟧
           ⟦ let u = tt : Unit in let v = tt : Unit in v ⟧
+
+type let x = tt in ∫(let unused = %refl
+                       : Id {Code ⟦ Unit ⟧} ⟦ x ⟧ ⟦ x ⟧ in ⟦ tt ⟧
+                       : Code ⟦ Unit ⟧)
+  : Unit
+
+type let x = tt in let y = tt in ∫(let unused = %refl
+                                     : Id {Code ⟦ Unit ⟧} ⟦ x ⟧ ⟦ x ⟧ in ⟦ tt ⟧
+                                     : Code ⟦ Unit ⟧)
+  : Unit
+
+fail let x = tt in let y = tt in ∫(let unused = %refl
+                                     : Id {Code ⟦ Unit ⟧} ⟦ x ⟧ ⟦ y ⟧ in ⟦ tt ⟧
+                                     : Code ⟦ Unit ⟧)
+  examples/staging/code-eq.ptt:38:17: Couldn't match types
+    • expected: C ⟦ !1 ⟧
+    • actual: C ⟦ !0 ⟧
+    • not convertible (at level 0): !1 /= !0
+    • When checking that Cx has type C ⟦ !1 ⟧
+    • When checking that λ Cx ↦ Cx has type C ⟦ !0 ⟧ → C ⟦ !1 ⟧
+    • When checking that λ _ Cx ↦ Cx has type Id {Code ⟦ Unit ⟧} ⟦ !0 ⟧ ⟦ !1 ⟧
+    • When infering type of (λ _ Cx ↦ Cx) : Id {Code ⟦ Unit ⟧} ⟦ x ⟧ ⟦ y ⟧
+    • When infering type of
+      let unused = (λ _ Cx ↦ Cx) : Id {Code ⟦ Unit ⟧} ⟦ x ⟧ ⟦ y ⟧ in ⟦ tt ⟧
+        : Code ⟦ Unit ⟧

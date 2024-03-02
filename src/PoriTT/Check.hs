@@ -43,8 +43,9 @@ data CheckCtx ctx ctx' = CheckCtx
     , values :: !(EvalEnv NoMetas ctx ctx')
     , types  :: !(Env ctx (VTerm NoMetas ctx'))
     , types' :: !(Env ctx' (VTerm NoMetas ctx'))
-    , stages :: Env ctx Stage
-    , cstage :: Stage
+    , rigids :: !(RigidMap ctx' (VTerm NoMetas ctx'))
+    , stages :: !(Env ctx Stage)
+    , cstage :: !Stage
     , size   :: !(Size ctx')
     , wk     :: Wk ctx' ctx               -- ^ weakening from target context to source context. This is possible, as target context is the same except the let bound values are missing.
     , loc    :: !(Loc)
@@ -63,6 +64,7 @@ emptyCheckCtx ns = CheckCtx
     , values = EmptyEnv
     , types  = EmptyEnv
     , types' = EmptyEnv
+    , rigids = emptyRigidMap
     , stages = EmptyEnv
     , cstage = stage0
     , size   = SZ
@@ -76,13 +78,14 @@ toLintCtx ctx = LintCtx
     { values = ctx.values
     , types  = ctx.types
     , types' = ctx.types'
+    , rigids = ctx.rigids
     , stages = ctx.stages
     , cstage = ctx.cstage
     , names  = ctx.names
     , names' = ctx.names'
     , nscope = ctx.nscope
     , size   = ctx.size
-    , doc       = ctx.doc
+    , doc    = ctx.doc
     }
 
 bind
@@ -91,13 +94,14 @@ bind
     -> Name                     -- ^ name in types
     -> VTerm NoMetas ctx'       -- ^ type
     -> CheckCtx (S ctx) (S ctx')
-bind (CheckCtx xs xs' ns v ts ts' ss cs s wk l pp) x x' a = CheckCtx
+bind (CheckCtx xs xs' ns v ts ts' rs ss cs s wk l pp) x x' a = CheckCtx
     { names   = xs :> x
     , names'  = xs' :> x'
     , nscope  = ns
     , values  = mapSink v :> t
     , types   = mapSink ts :> sink a
     , types'  = mapSink ts' :> sink a
+    , rigids  = rigidMapSink (mapSink rs)
     , stages  = ss :> cs
     , cstage  = cs
     , size    = SS s
@@ -114,13 +118,14 @@ bind'
     -> EvalElim NoMetas ctx'   -- ^ value
     -> VTerm NoMetas ctx'   -- ^ type
     -> CheckCtx (S ctx) ctx'
-bind' (CheckCtx xs xs' ns v ts ts' ss cs s wk l pp) x t a = CheckCtx
+bind' (CheckCtx xs xs' ns v ts ts' rs ss cs s wk l pp) x t a = CheckCtx
     { names   = xs :> x
     , names'  = xs'
     , nscope  = ns
     , values  = v :> t
     , types   = ts :> a
     , types'  = ts'
+    , rigids  = rs
     , stages  = ss :> cs
     , cstage  = cs
     , size    = s
@@ -136,10 +141,9 @@ bind' (CheckCtx xs xs' ns v ts ts' ss cs s wk l pp) x t a = CheckCtx
 type CheckM = ExceptState Doc RigidState
 
 newRigid :: CheckCtx ctx ctx' -> VTerm 'NoMetas ctx' -> CheckM (CheckCtx ctx ctx', RigidVar ctx')
-newRigid ctx _ty = do
-    u <- takeRigidVar
-    -- TODO: insert type
-    return (ctx, u)
+newRigid ctx ty = do
+    r <- takeRigidVar
+    return (ctx { rigids = insertRigidMap r ty ctx.rigids }, r)
 
 -------------------------------------------------------------------------------
 -- Errors
@@ -235,7 +239,7 @@ checkInfer :: CheckCtx ctx ctx' -> Well (HasTerms NoMetas) ctx -> VTerm NoMetas 
 checkInfer ctx e            a = do
     (e', et) <- checkElim ctx e
     -- traceM $ "CONV: " ++ show (ctx.names', e, et, a)
-    case evalExceptState (convTerm (mkConvCtx ctx.size ctx.names' ctx.types' ctx.nscope) VUni a et) initialRigidState of
+    case evalExceptState (convTerm (mkConvCtx ctx.size ctx.names' ctx.types' ctx.nscope ctx.rigids) VUni a et) initialRigidState of
         Right () -> pure (Emb e')
         Left err -> checkError ctx "Couldn't match types"
             [ "expected:" <+> prettyVTermCtx ctx a

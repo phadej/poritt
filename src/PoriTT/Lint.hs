@@ -32,6 +32,7 @@ data LintCtx ctx ctx' = LintCtx
     { values :: EvalEnv NoMetas ctx ctx'
     , types  :: Env ctx (VTerm NoMetas ctx')
     , types' :: Env ctx' (VTerm NoMetas ctx')
+    , rigids :: !(RigidMap ctx' (VTerm NoMetas ctx'))
     , stages :: Env ctx Stage
     , cstage :: Stage
     , names  :: Env ctx Name
@@ -42,25 +43,30 @@ data LintCtx ctx ctx' = LintCtx
     }
 
 sinkLintCtx :: Name -> VTerm NoMetas ctx' -> LintCtx ctx ctx' -> LintCtx ctx (S ctx')
-sinkLintCtx x' t' (LintCtx vs ts ts' ss cs xs xs' ns s pp) = LintCtx (mapSink vs) (mapSink ts) (mapSink ts' :> sink t') ss cs xs (xs' :> x') ns (SS s) pp
+sinkLintCtx x' t' (LintCtx vs ts ts' rs ss cs xs xs' ns s pp) = LintCtx (mapSink vs) (mapSink ts) (mapSink ts' :> sink t') (rigidMapSink (mapSink rs)) ss cs xs (xs' :> x') ns (SS s) pp
 
 emptyLintCtx :: NameScope -> LintCtx EmptyCtx EmptyCtx
-emptyLintCtx ns = LintCtx EmptyEnv EmptyEnv EmptyEnv EmptyEnv stage0 EmptyEnv EmptyEnv ns SZ []
+emptyLintCtx ns = LintCtx EmptyEnv EmptyEnv EmptyEnv emptyRigidMap EmptyEnv stage0 EmptyEnv EmptyEnv ns SZ []
 
 bind :: LintCtx ctx ctx' -> Name -> Name -> VTerm NoMetas ctx' -> LintCtx (S ctx) (S ctx')
 bind ctx x x' a = bind' (sinkLintCtx x' a ctx) x (evalZ ctx.size) (sink a)
 
 bind' :: LintCtx ctx ctx' -> Name -> EvalElim NoMetas ctx' -> VTerm NoMetas ctx' -> LintCtx (S ctx) ctx'
-bind' (LintCtx vs ts ts' ss cs xs xs' ns s pp) x v t = LintCtx (vs :> v) (ts :> t) ts' (ss :> cs) cs (xs :> x) xs' ns s pp
+bind' (LintCtx vs ts ts' rs ss cs xs xs' ns s pp) x v t = LintCtx (vs :> v) (ts :> t) ts' rs (ss :> cs) cs (xs :> x) xs' ns s pp
 
 weakenLintCtx :: Wk ctx ctx' -> LintCtx ctx' ctx'' -> LintCtx ctx ctx''
-weakenLintCtx w (LintCtx vs ts ts' ss cs xs xs' ns s pp) = LintCtx (weakenEnv w vs) (weakenEnv w ts) ts' (weakenEnv w ss) cs (weakenEnv w xs) xs' ns s pp
+weakenLintCtx w (LintCtx vs ts ts' rs ss cs xs xs' ns s pp) = LintCtx (weakenEnv w vs) (weakenEnv w ts) ts' rs (weakenEnv w ss) cs (weakenEnv w xs) xs' ns s pp
 
 -------------------------------------------------------------------------------
 -- Monad
 -------------------------------------------------------------------------------
 
 type LintM = ExceptState Doc RigidState
+
+newRigid :: LintCtx ctx ctx' -> VTerm 'NoMetas ctx' -> LintM (LintCtx ctx ctx', RigidVar ctx')
+newRigid ctx ty = do
+    r <- takeRigidVar
+    return (ctx { rigids = insertRigidMap r ty ctx.rigids }, r)
 
 -------------------------------------------------------------------------------
 -- Errors
@@ -352,7 +358,7 @@ lintTerm' ctx (Emb e)     a    = do
     --  ⊢ A ∋ e
     --
     b <- lintElim ctx e
-    case evalExceptState (convTerm (mkConvCtx ctx.size ctx.names' ctx.types' ctx.nscope) VUni a b) initialRigidState of
+    case evalExceptState (convTerm (mkConvCtx ctx.size ctx.names' ctx.types' ctx.nscope ctx.rigids) VUni a b) initialRigidState of
         Right () -> pure ()
         Left err -> lintError ctx "Couldn't match types"
             [ "expected:" <+> prettyVTermCtx ctx a
@@ -544,9 +550,10 @@ lintElim' ctx (Let x e f) = do
     --  ⊢ let x = e in f ∈ B
     --
     a <- lintElim ctx e
+    (ctx', r) <- newRigid ctx a
     let e' = evalElim ctx.size ctx.values e
-        e'' = velim e' -- TODO
-    lintElim (bind' ctx x e'' a) f
+        e'' = EvalElim e' (SRgd r)
+    lintElim (bind' ctx' x e'' a) f
 
 lintElim' ctx (Spl e) = do
     --

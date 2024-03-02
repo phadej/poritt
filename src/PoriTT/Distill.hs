@@ -245,7 +245,7 @@ distillTerm' _ (Quo _) _ =
 
 distillTerm' ctx (Emb e) a = do
     (e', b) <- distillElim' ctx e
-    case evalExceptState (convTerm (mkConvCtx ctx.size' ctx.names' ctx.types' ctx.nscope) VUni a b) initialRigidState of
+    case evalExceptState (convTerm (mkConvCtx ctx.size' ctx.names' ctx.types' ctx.nscope TODO) VUni a b) initialRigidState of
         Right () -> pure e'
         Left _   -> Nothing
 
