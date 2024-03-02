@@ -55,6 +55,7 @@ data Environment = Environment
     , globals  :: Map Name Global
     , macros   :: Map Name Macro
     , included :: Set FilePath
+    , includeS :: Natural
     , pending  :: Maybe (Name, VTerm NoMetas EmptyCtx)
     , opts     :: Opts
     }
@@ -89,6 +90,7 @@ builtinEnvironment hdl opts = do
             ]
         , macros = Map.empty
         , included = Set.empty
+        , includeS = 0
         , pending = Nothing
         }
 
@@ -490,8 +492,10 @@ batchFile fn = execStateT $ do
 
     stmt (IncludeStmt fp stmts) = do
         printDoc $ ppAnnotate ACmd "include" <+> prettyFilePath fp
+        modify' $ \env -> env { includeS = NS env.includeS }
         for_ stmts stmtN
         checkNoPending
+        modify' $ \env -> env { includeS = case env.includeS of { NZ -> NZ; NS l -> l } }
         printDoc ""
         printDoc $ ppAnnotate ACmd "end-of-file" <+> prettyFilePath fp
 
@@ -545,8 +549,8 @@ printDoc' d = do
 -- prints only if not inside include (controlled by options)
 printDoc :: Doc -> MainM ()
 printDoc d = do
-    Environment { handle = hdl, ppopts = ppOpts, opts = _opts } <- get
-    lift $ hPutStrLn hdl $ ppRender ppOpts d
+    Environment { handle = hdl, ppopts = ppOpts, opts = _opts, includeS = s } <- get
+    when (s <= 0) $ lift $ hPutStrLn hdl $ ppRender ppOpts d
 
 printErrors :: Foldable f => f Doc -> MainM a
 printErrors msgs = do

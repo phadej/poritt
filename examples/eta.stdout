@@ -1,20 +1,5 @@
 include "lib/leibniz.ptt"
 
-Id : ∀ {A : U} → A → A → U
-Id = λ x y ↦ ∀ (C : A → U) → C x → C y
-
-refl : ∀ {A : U} (x : A) → Id x x
-refl = λ x C Cx ↦ Cx
-
-macro %refl 
-  = λ _ Cx ↦ Cx
-
-sym : ∀ (A : U) (x : A) (y : A) → Id x y → Id y x
-sym = λ A x y x=y ↦ x=y (λ z ↦ Id z x) (refl x)
-
-trans : ∀ (A : U) (x : A) (y : A) (z : A) → Id x y → Id y z → Id x z
-trans = λ A x y z x=y y=z ↦ y=z (λ v ↦ Id x v) x=y
-
 end-of-file "lib/leibniz.ptt"
 
 type (λ _ ↦ %refl) : ∀ (f : U → U) → Id {U → U} f (λ x ↦ f x)

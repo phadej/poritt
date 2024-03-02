@@ -1,54 +1,8 @@
 include "../lib/bool.ptt"
 
-Bool : U
-Bool = #[:false :true]
-
-true : Bool
-true = :true
-
-false : Bool
-false = :false
-
-inline true
-
-inline false
-
-if : Bool → ∀ (A : U) → A → A → A
-if = [ (λ _ t f ↦ f) (λ _ t f ↦ t) ]
-
-not : Bool → Bool
-not = [ :true :false ]
-
-and : Bool → Bool → Bool
-and = [ (λ _ ↦ :false) (λ y ↦ y) ]
-
-or : Bool → Bool → Bool
-or = [ (λ y ↦ y) (λ _ ↦ :true) ]
-
-eqBool : Bool → Bool → Bool
-eqBool = [ [ :true :false ] [ :false :true ] ]
-
-eqUnit : Unit → Unit → Bool
-eqUnit = λ _ _ ↦ :true
-
 end-of-file "../lib/bool.ptt"
 
 include "../lib/leibniz.ptt"
-
-Id : ∀ {A : U} → A → A → U
-Id = λ x y ↦ ∀ (C : A → U) → C x → C y
-
-refl : ∀ {A : U} (x : A) → Id x x
-refl = λ x C Cx ↦ Cx
-
-macro %refl 
-  = λ _ Cx ↦ Cx
-
-sym : ∀ (A : U) (x : A) (y : A) → Id x y → Id y x
-sym = λ A x y x=y ↦ x=y (λ z ↦ Id z x) (refl x)
-
-trans : ∀ (A : U) (x : A) (y : A) (z : A) → Id x y → Id y z → Id x z
-trans = λ A x y z x=y y=z ↦ y=z (λ v ↦ Id x v) x=y
 
 end-of-file "../lib/leibniz.ptt"
 

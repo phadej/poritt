@@ -67,37 +67,6 @@ mult = λ n m ↦ iterNat Nat zero (plus m) n
 
 include "bool.ptt"
 
-Bool : U
-Bool = #[:false :true]
-
-true : Bool
-true = :true
-
-false : Bool
-false = :false
-
-inline true
-
-inline false
-
-if : Bool → ∀ (A : U) → A → A → A
-if = [ (λ _ t f ↦ f) (λ _ t f ↦ t) ]
-
-not : Bool → Bool
-not = [ :true :false ]
-
-and : Bool → Bool → Bool
-and = [ (λ _ ↦ :false) (λ y ↦ y) ]
-
-or : Bool → Bool → Bool
-or = [ (λ y ↦ y) (λ _ ↦ :true) ]
-
-eqBool : Bool → Bool → Bool
-eqBool = [ [ :true :false ] [ :false :true ] ]
-
-eqUnit : Unit → Unit → Bool
-eqUnit = λ _ _ ↦ :true
-
 end-of-file "bool.ptt"
 
 isZero : Nat → Bool
