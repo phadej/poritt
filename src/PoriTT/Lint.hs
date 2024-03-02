@@ -206,8 +206,8 @@ lintTerm' ctx Tht ty   =
 
 lintTerm' _ (Fin _) (force -> VUni) = do
     --
-    -- ------------------ fin
-    -- ⊢ U ∋ {:a ... :z}
+    -- ------------------- fin
+    -- ⊢ U ∋ #[:a ... :z]
     --
   return ()
 
@@ -326,9 +326,9 @@ lintTerm' ctx (DeX _)   ty =
 
 lintTerm' ctx (Cod e)     (force -> VUni) =
     --
-    --  ⊢ Code [U] ∋ a
-    -- ----------------- code
-    --  ⊢ U ∋ Code a
+    --  ⊢ Code ⟦ U ⟧ ∋ A
+    -- ------------------ code
+    --  ⊢ U ∋ Code A
     --
     lintTerm ctx e vcodUni
 
@@ -339,9 +339,9 @@ lintTerm' ctx (Cod _)      ty   =
 
 lintTerm' ctx (Quo t)   (force -> VCod a) =
     --
-    --  ⊢ ~ a ∋ t
-    -- ----------------- quote
-    --  ⊢ Code a ∋ [t]
+    --  ⊢ ∫ (A : Code ⟦ U ⟧) ∋ t
+    -- ---------------------------- quote
+    --  ⊢ Code A ∋ ⟦ t ⟧
     --
     lintTerm ctx { cstage = pred ctx.cstage } t (vsplCodArg ctx.size a)
 
@@ -559,7 +559,7 @@ lintElim' ctx (Spl e) = do
     --
     -- ⊢ e ∈ Code A
     -- ------------------------- splice
-    -- ⊢ ~ e ∈ ~ (A : Code [U])
+    -- ⊢ ∫e ∈ ∫(A : Code ⟦ U ⟧)
     --
     et <- lintElim ctx { cstage = succ ctx.cstage } e
     case force et of
