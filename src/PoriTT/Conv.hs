@@ -24,22 +24,26 @@ import PoriTT.Term
 import PoriTT.Used
 import PoriTT.Value
 
+import Unsafe.Coerce (unsafeCoerce) -- TODO
+
 -- | Conversion context.
 data ConvCtx pass ctx = ConvCtx
     { size   :: Size ctx
     , names  :: Env ctx Name
     , types  :: Env ctx (VTerm pass ctx)
     , nscope :: NameScope
-    -- rigids :: RigidMap ctx (VTerm pass ctx)
+    , rigids :: RigidMap ctx (VTerm pass ctx)
     }
 
 bind :: Name -> VTerm pass ctx -> ConvCtx pass ctx -> ConvCtx pass (S ctx)
-bind x t (ConvCtx s xs ts gs) = ConvCtx (SS s) (xs :> x) (mapSink ts :> sink t) gs
+bind x t (ConvCtx s xs ts gs rs) = ConvCtx (SS s) (xs :> x) (mapSink ts :> sink t) gs (rigidMapSink (mapSink rs))
 
-type ConvM = ExceptState Doc ()
+type ConvM = ExceptState Doc RigidState
 
-_newRigid :: ConvCtx pass ctx -> VTerm pass ctx -> ConvM (ConvCtx pass ctx, RigidVar ctx)
-_newRigid ctx ty = undefined ctx ty
+newRigid :: ConvCtx pass ctx -> VTerm pass ctx -> ConvM (ConvCtx pass ctx, RigidVar ctx)
+newRigid ctx ty = do
+    r <- takeRigidVar
+    return (ctx { rigids = insertRigidMap r ty ctx.rigids }, r)
 
 -- | Create conversion context.
 --
@@ -54,7 +58,7 @@ _newRigid ctx ty = undefined ctx ty
 -- * and a global 'NameScope' (for pretty-printing)
 --
 mkConvCtx :: Size ctx -> Env ctx Name -> Env ctx (VTerm pass ctx) -> NameScope -> ConvCtx pass ctx
-mkConvCtx = ConvCtx
+mkConvCtx s xs ts ns = ConvCtx s xs ts ns emptyRigidMap
 
 prettyVTermCtx :: ConvCtx pass ctx -> VTerm pass ctx -> Doc
 prettyVTermCtx ctx = prettyVTerm ctx.size ctx.nscope ctx.names
@@ -62,13 +66,16 @@ prettyVTermCtx ctx = prettyVTerm ctx.size ctx.nscope ctx.names
 prettySTermCtx :: Natural -> ConvCtx pass ctx -> STerm pass ctx -> Doc
 prettySTermCtx l ctx = prettySTerm l ctx.size ctx.nscope ctx.names
 
+prettySElimCtx :: Natural -> ConvCtx pass ctx -> SElim pass ctx -> Doc
+prettySElimCtx l ctx = prettySElim l ctx.size ctx.nscope ctx.names
+
 lookupLvl :: ConvCtx pass ctx -> Lvl ctx -> Name
 lookupLvl ctx l = lookupEnv (lvlToIdx ctx.size l) ctx.names
 
 mismatch :: Doc -> Doc -> Doc -> ConvM a
 mismatch t x y = throwError $ t <+> "mismatch:" <+> x <+> "/=" <+> y
 
-notConvertible :: ConvCtx pass ctx -> VTerm pass ctx -> VTerm pass ctx -> VTerm pass ctx -> ConvM ()
+notConvertible :: ConvCtx pass ctx -> VTerm pass ctx -> VTerm pass ctx -> VTerm pass ctx -> ConvM a
 notConvertible ctx ty x y = throwError $ ppSep
     [ "not convertible:"
     , prettyVTermCtx ctx ty <+> ":"
@@ -76,16 +83,22 @@ notConvertible ctx ty x y = throwError $ ppSep
     , prettyVTermCtx ctx y
     ]
 
-notConvertibleS :: Natural -> ConvCtx pass ctx -> VTerm pass ctx -> STerm pass ctx -> STerm pass ctx -> ConvM ()
-notConvertibleS l ctx ty x y = throwError $ ppSep
-    [ "not convertible:"
-    , "at level" <+> ppStr (show l)
+notConvertibleST :: Natural -> ConvCtx pass ctx -> VTerm pass ctx -> STerm pass ctx -> STerm pass ctx -> ConvM a
+notConvertibleST l ctx ty x y = throwError $ ppSep
+    [ "not convertible (at level" <+> ppStr (show l) <> "):"
     , prettyVTermCtx ctx ty <+> ":"
     , prettySTermCtx l ctx x <+> "/="
     , prettySTermCtx l ctx y
     ]
 
-notType :: ConvCtx pass ctx -> VTerm pass ctx -> ConvM ()
+notConvertibleSE :: Natural -> ConvCtx pass ctx -> SElim pass ctx -> SElim pass ctx -> ConvM a
+notConvertibleSE l ctx x y = throwError $ ppSep
+    [ "not convertible (at level" <+> ppStr (show l) <> "):"
+    , prettySElimCtx l ctx x <+> "/="
+    , prettySElimCtx l ctx y
+    ]
+
+notType :: ConvCtx pass ctx -> VTerm pass ctx -> ConvM a
 notType ctx ty = throwError $ ppSep
     [ "CONV PANIC: NOT A TYPE"
     , prettyVTermCtx ctx ty
@@ -364,7 +377,7 @@ convSTerm :: Natural -> ConvCtx pass ctx -> VTerm pass ctx -> STerm pass ctx -> 
 convSTerm l env ty x y = convSTerm' l env ty x y
 
 convSTerm' :: Natural -> ConvCtx pass ctx -> VTerm pass ctx -> STerm pass ctx -> STerm pass ctx -> ConvM ()
-convSTerm' l env _ty (SEmb x) (SEmb y) = convSElim' l env x y
+convSTerm' l env _ty (SEmb x) (SEmb y) = void (convSElim' l env x y)
 convSTerm' _ _ _ (SEIx x) (SEIx y)
     | x == y = return ()
 convSTerm' _ _   VUni SUni SUni = return ()
@@ -373,26 +386,51 @@ convSTerm' l ctx VUni (SPie x i a1 a b1) (SPie _ j a2 _ b2) = do
     convIcit ctx i j
     convSTerm' l ctx VUni a1 a2
     convSTerm' l (bind x a ctx) VUni (runSTZ ctx.size b1) (runSTZ ctx.size b2)
-convSTerm' l ctx VUni x y = notConvertibleS l ctx VUni x y
+convSTerm' l ctx VUni x y = notConvertibleST l ctx VUni x y
 
 convSTerm' _ _ ty x y = throwError $ "convSTerm not convertible" <> ppStr (show (ty, x, y))
 
-convSElim' :: Natural -> ConvCtx pass ctx -> SElim pass ctx -> SElim pass ctx -> ConvM ()
+convSElim' :: Natural -> ConvCtx pass ctx -> SElim pass ctx -> SElim pass ctx -> ConvM (VTerm pass ctx)
+convSElim' _ _ (SErr err) _ = throwError $ ppStr $ show err
+convSElim' _ _ _ (SErr err) = throwError $ ppStr $ show err
+
 convSElim' _ _ (SGbl x) (SGbl y)
     | x.name == y.name
-    = return ()
--- convSElim' env (SElm x) (SElm y) = convElim env x y
+    = return (unsafeCoerce x.typ)
+convSElim' l env a@(SGbl _) b = notConvertibleSE l env a b
+
 convSElim' _ env (SVar x) (SVar y)
     | x == y
-    = return ()
+    = return (lookupEnv (lvlToIdx env.size x) env.types)
 
     | otherwise
     = mismatch "variable" (prettyName (lookupLvl env x)) (prettyName (lookupLvl env y))
+convSElim' l env a@(SVar _) b = notConvertibleSE l env a b
 
-convSElim' NZ     env (SSpl _ x) (SSpl _ y) = convElim env x y
-convSElim' (NS l) env (SSpl x _) (SSpl y _) = convSElim' l env x y
+convSElim' NZ     env (SSpl _ x) (SSpl _ y) = do
+    convElim env x y
+    return (VCod TODO)
+convSElim' (NS l) env (SSpl x _) (SSpl y _) = do
+    ty <- convSElim' l env x y
+    return (VCod ty)
+convSElim' l env a@(SSpl _ _) b = notConvertibleSE l env a b
+
 convSElim' l      ctx (SApp i f _x) (SApp j g _y) = do
   convIcit ctx i j
   convSElim' l ctx f g
   -- TODO: check x y
-convSElim' _ _env x y = throwError $ "TODO: convSElim not convertible " <> ppStr ("\n" ++ show x ++ "\n" ++ show y)
+convSElim' l      env a@(SApp _ _ _) b = notConvertibleSE l env a b
+
+convSElim' l      env a@(SSel _ _) b = notConvertibleSE l env a b
+
+convSElim' l      env a@(SDeI _ _ _ _ _) b = notConvertibleSE l env a b
+
+convSElim' l      env a@(SInd _ _ _) b = notConvertibleSE l env a b
+
+convSElim' l      env a@(SSwh _ _ _) b = notConvertibleSE l env a b
+
+convSElim' l      env a@(SLet _ _ _) b = notConvertibleSE l env a b
+
+convSElim' l      env a@(SRgd _) b = notConvertibleSE l env a b
+
+convSElim' l      env a@(SAnn _ _) b = notConvertibleSE l env a b

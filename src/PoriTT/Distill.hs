@@ -14,6 +14,7 @@ import qualified Data.Set as Set
 import PoriTT.Base
 import PoriTT.Builtins
 import PoriTT.Conv
+import PoriTT.Rigid
 import PoriTT.Enum
 import PoriTT.Eval
 import PoriTT.ExceptState
@@ -244,7 +245,7 @@ distillTerm' _ (Quo _) _ =
 
 distillTerm' ctx (Emb e) a = do
     (e', b) <- distillElim' ctx e
-    case evalExceptState (convTerm (mkConvCtx ctx.size' ctx.names' ctx.types' ctx.nscope) VUni a b) () of
+    case evalExceptState (convTerm (mkConvCtx ctx.size' ctx.names' ctx.types' ctx.nscope) VUni a b) initialRigidState of
         Right () -> pure e'
         Left _   -> Nothing
 

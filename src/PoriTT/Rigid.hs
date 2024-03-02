@@ -4,6 +4,9 @@ module PoriTT.Rigid (
     prettyRigidVar,
     -- * Rigid map
     RigidMap,
+    emptyRigidMap,
+    insertRigidMap,
+    rigidMapSink,
     -- * Rigid State
     RigidState,
     initialRigidState,
@@ -51,10 +54,19 @@ instance Sinkable RigidVar where
 -- | Meta map: map indexed by Rigids
 type RigidMap :: Ctx -> Type -> Type
 newtype RigidMap ctx a = RigidMap (IM.IntMap a)
-  deriving (Eq, Ord)
+  deriving (Eq, Ord, Functor)
 
 instance Show a => Show (RigidMap ctx a) where
     showsPrec d (RigidMap m) = showsPrec d (IM.toList m)
+
+emptyRigidMap :: RigidMap ctx a
+emptyRigidMap = RigidMap IM.empty
+
+insertRigidMap :: RigidVar ctx -> a -> RigidMap ctx a -> RigidMap ctx a
+insertRigidMap (RigidVar k) v (RigidMap m) = RigidMap (IM.insert k v m)
+
+rigidMapSink :: RigidMap ctx a -> RigidMap (S ctx) a
+rigidMapSink = coerce
 
 -------------------------------------------------------------------------------
 -- RigidState

@@ -91,9 +91,7 @@ type %refl : Id {Code ⟦ Bool ⟧} ⟦ true ⟧ ⟦ true ⟧
 Error: examples/staging/basics.ptt:34:6: Couldn't match types
   • expected: C ⟦ not false ⟧
   • actual: C ⟦ true ⟧
-  • TODO: convSElim not convertible 
-    SApp Ecit (SGbl "not") (SEmb (SGbl "false"))
-    SGbl "true"
+  • not convertible (at level 0): not false /= true
   • When checking that Cx has type C ⟦ not false ⟧
   • When checking that λ Cx ↦ Cx has type C ⟦ true ⟧ → C ⟦ not false ⟧
   • When checking that

@@ -33,6 +33,7 @@ import PoriTT.Lint
 import PoriTT.Macro
 import PoriTT.Name
 import PoriTT.Opts
+import PoriTT.Rigid
 import PoriTT.Parser
 import PoriTT.PP
 import PoriTT.Quote
@@ -153,7 +154,7 @@ batchFile fn = execStateT $ do
         let names = nameScopeFromEnv env
 
         et' <- either printError return $ lintElim (emptyLintCtx names) e
-        case evalExceptState (convTerm (mkConvCtx SZ EmptyEnv EmptyEnv names) VUni et et') () of
+        case evalExceptState (convTerm (mkConvCtx SZ EmptyEnv EmptyEnv names) VUni et et') initialRigidState of
             Right _  -> pure ()
             Left msg -> printError $ ppVCat
                 [ pass <+> "lint failed"

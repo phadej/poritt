@@ -9,6 +9,7 @@ module PoriTT.Quote (
     prettyVElim,
     prettyVTerm,
     prettySTerm,
+    prettySElim,
     nfTerm,
     nfElim,
     preElim,
@@ -159,3 +160,8 @@ prettySTerm :: Natural -> Size ctx -> NameScope -> Env ctx Name -> STerm pass ct
 prettySTerm l s ns env t = case quoteSTerm l s t of
     Left err -> ppStr (show err) -- This shouldn't happen if type-checker is correct.
     Right n  -> prettyTerm ns env 0 n
+
+prettySElim :: Natural -> Size ctx -> NameScope -> Env ctx Name -> SElim pass ctx -> Doc
+prettySElim l s ns env e = case quoteSElim l s e of
+    Left err -> ppStr (show err) -- This shouldn't happen if type-checker is correct.
+    Right n  -> prettyElim ns env 0 n

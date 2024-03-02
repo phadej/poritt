@@ -25,6 +25,7 @@ import PoriTT.PP
 import PoriTT.Quote
 import PoriTT.Stage
 import PoriTT.Term
+import PoriTT.Rigid
 import PoriTT.Used
 import PoriTT.Value
 import PoriTT.Well
@@ -222,7 +223,7 @@ checkInfer :: CheckCtx ctx ctx' -> Well (HasTerms NoMetas) ctx -> VTerm NoMetas 
 checkInfer ctx e            a = do
     (e', et) <- checkElim ctx e
     -- traceM $ "CONV: " ++ show (ctx.names', e, et, a)
-    case evalExceptState (convTerm (mkConvCtx ctx.size ctx.names' ctx.types' ctx.nscope) VUni a et) () of
+    case evalExceptState (convTerm (mkConvCtx ctx.size ctx.names' ctx.types' ctx.nscope) VUni a et) initialRigidState of
         Right () -> pure (Emb e')
         Left err -> checkError ctx "Couldn't match types"
             [ "expected:" <+> prettyVTermCtx ctx a
