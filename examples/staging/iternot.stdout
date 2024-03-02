@@ -121,7 +121,7 @@ iterNot3 = iterNot three
 
 define iterNotCode
   : Nat → Code ⟦ Bool ⟧ → Code ⟦ Bool ⟧
-  = λ n m ↦ iterNat (Code ⟦ Bool ⟧) m (λ acc ↦ ⟦ not $acc ⟧) n
+  = λ n m ↦ iterNat (Code ⟦ Bool ⟧) m (λ acc ↦ ⟦ not ∫acc ⟧) n
 
 define iterNot3' : Bool → Bool = λ p ↦ not (not (not p))
 

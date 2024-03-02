@@ -60,24 +60,24 @@ define U1 : U = U
 
 define U2 : U = U
 
-define timely : ∀ (A : CodeU) → Code ⟦ $A → $A ⟧ = λ A ↦ ⟦ λ x ↦ x ⟧
+define timely : ∀ (A : CodeU) → Code ⟦ ∫A → ∫A ⟧ = λ A ↦ ⟦ λ x ↦ x ⟧
 
 define appE
-  : ∀ (A : CodeU) (B : CodeU) → Code ⟦ $A → $B ⟧ → Code A → Code B
-  = λ A B f x ↦ ⟦ $f $x ⟧
+  : ∀ (A : CodeU) (B : CodeU) → Code ⟦ ∫A → ∫B ⟧ → Code A → Code B
+  = λ A B f x ↦ ⟦ ∫f ∫x ⟧
 
 define depAppE
   : ∀
-    (A : CodeU) (B : Code ⟦ $A → U ⟧) →
-    Code ⟦ ∀ (x : $A) → $B x ⟧ → ∀ (x : Code A) → Code ⟦ $B $x ⟧
-  = λ _ _ f x ↦ ⟦ $f $x ⟧
+    (A : CodeU) (B : Code ⟦ ∫A → U ⟧) →
+    Code ⟦ ∀ (x : ∫A) → ∫B x ⟧ → ∀ (x : Code A) → Code ⟦ ∫B ∫x ⟧
+  = λ _ _ f x ↦ ⟦ ∫f ∫x ⟧
 
 define twice
-  : ∀ (A : CodeU) → (Code A → Code A) → Code ⟦ $A → $A ⟧
-  = λ A f ↦ ⟦ λ x ↦ $(f (f ⟦ x ⟧)) ⟧
+  : ∀ (A : CodeU) → (Code A → Code A) → Code ⟦ ∫A → ∫A ⟧
+  = λ A f ↦ ⟦ λ x ↦ ∫(f (f ⟦ x ⟧)) ⟧
 
 twiceid : Code ⟦ Bool → Bool ⟧
-twiceid = twice ⟦ Bool ⟧ (λ x ↦ ⟦ not $x ⟧)
+twiceid = twice ⟦ Bool ⟧ (λ x ↦ ⟦ not ∫x ⟧)
 
 twiceid1 : Bool → Bool
 twiceid1 = λ x ↦ not (not x)

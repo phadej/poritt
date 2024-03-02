@@ -119,7 +119,7 @@ power5 = power five
 
 define powerCode
   : Nat → Code ⟦ Nat ⟧ → Code ⟦ Nat ⟧
-  = λ n m ↦ iterNat (Code ⟦ Nat ⟧) ⟦ succ zero ⟧ (λ acc ↦ ⟦ mult $m $acc ⟧) n
+  = λ n m ↦ iterNat (Code ⟦ Nat ⟧) ⟦ succ zero ⟧ (λ acc ↦ ⟦ mult ∫m ∫acc ⟧) n
 
 define power5'
   : Nat → Nat

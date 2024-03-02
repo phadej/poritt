@@ -115,6 +115,7 @@ uni True "exists" = "∃"
 uni True "*"      = "×"
 uni True "mu"     = "μ"
 uni True "\\"     = "λ"
+uni True "$"      = "∫"
 uni _    s        = s
 
 ppTyArr :: Doc

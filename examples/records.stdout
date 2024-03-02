@@ -280,23 +280,23 @@ define Staged
 define stagedEq'
   : ∀
     (xs : List CodeU) →
-    NP CodeU (λ x ↦ Code ⟦ $x → $x → Bool ⟧) xs →
+    NP CodeU (λ x ↦ Code ⟦ ∫x → ∫x → Bool ⟧) xs →
     NP CodeU C xs → NP CodeU C xs → C ⟦ Bool ⟧
   = indList
     CodeU
     (λ ys ↦
-       NP CodeU (λ x ↦ Code ⟦ $x → $x → Bool ⟧) ys →
+       NP CodeU (λ x ↦ Code ⟦ ∫x → ∫x → Bool ⟧) ys →
        NP CodeU C ys → NP CodeU C ys → C ⟦ Bool ⟧)
     (λ _ _ _ ↦ ⟦ :1 ⟧)
     (λ z zs rec es ls rs ↦
        ⟦ and
-         ($(es .fst) $(ls .fst) $(rs .fst))
-         $(rec (es .snd) (ls .snd) (rs .snd)) ⟧)
+         (∫(es .fst) ∫(ls .fst) ∫(rs .fst))
+         ∫(rec (es .snd) (ls .snd) (rs .snd)) ⟧)
 
 define stagedEq
   : ∀
     (A : U) (g : Staged A) →
-    NP CodeU (λ x ↦ Code ⟦ $x → $x → Bool ⟧) (g .snd .fst) →
+    NP CodeU (λ x ↦ Code ⟦ ∫x → ∫x → Bool ⟧) (g .snd .fst) →
     Code (g .fst) → Code (g .fst) → Code ⟦ Bool ⟧
   = λ _ g eq x y ↦
     g
@@ -316,7 +316,7 @@ define FooCodeDesc
 
 define sfromFoo
   : Code ⟦ Foo ⟧ → ∀ (r : CodeU) → (NP CodeU C FooCodeDesc → Code r) → Code r
-  = λ x _r kont ↦ kont (⟦ $x :0 ⟧ , ⟦ $x :1 ⟧ , ⟦ $x :2 ⟧ , tt)
+  = λ x _r kont ↦ kont (⟦ ∫x :0 ⟧ , ⟦ ∫x :1 ⟧ , ⟦ ∫x :2 ⟧ , tt)
 
 define stoFoo
   : NP CodeU C FooCodeDesc → Code ⟦ Foo ⟧
@@ -324,7 +324,7 @@ define stoFoo
     ⟦ λ field ↦
       switch field (λ field0 ↦
                       switch field0 (λ ds ↦ U) {:0 ↦ Bool; :1 ↦ Nat; :2 ↦ Unit})
-        {:0 ↦ $(x .fst); :1 ↦ $(x .snd .fst); :2 ↦ $(x .snd .snd .fst)} ⟧
+        {:0 ↦ ∫(x .fst); :1 ↦ ∫(x .snd .fst); :2 ↦ ∫(x .snd .snd .fst)} ⟧
 
 define StagedFoo : Staged Foo = ⟦ Foo ⟧ , FooCodeDesc , sfromFoo , stoFoo
 
