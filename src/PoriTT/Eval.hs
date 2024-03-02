@@ -57,7 +57,7 @@ force v                   = v
 -------------------------------------------------------------------------------
 
 run :: Size ctx -> ClosureT pass ctx -> VElim pass ctx -> VTerm pass ctx
-run s (Closure env f) t = evalTerm' s (env :> EvalElim t (SErr EvalErrorStg)) f
+run s (Closure env f) t = evalTerm' s (env :> velim t) f
 
 -- | Run closure with (neutral) variable as an argument.
 runZ :: Size ctx -> ClosureT pass ctx -> VTerm pass (S ctx)
