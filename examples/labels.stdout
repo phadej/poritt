@@ -35,6 +35,3 @@ define Void : U = #[]
 define absurd : Void → ∀ (A : U) → A = λ x A ↦ switch x (λ _ ↦ A) {}
 
 define absurd' : Void → ∀ (A : U) → A = []
-
-end-of-file "examples/labels.ptt"
-

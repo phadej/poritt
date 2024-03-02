@@ -15,7 +15,7 @@ sym = λ A x y x=y ↦ x=y (λ z ↦ Id z x) (refl x)
 trans : ∀ (A : U) (x : A) (y : A) (z : A) → Id x y → Id y z → Id x z
 trans = λ A x y z x=y y=z ↦ y=z (λ v ↦ Id x v) x=y
 
-end-of-file "examples/lib/leibniz.ptt"
+end-of-file "lib/leibniz.ptt"
 
 Error: examples/skipped.ptt:3:23: Skipped term
   • type: U

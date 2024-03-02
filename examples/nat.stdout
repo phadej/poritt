@@ -100,7 +100,7 @@ eqBool = [ [ :true :false ] [ :false :true ] ]
 eqUnit : Unit → Unit → Bool
 eqUnit = λ _ _ ↦ :true
 
-end-of-file "examples/lib/bool.ptt"
+end-of-file "bool.ptt"
 
 isZero : Nat → Bool
 isZero = λ n ↦ caseNat n Bool :true (λ _ ↦ :false)
@@ -108,7 +108,7 @@ isZero = λ n ↦ caseNat n Bool :true (λ _ ↦ :false)
 eqNat : Nat → Nat → Bool
 eqNat = iterNat (Nat → Bool) isZero (λ rec m ↦ caseNat m Bool :false rec)
 
-end-of-file "examples/lib/nat.ptt"
+end-of-file "lib/nat.ptt"
 
 include "lib/leibniz.ptt"
 
@@ -127,7 +127,7 @@ sym = λ A x y x=y ↦ x=y (λ z ↦ Id z x) (refl x)
 trans : ∀ (A : U) (x : A) (y : A) (z : A) → Id x y → Id y z → Id x z
 trans = λ A x y z x=y y=z ↦ y=z (λ v ↦ Id x v) x=y
 
-end-of-file "examples/lib/leibniz.ptt"
+end-of-file "lib/leibniz.ptt"
 
 section numbers
 
@@ -164,6 +164,3 @@ section Syntax sugar
 type :zero : Nat : Nat
 
 type (λ n ↦ :succ n) : Nat → Nat : Nat → Nat
-
-end-of-file "examples/nat.ptt"
-

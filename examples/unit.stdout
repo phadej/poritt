@@ -13,6 +13,3 @@ eval tt = tt : Unit
 options --distill
 
 eval tt = [] : Unit
-
-end-of-file "examples/unit.ptt"
-

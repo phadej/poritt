@@ -9,6 +9,3 @@ define snd : A = :1
 define toSet : A → U = [ A U ]
 
 define toSet' : A → U = [ A U ]
-
-end-of-file "examples/shadow-labels.ptt"
-

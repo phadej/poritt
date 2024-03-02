@@ -59,7 +59,7 @@ indList
              :cons ↦ λ e' allE ↦ Mcons (e' .fst) (e' .snd .fst) (allE .fst)})
            (d .snd))
 
-end-of-file "examples/lib/list.ptt"
+end-of-file "lib/list.ptt"
 
 include "lib/bool.ptt"
 
@@ -94,7 +94,7 @@ eqBool = [ [ :true :false ] [ :false :true ] ]
 eqUnit : Unit → Unit → Bool
 eqUnit = λ _ _ ↦ :true
 
-end-of-file "examples/lib/bool.ptt"
+end-of-file "lib/bool.ptt"
 
 define ex
   : List Bool
@@ -155,6 +155,3 @@ eval curryNP U (λ x ↦ x) (cons U #[:a :b :c] (cons U #[:x :y :z] (nil U))) Bo
   = λ f x x0 ↦ f (x , x0 , :tt)
   : (NP U (λ x ↦ x) (cons U #[:a :b :c] (cons U #[:x :y :z] (nil U))) → Bool) →
   curryFun U (λ x ↦ x) (cons U #[:a :b :c] (cons U #[:x :y :z] (nil U))) Bool
-
-end-of-file "examples/list.ptt"
-

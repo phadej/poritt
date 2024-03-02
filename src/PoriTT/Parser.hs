@@ -28,9 +28,8 @@ data Stmt
     | InfoStmt Name                       -- ^ information about a name: @info x@
     | InlineStmt Name                     -- ^ mark binding to be inlined: @inline x@
     | MacroStmt Name [Name] Raw           -- ^ define new macro: @macro bar x y z = t@
-    | IncludeStmt FilePath                -- ^ include source file: @include "lib.ptt"@
+    | IncludeStmt FilePath [Stmt]         -- ^ include source file: @include "lib.ptt"@
     | SectionStmt Text                    -- ^ section statement: @section "definitions"@
-    | DoneStmt FilePath                   -- ^ end-of-file
     | OptionsStmt [String]                -- ^ options statement
   deriving Show
 
@@ -135,7 +134,7 @@ includeP :: Parser Stmt
 includeP = do
     tokenP TkInclude
     fp <- T.unpack <$> stringP
-    return (IncludeStmt fp)
+    return (IncludeStmt fp [])
 
 sectionP :: Parser Stmt
 sectionP = do

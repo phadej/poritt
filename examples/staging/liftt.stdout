@@ -4,6 +4,3 @@ CodeU : U
 CodeU = Code ⟦ U ⟧
 
 define codeId : ∀ (A : CodeU) → Code ⟦ ∫A → ∫A ⟧ = λ A ↦ ⟦ λ x ↦ the ∫A x ⟧
-
-end-of-file "examples/staging/liftt.ptt"
-

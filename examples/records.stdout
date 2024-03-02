@@ -31,7 +31,7 @@ eqBool = [ [ :true :false ] [ :false :true ] ]
 eqUnit : Unit → Unit → Bool
 eqUnit = λ _ _ ↦ :true
 
-end-of-file "examples/lib/bool.ptt"
+end-of-file "lib/bool.ptt"
 
 include "lib/nat.ptt"
 
@@ -104,7 +104,11 @@ mult = λ n m ↦ iterNat Nat zero (plus m) n
 
 include "bool.ptt"
 
+include "examples/lib/bool.ptt"
+
 end-of-file "examples/lib/bool.ptt"
+
+end-of-file "bool.ptt"
 
 isZero : Nat → Bool
 isZero = λ n ↦ caseNat n Bool :true (λ _ ↦ :false)
@@ -112,7 +116,7 @@ isZero = λ n ↦ caseNat n Bool :true (λ _ ↦ :false)
 eqNat : Nat → Nat → Bool
 eqNat = iterNat (Nat → Bool) isZero (λ rec m ↦ caseNat m Bool :false rec)
 
-end-of-file "examples/lib/nat.ptt"
+end-of-file "lib/nat.ptt"
 
 include "lib/list.ptt"
 
@@ -175,7 +179,7 @@ indList
              :cons ↦ λ e' allE ↦ Mcons (e' .fst) (e' .snd .fst) (allE .fst)})
            (d .snd))
 
-end-of-file "examples/lib/list.ptt"
+end-of-file "lib/list.ptt"
 
 include "lib/leibniz.ptt"
 
@@ -194,7 +198,7 @@ sym = λ A x y x=y ↦ x=y (λ z ↦ Id z x) (refl x)
 trans : ∀ (A : U) (x : A) (y : A) (z : A) → Id x y → Id y z → Id x z
 trans = λ A x y z x=y y=z ↦ y=z (λ v ↦ Id x v) x=y
 
-end-of-file "examples/lib/leibniz.ptt"
+end-of-file "lib/leibniz.ptt"
 
 section Records
 
@@ -352,6 +356,3 @@ type %refl : Id {Bool} (eqFoo foo1 foo2) :false : Id (eqFoo foo1 foo2) :false
 type %refl : Id {Bool} (eqFooS foo1 foo2) :false : Id (eqFooS foo1 foo2) :false
 
 type %refl : Id {Bool} (eqFooG foo1 foo2) :false : Id (eqFooG foo1 foo2) :false
-
-end-of-file "examples/records.ptt"
-

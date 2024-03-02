@@ -28,6 +28,3 @@ eqBool = [ [ :true :false ] [ :false :true ] ]
 
 eqUnit : Unit → Unit → Bool
 eqUnit = λ _ _ ↦ :true
-
-end-of-file "examples/lib/bool.ptt"
-

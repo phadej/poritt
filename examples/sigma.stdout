@@ -19,6 +19,3 @@ eval UnitPoint .snd = [] : UnitPoint .fst
 eval point UnitPoint = [] : UnitPoint .fst
 
 eval (tt , tt , tt : Triple Unit Unit Unit) .snd .snd = [] : Unit
-
-end-of-file "examples/sigma.ptt"
-

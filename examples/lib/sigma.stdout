@@ -6,6 +6,3 @@ indSig
     (A : U) (B : A → U) (e : sig A B) (M : sig A B → U) →
     (∀ (x : A) (y : B x) → M (x , y)) → M e
 indSig = λ A B e M m ↦ m (e .fst) (e .snd)
-
-end-of-file "examples/lib/sigma.ptt"
-

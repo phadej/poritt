@@ -7,6 +7,3 @@ define U3 : U = U
 define U4 : U = U
 
 define T : Code ⟦ U ⟧ = ⟦ let x = U : U in x ⟧
-
-end-of-file "examples/simpl.ptt"
-

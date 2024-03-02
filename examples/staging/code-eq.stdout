@@ -15,7 +15,7 @@ sym = λ A x y x=y ↦ x=y (λ z ↦ Id z x) (refl x)
 trans : ∀ (A : U) (x : A) (y : A) (z : A) → Id x y → Id y z → Id x z
 trans = λ A x y z x=y y=z ↦ y=z (λ v ↦ Id x v) x=y
 
-end-of-file "examples/staging/../lib/leibniz.ptt"
+end-of-file "../lib/leibniz.ptt"
 
 type %refl : Id {Code ⟦ U ⟧} ⟦ Unit → Unit ⟧ ⟦ Unit → Unit ⟧
   : Id {Code ⟦ U ⟧} ⟦ Unit → Unit ⟧ ⟦ Unit → Unit ⟧
@@ -120,6 +120,3 @@ fail %refl
           {Code ⟦ Unit ⟧}
           ⟦ let x = tt : Unit in let y = tt : Unit in x ⟧
           ⟦ let u = tt : Unit in let v = tt : Unit in v ⟧
-
-end-of-file "examples/staging/code-eq.ptt"
-

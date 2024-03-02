@@ -1,5 +1,2 @@
 id : ∀ (A : U) → A → A
 id = let i = (λ _ x ↦ x) : ∀ (A : U) → A → A in i
-
-end-of-file "examples/let.ptt"
-

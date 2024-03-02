@@ -56,6 +56,3 @@ indList
             {:nil ↦ λ e' allE ↦ Mnil;
              :cons ↦ λ e' allE ↦ Mcons (e' .fst) (e' .snd .fst) (allE .fst)})
            (d .snd))
-
-end-of-file "examples/lib/list.ptt"
-

@@ -98,13 +98,10 @@ eqBool = [ [ :true :false ] [ :false :true ] ]
 eqUnit : Unit → Unit → Bool
 eqUnit = λ _ _ ↦ :true
 
-end-of-file "examples/lib/bool.ptt"
+end-of-file "bool.ptt"
 
 isZero : Nat → Bool
 isZero = λ n ↦ caseNat n Bool :true (λ _ ↦ :false)
 
 eqNat : Nat → Nat → Bool
 eqNat = iterNat (Nat → Bool) isZero (λ rec m ↦ caseNat m Bool :false rec)
-
-end-of-file "examples/lib/nat.ptt"
-

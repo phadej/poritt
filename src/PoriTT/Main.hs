@@ -101,7 +101,7 @@ readStatements fn = do
     cfn <- lift (canonicalizePath fn)
     env <- get
     if Set.member cfn env.included
-    then return [DoneStmt fn]
+    then return [IncludeStmt fn []]
     else do
         -- mark as included
         put $ env { included = Set.insert cfn env.included }
@@ -113,12 +113,12 @@ readStatements fn = do
         statements' <- either (printError . ppStr . show) return $
             P.parse (stmtsP <* eofP) fn (initLexerState fn bs)
 
-        let statements = statements' ++ [DoneStmt fn]
+        let statements = statements'
 
         -- recurse on include stmts.
         fmap concat $ for statements $ \stmt -> case stmt of
-            IncludeStmt fn' -> fmap (stmt :) $ readStatements (takeDirectory fn FP.</> fn')
-            _               -> return [stmt]
+            IncludeStmt fn' _ -> pure . IncludeStmt fn' <$> readStatements (takeDirectory fn FP.</> fn')
+            _                 -> return [stmt]
 
 echo :: Doc -> Doc -> [Doc] -> MainM ()
 echo cmd args extras = do
@@ -141,12 +141,19 @@ batchFile
 batchFile fn = execStateT $ do
     statements <- readStatements fn
 
-    for_ statements $ \s -> do
-        stmt s
-        case s of
-            TypeDefineStmt {} -> return ()
-            _                 -> printDoc ""
+    case statements of
+        []   -> return ()
+        s:ss -> do
+            stmt s
+            for_ ss stmtN
   where
+    stmtN :: Stmt -> MainM ()
+    stmtN s = do
+        -- print newline only if we are not pending the def
+        Environment { pending = p } <- get
+        when (isNothing p) $ printDoc ""
+        stmt s
+
     lint :: Doc -> Elim NoMetas EmptyCtx -> VTerm NoMetas EmptyCtx -> MainM ()
     lint pass e et = do
         env <- get
@@ -481,10 +488,11 @@ batchFile fn = execStateT $ do
     stmt (SectionStmt title) = do
         printDoc $ ppAnnotate ACmd "section" <+> ppText title
 
-    stmt (IncludeStmt fp) = do
+    stmt (IncludeStmt fp stmts) = do
         printDoc $ ppAnnotate ACmd "include" <+> prettyFilePath fp
-
-    stmt (DoneStmt fp) = do
+        for_ stmts stmtN
+        checkNoPending
+        printDoc ""
         printDoc $ ppAnnotate ACmd "end-of-file" <+> prettyFilePath fp
 
     stmt (OptionsStmt args) = do
@@ -528,6 +536,13 @@ prettyVElimZ opts unfold ns e          = case quoteElim unfold SZ e of
     Left err -> ppStr (show err)           -- This shouldn't happen if type-checker is correct.
     Right e' -> prettyElimZ' opts ns e'
 
+-- always prints
+printDoc' :: Doc -> MainM ()
+printDoc' d = do
+    Environment { handle = hdl, ppopts = ppOpts, opts = _opts } <- get
+    lift $ hPutStrLn hdl $ ppRender ppOpts d
+
+-- prints only if not inside include (controlled by options)
 printDoc :: Doc -> MainM ()
 printDoc d = do
     Environment { handle = hdl, ppopts = ppOpts, opts = _opts } <- get
@@ -535,10 +550,10 @@ printDoc d = do
 
 printErrors :: Foldable f => f Doc -> MainM a
 printErrors msgs = do
-    for_ msgs $ \msg -> printDoc $ ppAnnotate AErr "Error:" <+> msg
+    for_ msgs $ \msg -> printDoc' $ ppAnnotate AErr "Error:" <+> msg
     lift exitFailure
 
 printError :: Doc -> MainM a
 printError msg = do
-    printDoc $ ppAnnotate AErr "Error:" <+> msg
+    printDoc' $ ppAnnotate AErr "Error:" <+> msg
     lift exitFailure
