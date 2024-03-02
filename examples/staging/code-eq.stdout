@@ -37,8 +37,15 @@ fail %refl : Id {Code ⟦ U ⟧} ⟦ Unit → Unit ⟧ ⟦ Unit → U ⟧
 id : ∀ {A : U} → A → A
 id = λ x ↦ x
 
-type %refl : Id {Code ⟦ U ⟧} ⟦ id {U} Unit ⟧ ⟦ id {U} Unit ⟧
-  : Id {Code ⟦ U ⟧} ⟦ id {U} Unit ⟧ ⟦ id {U} Unit ⟧
+type %refl
+    : Id
+      {Code ⟦ U ⟧}
+      ⟦ let x = Unit in id {U} Unit ⟧
+      ⟦ let x = Unit in id {U} Unit ⟧
+  : Id
+    {Code ⟦ U ⟧}
+    ⟦ let x = Unit : U in id {U} Unit ⟧
+    ⟦ let x = Unit : U in id {U} Unit ⟧
 
 type %refl
     : Id {Code ⟦ Unit ⟧} ⟦ let x = tt : Unit in x ⟧ ⟦ let x = tt : Unit in x ⟧
@@ -59,7 +66,7 @@ fail %refl
       {Code ⟦ Unit ⟧}
       ⟦ let x = tt : Unit in let y = tt : Unit in x ⟧
       ⟦ let u = tt : Unit in let v = tt : Unit in v ⟧
-  examples/staging/code-eq.ptt:20:6: Couldn't match types
+  examples/staging/code-eq.ptt:22:6: Couldn't match types
     • expected: C ⟦ let u = tt : Unit in let v = tt : Unit in v ⟧
     • actual: C ⟦ let x = tt : Unit in let y = tt : Unit in x ⟧
     • not convertible (at level 0): !1 /= !0

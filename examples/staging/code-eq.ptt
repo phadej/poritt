@@ -7,7 +7,9 @@ fail %refl : Id {Code [| U |]} [| Unit -> Unit |] [| Unit -> U |]
 id : forall {A : U} -> A -> A
 id {_} x = x
 
-type %refl : Id {Code [| U |]} [| id {U} Unit |] [| id {U} Unit |]
+type %refl : Id {Code [| U |]} [| let x = Unit in id {U} Unit |] [| let x = Unit in id {U} Unit |]
+
+-- fail %refl : Id {Code [| U |]} [| let x = Unit in id {U} Unit |] [| let x = Unit in id {U} x |]
 
 type %refl : Id {Code [| Unit |]}
   [| let x = tt : Unit in x |]
