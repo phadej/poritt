@@ -130,23 +130,29 @@ bind' (CheckCtx xs xs' ns v ts ts' ss cs s wk l pp) x t a = CheckCtx
     }
 
 -------------------------------------------------------------------------------
+-- Monad
+-------------------------------------------------------------------------------
+
+type CheckM = Either Doc
+
+-------------------------------------------------------------------------------
 -- Errors
 -------------------------------------------------------------------------------
 
-checkError :: CheckCtx ctx ctx' -> Doc -> [Doc] -> Either Doc a
-checkError ctx msg extras = Left $ ppHanging
+checkError :: CheckCtx ctx ctx' -> Doc -> [Doc] -> CheckM a
+checkError ctx msg extras = throwError $ ppHanging
     (prettyLoc ctx.loc <> ":" <+> msg)
     [ ppBullet <+> ppAlign e
     | e <- extras ++ take 5 ctx.doc
     ]
 
-notType :: CheckCtx ctx ctx' -> VTerm NoMetas ctx' -> Either Doc (Term NoMetas ctx)
+notType :: CheckCtx ctx ctx' -> VTerm NoMetas ctx' -> CheckM (Term NoMetas ctx)
 notType ctx ty = checkError ctx "Checking against non-type"
     [ "not-type:" <+> prettyVTermCtx ctx ty
     ]
 
-invalidTerm :: CheckCtx ctx ctx' -> Doc -> VTerm NoMetas ctx' -> Well (HasTerms NoMetas) ctx -> Either Doc (Term NoMetas ctx)
-invalidTerm ctx cls ty t =  checkError ctx ("Checking against" <+> cls)
+invalidTerm :: CheckCtx ctx ctx' -> Doc -> VTerm NoMetas ctx' -> Well (HasTerms NoMetas) ctx -> CheckM (Term NoMetas ctx)
+invalidTerm ctx cls ty t = checkError ctx ("Checking against" <+> cls)
     [ "type:" <+> prettyVTermCtx ctx ty
     , "term:" <+> prettyWell ctx.nscope ctx.names 0 t
     ]
@@ -173,7 +179,7 @@ checkTerm
     :: CheckCtx ctx ctx'               -- ^ Type checking context
     -> Well (HasTerms NoMetas) ctx     -- ^ Well scoped term
     -> VTerm NoMetas ctx'              -- ^ Expected type
-    -> Either Doc (Term NoMetas ctx)   -- ^ Type checked term
+    -> CheckM (Term NoMetas ctx)   -- ^ Type checked term
 checkTerm ctx t a = do
     let d = ppSep
             [ "When checking that"
@@ -187,7 +193,7 @@ checkTerm ctx t a = do
 checkElim
     :: CheckCtx ctx ctx'                                   -- ^ Type checking context
     -> Well (HasTerms NoMetas) ctx                         -- ^ Well scoped elimination
-    -> Either Doc (Elim NoMetas ctx, VTerm NoMetas ctx')   -- ^ Type checked elimination and its type
+    -> CheckM (Elim NoMetas ctx, VTerm NoMetas ctx')   -- ^ Type checked elimination and its type
 checkElim ctx e = do
     let d = ppSep
             [ "When infering type of"
@@ -199,7 +205,7 @@ checkElim ctx e = do
 -- Check helpers
 -------------------------------------------------------------------------------
 
-checkIcit :: CheckCtx ctx ctx' -> Icit -> Icit -> Either Doc ()
+checkIcit :: CheckCtx ctx ctx' -> Icit -> Icit -> CheckM ()
 checkIcit ctx i j
     | i == j    = return ()
     | otherwise = checkError ctx "Icity mismatch"
@@ -207,19 +213,19 @@ checkIcit ctx i j
         , "actual:" <+> prettyIcit i
         ]
 
-checkHole :: CheckCtx ctx ctx' -> Name -> VTerm NoMetas ctx' -> Either Doc (Term NoMetas ctx)
+checkHole :: CheckCtx ctx ctx' -> Name -> VTerm NoMetas ctx' -> CheckM (Term NoMetas ctx)
 checkHole ctx n ty = checkError ctx ("Checking a hole" <+> prettyHole n) $
     [ "type:" <+> prettyVTermCtx ctx ty
     ] ++
     (prettyNamesTypes ctx.size ctx.nscope ctx.names' ctx.names ctx.types)
 
-checkSkipped :: CheckCtx ctx ctx' -> VTerm NoMetas ctx' -> Either Doc (Term NoMetas ctx)
+checkSkipped :: CheckCtx ctx ctx' -> VTerm NoMetas ctx' -> CheckM (Term NoMetas ctx)
 checkSkipped ctx ty = checkError ctx ("Skipped term") $
     [ "type:" <+> prettyVTermCtx ctx ty
     ] ++
     (prettyNamesTypes ctx.size ctx.nscope ctx.names' ctx.names ctx.types)
 
-checkInfer :: CheckCtx ctx ctx' -> Well (HasTerms NoMetas) ctx -> VTerm NoMetas ctx' -> Either Doc (Term NoMetas ctx)
+checkInfer :: CheckCtx ctx ctx' -> Well (HasTerms NoMetas) ctx -> VTerm NoMetas ctx' -> CheckM (Term NoMetas ctx)
 checkInfer ctx e            a = do
     (e', et) <- checkElim ctx e
     -- traceM $ "CONV: " ++ show (ctx.names', e, et, a)
@@ -231,21 +237,21 @@ checkInfer ctx e            a = do
             , err
             ]
 
-checkLabel :: CheckCtx ctx ctx' -> Label -> [Label] -> Either Doc EnumIdx
+checkLabel :: CheckCtx ctx ctx' -> Label -> [Label] -> CheckM EnumIdx
 checkLabel ctx l0 ls0 = go 0 ls0 where
-    go :: Int -> [Label] -> Either Doc EnumIdx
+    go :: Int -> [Label] -> CheckM EnumIdx
     go !_ [] = checkError ctx ("label" <+> prettyLabel l0 <+> "is not in the set" <+> prettyVTermCtx ctx (VFin ls0)) []
     go !i (l:ls)
         | l == l0   = return (EnumIdx i)
         | otherwise = go (i + 1) ls
 
-checkEnumIdx :: CheckCtx ctx ctx' -> EnumIdx -> [Label] -> Either Doc EnumIdx
+checkEnumIdx :: CheckCtx ctx ctx' -> EnumIdx -> [Label] -> CheckM EnumIdx
 checkEnumIdx ctx i@(EnumIdx i') ls0
     | i' < length ls0 = return i
     | otherwise = checkError ctx ("enum index " <+> prettyEnumIdx i <+> "is out of bounds of" <+> prettyVTermCtx ctx (VFin ls0)) []
 
 -- TODO: Better name for this.
-foo :: CheckCtx ctx ctx' -> [Label] -> [Either Label EnumIdx := a] -> Either Doc (EnumList a)
+foo :: CheckCtx ctx ctx' -> [Label] -> [Either Label EnumIdx := a] -> CheckM (EnumList a)
 foo ctx ls0 m0 = go 0 [] m0 ls0 where
     go _ tgt src []
         | null src   = return $ makeEnumList $ reverse tgt
@@ -283,7 +289,7 @@ checkTerm'
     :: CheckCtx ctx ctx'                -- ^ Type checking context
     -> Well (HasTerms NoMetas) ctx      -- ^ Well scoped term
     -> VTerm NoMetas ctx'               -- ^ Expected type
-    -> Either Doc (Term NoMetas ctx)    -- ^ Type checked term
+    -> CheckM (Term NoMetas ctx)    -- ^ Type checked term
 checkTerm' ctx (WLoc l t) ty = checkTerm' ctx { loc = l } t ty
 checkTerm' ctx (WHol n)   ty = checkHole ctx n ty
 checkTerm' ctx WSkp       ty = checkSkipped ctx ty
@@ -306,7 +312,7 @@ checkTerm''
     :: CheckCtx ctx ctx'               -- ^ Type checking context
     -> VTerm NoMetas ctx'              -- ^ Expected type
     -> Well (HasTerms NoMetas) ctx     -- ^ Well scoped term
-    -> Either Doc (Term NoMetas ctx)   -- ^ Type checked term
+    -> CheckM (Term NoMetas ctx)   -- ^ Type checked term
 checkTerm'' ctx (VEmb (VErr msg)) _t = do
     checkError ctx "Type evaluation error"
         [ ppStr (show msg)
@@ -480,7 +486,7 @@ checkTerm'' ctx (VEmb ty@(VRgd _ _)) _ =
 -- Check Elim
 -------------------------------------------------------------------------------
 
-checkElim' :: forall ctx ctx'. CheckCtx ctx ctx' -> Well (HasTerms NoMetas) ctx -> Either Doc (Elim NoMetas ctx, VTerm NoMetas ctx')
+checkElim' :: forall ctx ctx'. CheckCtx ctx ctx' -> Well (HasTerms NoMetas) ctx -> CheckM (Elim NoMetas ctx, VTerm NoMetas ctx')
 checkElim' ctx (WLoc l r)
     = checkElim' ctx { loc = l } r
 checkElim' ctx (WVar i) = do
