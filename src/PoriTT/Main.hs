@@ -162,7 +162,7 @@ batchFile fn = execStateT $ do
         let opts  = env.opts
         let names = nameScopeFromEnv env
 
-        et' <- either printError return $ lintElim (emptyLintCtx names) e
+        et' <- either printError return $ evalExceptState (lintElim (emptyLintCtx names) e) initialRigidState
         case evalExceptState (convTerm (mkConvCtx SZ EmptyEnv EmptyEnv names) VUni et et') initialRigidState of
             Right _  -> pure ()
             Left msg -> printError $ ppVCat
@@ -178,7 +178,7 @@ batchFile fn = execStateT $ do
         env <- get
         let names = nameScopeFromEnv env
 
-        either printError return $ lintTerm (emptyLintCtx names) t et
+        either printError return $ evalExceptState (lintTerm (emptyLintCtx names) t et) initialRigidState
 
     pipelineElim :: Raw -> MainM (Elim NoMetas EmptyCtx, VTerm NoMetas EmptyCtx)
     pipelineElim e = do
@@ -193,7 +193,7 @@ batchFile fn = execStateT $ do
         when opts.dump.rn $  printDoc $ ppSoftHanging (ppAnnotate ACmd "rn") [ prettyWell names EmptyEnv 0 w ]
 
         -- elaborate, i.e. type-check
-        (e1, et) <- either printError return $ checkElim (emptyCheckCtx names) w
+        (e1, et) <- either printError return $ evalExceptState (checkElim (emptyCheckCtx names) w) initialRigidState
         when opts.dump.tc $ printDoc $ ppSoftHanging (ppAnnotate ACmd "tc") [ prettyElimZ opts names e1 ]
         lint "First" e1 et
 
@@ -228,7 +228,7 @@ batchFile fn = execStateT $ do
         when opts.dump.rn $  printDoc $ ppSoftHanging (ppAnnotate ACmd "rn") [ prettyWell names EmptyEnv 0 w ]
 
         -- elaborate, i.e. type-check
-        t1 <- either printError return $ checkTerm (emptyCheckCtx names) w et
+        t1 <- either printError return $ evalExceptState (checkTerm (emptyCheckCtx names) w et) initialRigidState
         when opts.dump.tc $ printDoc $ ppSoftHanging (ppAnnotate ACmd "tc") [ prettyTermZ opts names t1 et ]
         lintT "First" t1 et
 
@@ -441,7 +441,7 @@ batchFile fn = execStateT $ do
         when opts.dump.rn $  printDoc $ ppSoftHanging (ppAnnotate ACmd "rn") [ prettyWell names EmptyEnv 0 w ]
 
         -- elaborate, i.e. type-check
-        case checkElim (emptyCheckCtx names) w of
+        case evalExceptState (checkElim (emptyCheckCtx names) w) initialRigidState of
             Right (e', et) -> printError $ ppSoftHanging ("Unexpected type-check success")
                 [ ":" <+> prettyVTermZ opts UnfoldNone names et VUni
                 , "=" <+> case e' of

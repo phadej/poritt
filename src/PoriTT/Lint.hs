@@ -57,11 +57,17 @@ weakenLintCtx :: Wk ctx ctx' -> LintCtx ctx' ctx'' -> LintCtx ctx ctx''
 weakenLintCtx w (LintCtx vs ts ts' ss cs xs xs' ns s pp) = LintCtx (weakenEnv w vs) (weakenEnv w ts) ts' (weakenEnv w ss) cs (weakenEnv w xs) xs' ns s pp
 
 -------------------------------------------------------------------------------
+-- Monad
+-------------------------------------------------------------------------------
+
+type LintM = ExceptState Doc RigidState
+
+-------------------------------------------------------------------------------
 -- Errors
 -------------------------------------------------------------------------------
 
-lintError :: LintCtx ctx ctx' -> Doc -> [Doc] -> Either Doc a
-lintError ctx msg extras = Left $ ppHanging
+lintError :: LintCtx ctx ctx' -> Doc -> [Doc] -> LintM a
+lintError ctx msg extras = throwError $ ppHanging
     ("LINT:" <+> msg)
     [ ppBullet <+> e
     | e <- extras ++ ctx.doc
@@ -84,12 +90,12 @@ lintTerm
     :: LintCtx ctx ctx'           -- ^ Elaboration context
     -> Term NoMetas ctx                   -- ^ Term
     -> VTerm NoMetas ctx'                 -- ^ Expected type
-    -> Either Doc ()
+    -> LintM ()
 lintTerm ctx t a = do
     let d = "When checking that" <+> prettyTerm ctx.nscope ctx.names 0 t <+> "has type" <+> prettyVTermCtx ctx a
     lintTerm' ctx { doc = d : ctx.doc } t a
 
-lintElim :: LintCtx ctx ctx' -> Elim NoMetas ctx -> Either Doc (VTerm NoMetas ctx')
+lintElim :: LintCtx ctx ctx' -> Elim NoMetas ctx -> LintM (VTerm NoMetas ctx')
 lintElim ctx e = do
     let d = "When infering type of" <+> prettyElim ctx.nscope ctx.names 0 e
     lintElim' ctx { doc = d : ctx.doc } e
@@ -98,7 +104,7 @@ lintElim ctx e = do
 -- Check & Infer
 -------------------------------------------------------------------------------
 
-lintIcit :: LintCtx ctx ctx' -> Icit -> Icit -> Either Doc ()
+lintIcit :: LintCtx ctx ctx' -> Icit -> Icit -> LintM ()
 lintIcit ctx i j
     | i == j    = return ()
     | otherwise = lintError ctx "Icity mismatch"
@@ -106,7 +112,7 @@ lintIcit ctx i j
         , "actual:" <+> prettyIcit i
         ]
 
-lintTerm' :: LintCtx ctx ctx' -> Term NoMetas ctx -> VTerm NoMetas ctx' -> Either Doc ()
+lintTerm' :: LintCtx ctx ctx' -> Term NoMetas ctx -> VTerm NoMetas ctx' -> LintM ()
 lintTerm' ctx (Lam x i t)   (force -> VPie y j a b) = do
     --
     --  x : A ⊢ B ∋ t
@@ -357,7 +363,7 @@ lintTerm' ctx (Emb e)     a    = do
 lintTerm' ctx (WkT w t) a =
     lintTerm' (weakenLintCtx w ctx) t a
 
-lintElim' :: forall ctx ctx'. LintCtx ctx ctx' -> Elim NoMetas ctx -> Either Doc (VTerm NoMetas ctx')
+lintElim' :: forall ctx ctx'. LintCtx ctx ctx' -> Elim NoMetas ctx -> LintM (VTerm NoMetas ctx')
 lintElim' ctx (Var x)   = do
     --
     --  (x : A) ∈ Γ

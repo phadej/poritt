@@ -133,7 +133,13 @@ bind' (CheckCtx xs xs' ns v ts ts' ss cs s wk l pp) x t a = CheckCtx
 -- Monad
 -------------------------------------------------------------------------------
 
-type CheckM = Either Doc
+type CheckM = ExceptState Doc RigidState
+
+newRigid :: CheckCtx ctx ctx' -> VTerm 'NoMetas ctx' -> CheckM (CheckCtx ctx ctx', RigidVar ctx')
+newRigid ctx _ty = do
+    u <- takeRigidVar
+    -- TODO: insert type
+    return (ctx, u)
 
 -------------------------------------------------------------------------------
 -- Errors
@@ -708,7 +714,8 @@ checkElim' ctx (WAnn t s) = do
     return (Ann t' s', sv)
 checkElim' ctx (WLet x t s) = do
     (t', tt) <- checkElim ctx t
+    (ctx', r) <- newRigid ctx tt
     let tv = evalElim ctx.size ctx.values t'
-        tv' = velim tv -- TODO
-    (s', st) <- checkElim (bind' ctx x tv' tt) s
+        tv' = EvalElim tv (SRgd r)
+    (s', st) <- checkElim (bind' ctx' x tv' tt) s
     return (Let x t' s', st)

@@ -37,7 +37,6 @@ instance Show (RigidVar ctx) where
 prettyRigidVar :: RigidVar ctx -> Doc
 prettyRigidVar (RigidVar i) = ppAnnotate AErr (ppStr ('!' : show i))
 
-
 instance Renamable RigidVar where
     rename = defaultRename
     weaken _ (RigidVar x) = RigidVar x
