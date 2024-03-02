@@ -48,43 +48,43 @@ type %refl
     : Id
       {Code ⟦ Unit ⟧}
       ⟦ let x = tt : Unit in let y = tt : Unit in x ⟧
-      ⟦ let x = tt : Unit in let y = tt : Unit in x ⟧
+      ⟦ let u = tt : Unit in let v = tt : Unit in u ⟧
   : Id
     {Code ⟦ Unit ⟧}
     ⟦ let x = tt : Unit in let y = tt : Unit in x ⟧
-    ⟦ let x = tt : Unit in let y = tt : Unit in x ⟧
+    ⟦ let u = tt : Unit in let v = tt : Unit in u ⟧
 
 fail %refl
     : Id
       {Code ⟦ Unit ⟧}
       ⟦ let x = tt : Unit in let y = tt : Unit in x ⟧
-      ⟦ let x = tt : Unit in let y = tt : Unit in y ⟧
+      ⟦ let u = tt : Unit in let v = tt : Unit in v ⟧
   examples/staging/code-eq.ptt:20:6: Couldn't match types
-    • expected: C ⟦ let x = tt : Unit in let y = tt : Unit in y ⟧
+    • expected: C ⟦ let u = tt : Unit in let v = tt : Unit in v ⟧
     • actual: C ⟦ let x = tt : Unit in let y = tt : Unit in x ⟧
     • not convertible (at level 0): !1 /= !0
     • When checking that
       Cx
       has type
-      C ⟦ let x = tt : Unit in let y = tt : Unit in y ⟧
+      C ⟦ let u = tt : Unit in let v = tt : Unit in v ⟧
     • When checking that
       λ Cx ↦ Cx
       has type
       C ⟦ let x = tt : Unit in let y = tt : Unit in x ⟧ →
-      C ⟦ let x = tt : Unit in let y = tt : Unit in y ⟧
+      C ⟦ let u = tt : Unit in let v = tt : Unit in v ⟧
     • When checking that
       λ _ Cx ↦ Cx
       has type
       Id
         {Code ⟦ Unit ⟧}
         ⟦ let x = tt : Unit in let y = tt : Unit in x ⟧
-        ⟦ let x = tt : Unit in let y = tt : Unit in y ⟧
+        ⟦ let u = tt : Unit in let v = tt : Unit in v ⟧
     • When infering type of
       (λ _ Cx ↦ Cx)
         : Id
           {Code ⟦ Unit ⟧}
           ⟦ let x = tt : Unit in let y = tt : Unit in x ⟧
-          ⟦ let x = tt : Unit in let y = tt : Unit in y ⟧
+          ⟦ let u = tt : Unit in let v = tt : Unit in v ⟧
 
 end-of-file "examples/staging/code-eq.ptt"
 

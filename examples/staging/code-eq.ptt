@@ -15,8 +15,8 @@ type %refl : Id {Code [| Unit |]}
 
 type %refl : Id {Code [| Unit |]}
   [| let x = tt : Unit in let y = tt : Unit in x |]
-  [| let x = tt : Unit in let y = tt : Unit in x |]
+  [| let u = tt : Unit in let v = tt : Unit in u |]
 
 fail %refl : Id {Code [| Unit |]}
   [| let x = tt : Unit in let y = tt : Unit in x |]
-  [| let x = tt : Unit in let y = tt : Unit in y |]
+  [| let u = tt : Unit in let v = tt : Unit in v |]
