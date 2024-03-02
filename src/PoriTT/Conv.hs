@@ -388,6 +388,9 @@ convSTerm' l ctx VUni (SPie x i a1 a b1) (SPie _ j a2 _ b2) = do
     convSTerm' l (bind x a ctx) VUni (runSTZ ctx.size b1) (runSTZ ctx.size b2)
 convSTerm' l ctx VUni x y = notConvertibleST l ctx VUni x y
 
+convSTerm' _ _ VOne STht STht = return ()
+convSTerm' l env VOne a b = notConvertibleST l env VOne a b
+
 convSTerm' _ _ ty x y = throwError $ "convSTerm not convertible" <> ppStr (show (ty, x, y))
 
 convSElim' :: Natural -> ConvCtx pass ctx -> SElim pass ctx -> SElim pass ctx -> ConvM (VTerm pass ctx)
@@ -429,8 +432,22 @@ convSElim' l      env a@(SInd _ _ _) b = notConvertibleSE l env a b
 
 convSElim' l      env a@(SSwh _ _ _) b = notConvertibleSE l env a b
 
+convSElim' l      env (SLet _ t u) (SLet _ s v) = do
+    ty <- convSElim' l env t s
+    (env', r) <- newRigid env ty
+    let x = EvalElim (VErr TODO) (SRgd r)
+    convSElim' l env' (runSE env.size u x) (runSE env.size v x)
 convSElim' l      env a@(SLet _ _ _) b = notConvertibleSE l env a b
 
+convSElim' _ env (SRgd x) (SRgd y)
+    | x == y
+    = case lookupRigidMap x env.rigids of
+            Just ty -> return ty
+            Nothing -> throwError ("rigid variable without a type")
 convSElim' l      env a@(SRgd _) b = notConvertibleSE l env a b
 
-convSElim' l      env a@(SAnn _ _) b = notConvertibleSE l env a b
+convSElim' l      env (SAnn t a v) (SAnn s b _) = do
+    convSTerm' l env VUni a b
+    convSTerm' l env v    t s
+    return v
+convSElim' l      env a@(SAnn _ _ _) b = notConvertibleSE l env a b

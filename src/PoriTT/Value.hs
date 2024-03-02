@@ -223,7 +223,7 @@ data SElim pass ctx where
     SSwh :: SElim pass ctx -> STerm pass ctx -> EnumList (STerm pass ctx) -> SElim pass ctx
     SDeI :: SElim pass ctx -> STerm pass ctx -> STerm pass ctx -> STerm pass ctx -> STerm pass ctx -> SElim pass ctx
     SInd :: SElim pass ctx -> STerm pass ctx -> STerm pass ctx -> SElim pass ctx
-    SAnn :: STerm pass ctx -> STerm pass ctx -> SElim pass ctx
+    SAnn :: STerm pass ctx -> STerm pass ctx -> VTerm pass ctx -> SElim pass ctx
     SLet :: !Name -> SElim pass ctx -> !(ClosureE pass ctx) -> SElim pass ctx
     SSpl :: SElim pass ctx -> VElim pass ctx -> SElim pass ctx
 
@@ -262,7 +262,7 @@ instance Sinkable (SElim pass) where
     mapLvl f (SDeI e m x y z) = SDeI (mapLvl f e) (mapLvl f m) (mapLvl f x) (mapLvl f y) (mapLvl f z)
     mapLvl f (SSpl e e')      = SSpl (mapLvl f e) (mapLvl f e')
     mapLvl f (SLet x a b)     = SLet x (mapLvl f a) (mapLvl f b)
-    mapLvl f (SAnn t s)       = SAnn (mapLvl f t) (mapLvl f s)
+    mapLvl f (SAnn t s v)     = SAnn (mapLvl f t) (mapLvl f s) (mapLvl f v)
 
 svalZ :: Size ctx -> SElim pass (S ctx)
 svalZ s = SVar (lvlZ s)

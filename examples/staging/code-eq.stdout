@@ -40,22 +40,51 @@ id = λ x ↦ x
 type %refl : Id {Code ⟦ U ⟧} ⟦ id {U} Unit ⟧ ⟦ id {U} Unit ⟧
   : Id {Code ⟦ U ⟧} ⟦ id {U} Unit ⟧ ⟦ id {U} Unit ⟧
 
-Error: examples/staging/code-eq.ptt:12:6: Couldn't match types
-  • expected: C ⟦ let x = tt : Unit in x ⟧
-  • actual: C ⟦ let x = tt : Unit in x ⟧
-  • not convertible (at level 0):
-    let x = tt : Unit in x /=
-    let x = tt : Unit in x
-  • When checking that Cx has type C ⟦ let x = tt : Unit in x ⟧
-  • When checking that
-    λ Cx ↦ Cx
-    has type
-    C ⟦ let x = tt : Unit in x ⟧ → C ⟦ let x = tt : Unit in x ⟧
-  • When checking that
-    λ _ Cx ↦ Cx
-    has type
-    Id {Code ⟦ Unit ⟧} ⟦ let x = tt : Unit in x ⟧ ⟦ let x = tt : Unit in x ⟧
-  • When infering type of
-    (λ _ Cx ↦ Cx)
-      : Id {Code ⟦ Unit ⟧} ⟦ let x = tt : Unit in x ⟧ ⟦ let x = tt : Unit in x ⟧
-ExitFailure
+type %refl
+    : Id {Code ⟦ Unit ⟧} ⟦ let x = tt : Unit in x ⟧ ⟦ let x = tt : Unit in x ⟧
+  : Id {Code ⟦ Unit ⟧} ⟦ let x = tt : Unit in x ⟧ ⟦ let x = tt : Unit in x ⟧
+
+type %refl
+    : Id
+      {Code ⟦ Unit ⟧}
+      ⟦ let x = tt : Unit in let y = tt : Unit in x ⟧
+      ⟦ let x = tt : Unit in let y = tt : Unit in x ⟧
+  : Id
+    {Code ⟦ Unit ⟧}
+    ⟦ let x = tt : Unit in let y = tt : Unit in x ⟧
+    ⟦ let x = tt : Unit in let y = tt : Unit in x ⟧
+
+fail %refl
+    : Id
+      {Code ⟦ Unit ⟧}
+      ⟦ let x = tt : Unit in let y = tt : Unit in x ⟧
+      ⟦ let x = tt : Unit in let y = tt : Unit in y ⟧
+  examples/staging/code-eq.ptt:20:6: Couldn't match types
+    • expected: C ⟦ let x = tt : Unit in let y = tt : Unit in y ⟧
+    • actual: C ⟦ let x = tt : Unit in let y = tt : Unit in x ⟧
+    • not convertible (at level 0): !1 /= !0
+    • When checking that
+      Cx
+      has type
+      C ⟦ let x = tt : Unit in let y = tt : Unit in y ⟧
+    • When checking that
+      λ Cx ↦ Cx
+      has type
+      C ⟦ let x = tt : Unit in let y = tt : Unit in x ⟧ →
+      C ⟦ let x = tt : Unit in let y = tt : Unit in y ⟧
+    • When checking that
+      λ _ Cx ↦ Cx
+      has type
+      Id
+        {Code ⟦ Unit ⟧}
+        ⟦ let x = tt : Unit in let y = tt : Unit in x ⟧
+        ⟦ let x = tt : Unit in let y = tt : Unit in y ⟧
+    • When infering type of
+      (λ _ Cx ↦ Cx)
+        : Id
+          {Code ⟦ Unit ⟧}
+          ⟦ let x = tt : Unit in let y = tt : Unit in x ⟧
+          ⟦ let x = tt : Unit in let y = tt : Unit in y ⟧
+
+end-of-file "examples/staging/code-eq.ptt"
+

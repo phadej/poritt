@@ -56,7 +56,7 @@ type Elim :: TermPass -> Ctx -> Type
 data Elim pass ctx where
     Var :: Idx ctx -> Elim pass ctx
     Met :: MetaVar -> Elim HasMetas ctx
-    Rgd :: RigidVar ctx -> Elim HasMetas ctx
+    Rgd :: RigidVar ctx -> Elim pass ctx
     Gbl :: Global -> Elim pass ctx
     App :: Icit -> Elim pass ctx -> Term pass ctx -> Elim pass ctx
     Sel :: Elim pass ctx -> Selector -> Elim pass ctx

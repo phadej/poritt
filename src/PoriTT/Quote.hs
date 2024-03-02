@@ -109,14 +109,14 @@ quoteSTerm l      s (SEmb e)        = Emb <$> quoteSElim l s e
 
 quoteSElim :: Natural -> Size ctx -> SElim pass ctx -> Either EvalError (Elim pass ctx)
 quoteSElim _      s (SVar x)         = pure $ Var (lvlToIdx s x)
-quoteSElim _      _ (SRgd _)         = Left EvalErrorStg -- TODO
+quoteSElim _      _ (SRgd r)         = pure $ Rgd r
 quoteSElim _      _ (SGbl g)         = pure $ Gbl g
 quoteSElim l      s (SApp i f t)     = App i <$> quoteSElim l s f <*> quoteSTerm l s t
 quoteSElim l      s (SSel e t)       = Sel <$> quoteSElim l s e <*> pure t
 quoteSElim l      s (SSwh e m ts)    = Swh <$> quoteSElim l s e <*> quoteSTerm l s m <*> traverse (quoteSTerm l s) ts
 quoteSElim l      s (SInd e m t)     = Ind <$> quoteSElim l s e <*> quoteSTerm l s m <*> quoteSTerm l s t
 quoteSElim l      s (SDeI e m x y z) = DeI <$> quoteSElim l s e <*> quoteSTerm l s m <*> quoteSTerm l s x <*> quoteSTerm l s y <*> quoteSTerm l s z
-quoteSElim l      s (SAnn t a)       = Ann <$> quoteSTerm l s t <*> quoteSTerm l s a
+quoteSElim l      s (SAnn t a _)     = Ann <$> quoteSTerm l s t <*> quoteSTerm l s a
 quoteSElim (NS l) s (SSpl e _)       = Spl <$> quoteSElim l s e
 quoteSElim NZ     s (SSpl _ e)       = quoteElim UnfoldNone s e
 quoteSElim l      s (SLet x e f)     = Let x <$> quoteSElim l s e <*> quoteSElim l (SS s) (runSEZ s f)

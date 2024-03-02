@@ -4,6 +4,7 @@ module PoriTT.Eval (
     runZ,
     runSTZ,
     runSEZ,
+    runSE,
     -- * Evaluation
     evalTerm,
     evalElim,
@@ -266,7 +267,7 @@ stageElim _ _   (Met _m)        = TODO -- not sure what to do here yet.
 stageElim _ _   (Rgd _)         = TODO
 stageElim _ _   (Gbl g)         = SGbl g
 stageElim s env (Swh e m ts)    = SSwh (stageElim s env e) (stageTerm s env m) (stageTerm s env <$> ts)
-stageElim s env (Ann t a)       = SAnn (stageTerm s env t) (stageTerm s env a)
+stageElim s env (Ann t a)       = SAnn (stageTerm s env t) (stageTerm s env a) (evalTerm s env a)
 stageElim s env (App i f t)     = SApp i (stageElim s env f) (stageTerm s env t)
 stageElim s env (Sel e r)       = SSel (stageElim s env e) r
 stageElim s env (Let x a b)     = SLet x (stageElim s env a) (Closure env b)
@@ -281,3 +282,6 @@ runSTZ s (sink -> Closure env f) = stageTerm (SS s) (env :> evalZ s) f
 
 runSEZ :: Size ctx -> ClosureE pass ctx -> SElim pass (S ctx)
 runSEZ s (sink -> Closure env f) = stageElim (SS s) (env :> evalZ s) f
+
+runSE :: Size ctx -> ClosureE pass ctx -> EvalElim pass ctx -> SElim pass ctx
+runSE s (Closure env f) e = stageElim s (env :> e) f

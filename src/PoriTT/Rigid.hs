@@ -6,6 +6,7 @@ module PoriTT.Rigid (
     RigidMap,
     emptyRigidMap,
     insertRigidMap,
+    lookupRigidMap,
     rigidMapSink,
     -- * Rigid State
     RigidState,
@@ -64,6 +65,9 @@ emptyRigidMap = RigidMap IM.empty
 
 insertRigidMap :: RigidVar ctx -> a -> RigidMap ctx a -> RigidMap ctx a
 insertRigidMap (RigidVar k) v (RigidMap m) = RigidMap (IM.insert k v m)
+
+lookupRigidMap :: RigidVar ctx -> RigidMap ctx a -> Maybe a
+lookupRigidMap (RigidVar k) (RigidMap m) = IM.lookup k m
 
 rigidMapSink :: RigidMap ctx a -> RigidMap (S ctx) a
 rigidMapSink = coerce

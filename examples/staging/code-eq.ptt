@@ -13,6 +13,10 @@ type %refl : Id {Code [| Unit |]}
   [| let x = tt : Unit in x |]
   [| let x = tt : Unit in x |]
 
---type %refl : Id {Code [| Unit |]}
---  [| let x = tt : Unit in x |]
---  [| let x = tt : Unit in x |]
+type %refl : Id {Code [| Unit |]}
+  [| let x = tt : Unit in let y = tt : Unit in x |]
+  [| let x = tt : Unit in let y = tt : Unit in x |]
+
+fail %refl : Id {Code [| Unit |]}
+  [| let x = tt : Unit in let y = tt : Unit in x |]
+  [| let x = tt : Unit in let y = tt : Unit in y |]
