@@ -1,14 +1,14 @@
 Id : ∀ {A : U} → A → A → U
-Id = λ x y ↦ ∀ (C : A → U) → C x → C y
+Id = λ {A} x y ↦ ∀ (C : A → U) → C x → C y
 
-refl : ∀ {A : U} (x : A) → Id x x
-refl = λ x C Cx ↦ Cx
+refl : ∀ {A : U} (x : A) → Id {A} x x
+refl = λ {A} x C Cx ↦ Cx
 
 macro %refl 
   = λ _ Cx ↦ Cx
 
-sym : ∀ (A : U) (x : A) (y : A) → Id x y → Id y x
-sym = λ A x y x=y ↦ x=y (λ z ↦ Id z x) (refl x)
+sym : ∀ (A : U) (x : A) (y : A) → Id {A} x y → Id {A} y x
+sym = λ A x y x=y ↦ x=y (λ z ↦ Id {A} z x) (refl {A} x)
 
-trans : ∀ (A : U) (x : A) (y : A) (z : A) → Id x y → Id y z → Id x z
-trans = λ A x y z x=y y=z ↦ y=z (λ v ↦ Id x v) x=y
+trans : ∀ (A : U) (x : A) (y : A) (z : A) → Id {A} x y → Id {A} y z → Id {A} x z
+trans = λ A x y z x=y y=z ↦ y=z (λ v ↦ Id {A} x v) x=y

@@ -27,7 +27,7 @@ define foo1 : Foo = [ :true two [] ]
 
 define foo2 : Foo = [ :true three [] ]
 
-type %refl : Id {Nat} (foo1 :bar) two : Id (foo1 :bar) two
+type %refl : Id {Nat} (foo1 :bar) two : Id {Nat} (foo1 :bar) two
 
 section Equality
 
@@ -155,18 +155,26 @@ define eqFooS
 
 section Tests
 
-type %refl : Id {Foo → Foo → Bool} eqFoo eqFooS : Id eqFoo eqFooS
+type %refl : Id {Foo → Foo → Bool} eqFoo eqFooS
+  : Id {Foo → Foo → Bool} eqFoo eqFooS
 
-type %refl : Id {Foo → Foo → Bool} eqFoo eqFooG : Id eqFoo eqFooG
+type %refl : Id {Foo → Foo → Bool} eqFoo eqFooG
+  : Id {Foo → Foo → Bool} eqFoo eqFooG
 
-type %refl : Id {Bool} (eqFoo foo1 foo1) :true : Id (eqFoo foo1 foo1) :true
+type %refl : Id {Bool} (eqFoo foo1 foo1) :true
+  : Id {Bool} (eqFoo foo1 foo1) :true
 
-type %refl : Id {Bool} (eqFooS foo1 foo1) :true : Id (eqFooS foo1 foo1) :true
+type %refl : Id {Bool} (eqFooS foo1 foo1) :true
+  : Id {Bool} (eqFooS foo1 foo1) :true
 
-type %refl : Id {Bool} (eqFooG foo1 foo1) :true : Id (eqFooG foo1 foo1) :true
+type %refl : Id {Bool} (eqFooG foo1 foo1) :true
+  : Id {Bool} (eqFooG foo1 foo1) :true
 
-type %refl : Id {Bool} (eqFoo foo1 foo2) :false : Id (eqFoo foo1 foo2) :false
+type %refl : Id {Bool} (eqFoo foo1 foo2) :false
+  : Id {Bool} (eqFoo foo1 foo2) :false
 
-type %refl : Id {Bool} (eqFooS foo1 foo2) :false : Id (eqFooS foo1 foo2) :false
+type %refl : Id {Bool} (eqFooS foo1 foo2) :false
+  : Id {Bool} (eqFooS foo1 foo2) :false
 
-type %refl : Id {Bool} (eqFooG foo1 foo2) :false : Id (eqFooG foo1 foo2) :false
+type %refl : Id {Bool} (eqFooG foo1 foo2) :false
+  : Id {Bool} (eqFooG foo1 foo2) :false

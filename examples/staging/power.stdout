@@ -21,6 +21,7 @@ include "../lib/leibniz.ptt"
 
 end-of-file "../lib/leibniz.ptt"
 
-type %refl : Id {Nat} (power5 two) (power5' two) : Id (power5 two) (power5' two)
+type %refl : Id {Nat} (power5 two) (power5' two)
+  : Id {Nat} (power5 two) (power5' two)
 
-type %refl : Id {Nat → Nat} power5 power5' : Id power5 power5'
+type %refl : Id {Nat → Nat} power5 power5' : Id {Nat → Nat} power5 power5'

@@ -11,9 +11,10 @@ import System.IO.Temp    (withSystemTempDirectory)
 import Test.Tasty        (defaultMain, testGroup)
 import Test.Tasty.Golden (goldenVsFileDiff)
 
-import PoriTT.Main (batchFile, builtinEnvironment)
-import PoriTT.Opts (Opts (..), ThreeWay (..), defaultOpts)
-import PoriTT.PP   (PPOpts' (..))
+import PoriTT.Distill (DistillOpts (..))
+import PoriTT.Main    (batchFile, builtinEnvironment)
+import PoriTT.Opts    (Opts (..), ThreeWay (..), defaultOpts)
+import PoriTT.PP      (PPOpts' (..))
 
 main :: IO ()
 main = do
@@ -27,7 +28,12 @@ main = do
                         exitCode (ExitFailure _) = hPutStrLn hdl "ExitFailure"
                         exitCode _               = return ()
 
-                    env <- builtinEnvironment hdl defaultOpts { elaborate = False, echo = False, prettyOpts = PPOpts { unicode = Always, colour = Never } }
+                    env <- builtinEnvironment hdl defaultOpts
+                        { elaborate = False
+                        , echo = False
+                        , prettyOpts = PPOpts { unicode = Always, colour = Never }
+                        , distillOpts = DistillOpts True True True True True
+                        }
                     handle exitCode $ void $ batchFile inp env
 
             | ex <- examples

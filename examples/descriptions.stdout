@@ -72,7 +72,8 @@ define evalDesc'
   : Desc → U → U
   = λ d X ↦ indDesc d (λ _ ↦ U) Unit (λ S D F ↦ ∃ (s : S) × F s) (λ D F ↦ X × F)
 
-type %refl : Id {Desc → U → U} evalDesc evalDesc' : Id evalDesc evalDesc'
+type %refl : Id {Desc → U → U} evalDesc evalDesc'
+  : Id {Desc → U → U} evalDesc evalDesc'
 
 define All'
   : ∀ (D : Desc) (X : U) → (X → U) → evalDesc D X → U
@@ -86,7 +87,7 @@ define All'
 
 type %refl
     : Id {∀ (D : Desc) (X : U) (P : X → U) (xs : evalDesc D X) → U} All All'
-  : Id All All'
+  : Id {∀ (D : Desc) (X : U) → (X → U) → evalDesc D X → U} All All'
 
 define all'
   : ∀
@@ -111,4 +112,9 @@ type %refl
         All D X P xs}
       all
       all'
-  : Id all all'
+  : Id
+    {∀
+      (D : Desc) (X : U) (P : X → U) →
+      (∀ (x : X) → P x) → ∀ (xs : evalDesc D X) → All D X P xs}
+    all
+    all'

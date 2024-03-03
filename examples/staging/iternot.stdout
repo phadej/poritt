@@ -22,6 +22,7 @@ include "../lib/leibniz.ptt"
 end-of-file "../lib/leibniz.ptt"
 
 type %refl : Id {Bool} (iterNot3 true) (iterNot3' true)
-  : Id (iterNot3 true) (iterNot3' true)
+  : Id {Bool} (iterNot3 true) (iterNot3' true)
 
-type %refl : Id {Bool → Bool} iterNot3 iterNot3' : Id iterNot3 iterNot3'
+type %refl : Id {Bool → Bool} iterNot3 iterNot3'
+  : Id {Bool → Bool} iterNot3 iterNot3'

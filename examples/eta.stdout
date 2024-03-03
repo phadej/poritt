@@ -3,22 +3,24 @@ include "lib/leibniz.ptt"
 end-of-file "lib/leibniz.ptt"
 
 type (λ _ ↦ %refl) : ∀ (f : U → U) → Id {U → U} f (λ x ↦ f x)
-  : ∀ (f : U → U) → Id f (λ x ↦ f x)
+  : ∀ (f : U → U) → Id {U → U} f (λ x ↦ f x)
 
 type (λ _ ↦ %refl) : ∀ (p : U × U) → Id {U × U} p (p .fst , p .snd)
-  : ∀ (p : U × U) → Id p (p .fst , p .snd)
+  : ∀ (p : U × U) → Id {U × U} p (p .fst , p .snd)
 
 type (λ _ ↦ %refl) : ∀ (x : #[:tt]) → Id {#[:tt]} x :tt
-  : ∀ (x : #[:tt]) → Id x :tt
+  : ∀ (x : #[:tt]) → Id {#[:tt]} x :tt
 
 type (λ _ _ ↦ %refl) : ∀ (x : #[:tt]) (y : #[:tt]) → Id {#[:tt]} x y
-  : ∀ (x : #[:tt]) (y : #[:tt]) → Id x y
+  : ∀ (x : #[:tt]) (y : #[:tt]) → Id {#[:tt]} x y
 
 type (λ _ _ ↦ %refl) : ∀ (x : Unit) (y : Unit) → Id {Unit} x y
-  : ∀ (x : Unit) (y : Unit) → Id x y
+  : ∀ (x : Unit) (y : Unit) → Id {Unit} x y
 
 type (λ _ _ ↦ %refl)
     : ∀
       (x : #[:left] × #[:right]) (y : #[:left] × #[:right]) →
       Id {#[:left] × #[:right]} x y
-  : ∀ (x : #[:left] × #[:right]) (y : #[:left] × #[:right]) → Id x y
+  : ∀
+    (x : #[:left] × #[:right]) (y : #[:left] × #[:right]) →
+    Id {#[:left] × #[:right]} x y

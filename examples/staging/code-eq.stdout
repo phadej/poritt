@@ -20,7 +20,7 @@ fail %refl : Id {Code ⟦ U ⟧} ⟦ Unit → Unit ⟧ ⟦ Unit → U ⟧
       (λ _ Cx ↦ Cx) : Id {Code ⟦ U ⟧} ⟦ Unit → Unit ⟧ ⟦ Unit → U ⟧
 
 id : ∀ {A : U} → A → A
-id = λ x ↦ x
+id = λ {_} x ↦ x
 
 type %refl
     : Id

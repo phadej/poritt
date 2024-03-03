@@ -16,4 +16,4 @@ include "lib/leibniz.ptt"
 
 end-of-file "lib/leibniz.ptt"
 
-type %refl : Id {∀ (A : U) → A → A} I I2 : Id I I2
+type %refl : Id {∀ (A : U) → A → A} I I2 : Id {∀ (A : U) → A → A} I I2
