@@ -13,6 +13,9 @@ import System.Exit                      (exitFailure)
 import System.FilePath                  (takeDirectory)
 import System.IO                        (Handle, hGetEncoding, hPutStrLn, stdout)
 
+-- TODO
+import Unsafe.Coerce (unsafeCoerce)
+
 import qualified Data.ByteString as BS
 import qualified Data.Map.Strict as Map
 import qualified Data.Set        as Set
@@ -193,8 +196,13 @@ batchFile fn = execStateT $ do
         when opts.dump.rn $  printDoc $ ppSoftHanging (ppAnnotate ACmd "rn") [ prettyWell names EmptyEnv 0 w ]
 
         -- elaborate, i.e. type-check
-        (e1, et) <- either printError return $ evalExceptState (checkElim (emptyCheckCtx names) w) initialRigidState
-        when opts.dump.tc $ printDoc $ ppSoftHanging (ppAnnotate ACmd "tc") [ prettyElimZ opts names e1 ]
+        (e0, et') <- either printError return $ evalExceptState (checkElim (emptyCheckCtx names) w) initialRigidState
+        when opts.dump.tc $ printDoc $ ppSoftHanging (ppAnnotate ACmd "tc") [ prettyElim names EmptyEnv 0 e0 ]
+        -- lint
+
+        let et = unsafeCoerce et' :: VTerm NoMetas EmptyCtx
+            e1 = unsafeCoerce e0 :: Elim NoMetas EmptyCtx
+        -- when opts.dump.tc $ printDoc $ ppSoftHanging (ppAnnotate ACmd "tc") [ prettyElimZ opts names e0 ] -- zonk
         lint "First" e1 et
 
         e2 <- either (printError . ppStr . show) return $ preElim SZ EmptyEnv e1
@@ -228,7 +236,9 @@ batchFile fn = execStateT $ do
         when opts.dump.rn $  printDoc $ ppSoftHanging (ppAnnotate ACmd "rn") [ prettyWell names EmptyEnv 0 w ]
 
         -- elaborate, i.e. type-check
-        t1 <- either printError return $ evalExceptState (checkTerm (emptyCheckCtx names) w et) initialRigidState
+        t0 <- either printError return $ evalExceptState (checkTerm (emptyCheckCtx names) w (coeNoMetasVTerm et)) initialRigidState
+
+        let t1 = unsafeCoerce t0 :: Term NoMetas EmptyCtx
         when opts.dump.tc $ printDoc $ ppSoftHanging (ppAnnotate ACmd "tc") [ prettyTermZ opts names t1 et ]
         lintT "First" t1 et
 
@@ -442,7 +452,7 @@ batchFile fn = execStateT $ do
 
         -- elaborate, i.e. type-check
         case evalExceptState (checkElim (emptyCheckCtx names) w) initialRigidState of
-            Right (e', et) -> printError $ ppSoftHanging ("Unexpected type-check success")
+            Right (unsafeCoerce -> e', unsafeCoerce -> et) -> printError $ ppSoftHanging ("Unexpected type-check success")
                 [ ":" <+> prettyVTermZ opts UnfoldNone names et VUni
                 , "=" <+> case e' of
                     Ann t' _ -> prettyTermZ opts names t' et

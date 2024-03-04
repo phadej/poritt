@@ -40,10 +40,10 @@ data CheckCtx ctx ctx' = CheckCtx
     { names  :: !(Env ctx Name)
     , names' :: !(Env ctx' Name)
     , nscope :: !NameScope
-    , values :: !(EvalEnv NoMetas ctx ctx')
-    , types  :: !(Env ctx (VTerm NoMetas ctx'))
-    , types' :: !(Env ctx' (VTerm NoMetas ctx'))
-    , rigids :: !(RigidMap ctx' (VTerm NoMetas ctx'))
+    , values :: !(EvalEnv HasMetas ctx ctx')
+    , types  :: !(Env ctx (VTerm HasMetas ctx'))
+    , types' :: !(Env ctx' (VTerm HasMetas ctx'))
+    , rigids :: !(RigidMap ctx' (VTerm HasMetas ctx'))
     , stages :: !(Env ctx Stage)
     , cstage :: !Stage
     , size   :: !(Size ctx')
@@ -73,7 +73,7 @@ emptyCheckCtx ns = CheckCtx
     , doc    = []
     }
 
-toLintCtx :: CheckCtx ctx ctx' -> LintCtx ctx ctx'
+toLintCtx :: CheckCtx ctx ctx' -> LintCtx HasMetas ctx ctx'
 toLintCtx ctx = LintCtx
     { values = ctx.values
     , types  = ctx.types
@@ -92,7 +92,7 @@ bind
     :: CheckCtx ctx ctx'
     -> Name                     -- ^ term name
     -> Name                     -- ^ name in types
-    -> VTerm NoMetas ctx'       -- ^ type
+    -> VTerm HasMetas ctx'       -- ^ type
     -> CheckCtx (S ctx) (S ctx')
 bind (CheckCtx xs xs' ns v ts ts' rs ss cs s wk l pp) x x' a = CheckCtx
     { names   = xs :> x
@@ -115,8 +115,8 @@ bind (CheckCtx xs xs' ns v ts ts' rs ss cs s wk l pp) x x' a = CheckCtx
 bind'
     :: CheckCtx ctx ctx'
     -> Name                 -- ^ variable name
-    -> EvalElim NoMetas ctx'   -- ^ value
-    -> VTerm NoMetas ctx'   -- ^ type
+    -> EvalElim HasMetas ctx'   -- ^ value
+    -> VTerm HasMetas ctx'   -- ^ type
     -> CheckCtx (S ctx) ctx'
 bind' (CheckCtx xs xs' ns v ts ts' rs ss cs s wk l pp) x t a = CheckCtx
     { names   = xs :> x
@@ -140,7 +140,7 @@ bind' (CheckCtx xs xs' ns v ts ts' rs ss cs s wk l pp) x t a = CheckCtx
 
 type CheckM = ExceptState Doc RigidState
 
-newRigid :: CheckCtx ctx ctx' -> VTerm 'NoMetas ctx' -> CheckM (CheckCtx ctx ctx', RigidVar ctx')
+newRigid :: CheckCtx ctx ctx' -> VTerm 'HasMetas ctx' -> CheckM (CheckCtx ctx ctx', RigidVar ctx')
 newRigid ctx ty = do
     r <- takeRigidVar
     return (ctx { rigids = insertRigidMap r ty ctx.rigids }, r)
@@ -156,21 +156,21 @@ checkError ctx msg extras = throwError $ ppHanging
     | e <- extras ++ take 5 ctx.doc
     ]
 
-notType :: CheckCtx ctx ctx' -> VTerm NoMetas ctx' -> CheckM (Term NoMetas ctx)
+notType :: CheckCtx ctx ctx' -> VTerm HasMetas ctx' -> CheckM (Term HasMetas ctx)
 notType ctx ty = checkError ctx "Checking against non-type"
     [ "not-type:" <+> prettyVTermCtx ctx ty
     ]
 
-invalidTerm :: CheckCtx ctx ctx' -> Doc -> VTerm NoMetas ctx' -> Well (HasTerms NoMetas) ctx -> CheckM (Term NoMetas ctx)
+invalidTerm :: CheckCtx ctx ctx' -> Doc -> VTerm HasMetas ctx' -> Well (HasTerms HasMetas) ctx -> CheckM (Term HasMetas ctx)
 invalidTerm ctx cls ty t = checkError ctx ("Checking against" <+> cls)
     [ "type:" <+> prettyVTermCtx ctx ty
     , "term:" <+> prettyWell ctx.nscope ctx.names 0 t
     ]
 
-prettyVTermCtx :: CheckCtx ctx ctx' -> VTerm NoMetas ctx' -> Doc
+prettyVTermCtx :: CheckCtx ctx ctx' -> VTerm HasMetas ctx' -> Doc
 prettyVTermCtx ctx = prettyVTerm ctx.size ctx.nscope ctx.names'
 
-prettyNamesTypes :: Size ctx' -> NameScope -> Env ctx' Name -> Env ctx Name -> Env ctx (VTerm NoMetas ctx') -> [Doc]
+prettyNamesTypes :: Size ctx' -> NameScope -> Env ctx' Name -> Env ctx Name -> Env ctx (VTerm HasMetas ctx') -> [Doc]
 prettyNamesTypes _ _  _   EmptyEnv  EmptyEnv  =  []
 prettyNamesTypes s ns env (xs :> x) (ts :> t) =
     (prettyName x <+> ":" <+> t') :
@@ -187,9 +187,9 @@ prettyNamesTypes s ns env (xs :> x) (ts :> t) =
 -- | Check term ('Term') against a type (as 'VTerm').
 checkTerm
     :: CheckCtx ctx ctx'               -- ^ Type checking context
-    -> Well (HasTerms NoMetas) ctx     -- ^ Well scoped term
-    -> VTerm NoMetas ctx'              -- ^ Expected type
-    -> CheckM (Term NoMetas ctx)   -- ^ Type checked term
+    -> Well (HasTerms HasMetas) ctx     -- ^ Well scoped term
+    -> VTerm HasMetas ctx'              -- ^ Expected type
+    -> CheckM (Term HasMetas ctx)   -- ^ Type checked term
 checkTerm ctx t a = do
     let d = ppSep
             [ "When checking that"
@@ -202,8 +202,8 @@ checkTerm ctx t a = do
 -- | Infer type of an elimination ('Elim').
 checkElim
     :: CheckCtx ctx ctx'                                   -- ^ Type checking context
-    -> Well (HasTerms NoMetas) ctx                         -- ^ Well scoped elimination
-    -> CheckM (Elim NoMetas ctx, VTerm NoMetas ctx')   -- ^ Type checked elimination and its type
+    -> Well (HasTerms HasMetas) ctx                         -- ^ Well scoped elimination
+    -> CheckM (Elim HasMetas ctx, VTerm HasMetas ctx')   -- ^ Type checked elimination and its type
 checkElim ctx e = do
     let d = ppSep
             [ "When infering type of"
@@ -223,19 +223,19 @@ checkIcit ctx i j
         , "actual:" <+> prettyIcit i
         ]
 
-checkHole :: CheckCtx ctx ctx' -> Name -> VTerm NoMetas ctx' -> CheckM (Term NoMetas ctx)
+checkHole :: CheckCtx ctx ctx' -> Name -> VTerm HasMetas ctx' -> CheckM (Term HasMetas ctx)
 checkHole ctx n ty = checkError ctx ("Checking a hole" <+> prettyHole n) $
     [ "type:" <+> prettyVTermCtx ctx ty
     ] ++
     (prettyNamesTypes ctx.size ctx.nscope ctx.names' ctx.names ctx.types)
 
-checkSkipped :: CheckCtx ctx ctx' -> VTerm NoMetas ctx' -> CheckM (Term NoMetas ctx)
+checkSkipped :: CheckCtx ctx ctx' -> VTerm HasMetas ctx' -> CheckM (Term HasMetas ctx)
 checkSkipped ctx ty = checkError ctx ("Skipped term") $
     [ "type:" <+> prettyVTermCtx ctx ty
     ] ++
     (prettyNamesTypes ctx.size ctx.nscope ctx.names' ctx.names ctx.types)
 
-checkInfer :: CheckCtx ctx ctx' -> Well (HasTerms NoMetas) ctx -> VTerm NoMetas ctx' -> CheckM (Term NoMetas ctx)
+checkInfer :: CheckCtx ctx ctx' -> Well (HasTerms HasMetas) ctx -> VTerm HasMetas ctx' -> CheckM (Term HasMetas ctx)
 checkInfer ctx e            a = do
     (e', et) <- checkElim ctx e
     -- traceM $ "CONV: " ++ show (ctx.names', e, et, a)
@@ -297,9 +297,9 @@ lookupRemoving k = go id where
 
 checkTerm'
     :: CheckCtx ctx ctx'                -- ^ Type checking context
-    -> Well (HasTerms NoMetas) ctx      -- ^ Well scoped term
-    -> VTerm NoMetas ctx'               -- ^ Expected type
-    -> CheckM (Term NoMetas ctx)    -- ^ Type checked term
+    -> Well (HasTerms HasMetas) ctx      -- ^ Well scoped term
+    -> VTerm HasMetas ctx'               -- ^ Expected type
+    -> CheckM (Term HasMetas ctx)    -- ^ Type checked term
 checkTerm' ctx (WLoc l t) ty = checkTerm' ctx { loc = l } t ty
 checkTerm' ctx (WHol n)   ty = checkHole ctx n ty
 checkTerm' ctx WSkp       ty = checkSkipped ctx ty
@@ -320,9 +320,9 @@ checkTerm' ctx t          ty = checkTerm'' ctx ty t
 
 checkTerm''
     :: CheckCtx ctx ctx'               -- ^ Type checking context
-    -> VTerm NoMetas ctx'              -- ^ Expected type
-    -> Well (HasTerms NoMetas) ctx     -- ^ Well scoped term
-    -> CheckM (Term NoMetas ctx)   -- ^ Type checked term
+    -> VTerm HasMetas ctx'              -- ^ Expected type
+    -> Well (HasTerms HasMetas) ctx     -- ^ Well scoped term
+    -> CheckM (Term HasMetas ctx)   -- ^ Type checked term
 checkTerm'' ctx (VEmb (VErr msg)) _t = do
     checkError ctx "Type evaluation error"
         [ ppStr (show msg)
@@ -496,7 +496,7 @@ checkTerm'' ctx (VEmb ty@(VRgd _ _)) _ =
 -- Check Elim
 -------------------------------------------------------------------------------
 
-checkElim' :: forall ctx ctx'. CheckCtx ctx ctx' -> Well (HasTerms NoMetas) ctx -> CheckM (Elim NoMetas ctx, VTerm NoMetas ctx')
+checkElim' :: forall ctx ctx'. CheckCtx ctx ctx' -> Well (HasTerms HasMetas) ctx -> CheckM (Elim HasMetas ctx, VTerm HasMetas ctx')
 checkElim' ctx (WLoc l r)
     = checkElim' ctx { loc = l } r
 checkElim' ctx (WVar i) = do
@@ -510,7 +510,7 @@ checkElim' ctx (WVar i) = do
 
     pure (Var i, lookupEnv i ctx.types)
 checkElim' ctx (WGbl g) =
-    pure (Gbl g, sinkSize ctx.size g.typ)
+    pure (Gbl g, coeNoMetasVTerm (sinkSize ctx.size g.typ))
 checkElim' ctx (WHol n) =
     checkError ctx
     ("Cannot infer type of a hole" <> prettyHole n)
@@ -620,7 +620,7 @@ checkElim' ctx (WSwh e m ts) = do
             -- {:ls...} -> U ∋ M
             let mt = VPie "_" Ecit et (Closure EmptyEnv Uni)
             m' <- checkTerm ctx m mt
-            let mv :: VElim NoMetas ctx'
+            let mv :: VElim HasMetas ctx'
                 mv = vann (evalTerm ctx.size ctx.values m') mt
 
                 mv' = velim mv
@@ -646,7 +646,7 @@ checkElim' ctx (WDeI e m c1 cS cX) = do
             -- ⊢ Desc → U ∋ M
             let mt = evalTerm ctx.size EmptyEnv descIndMotive
             m' <- checkTerm ctx m mt
-            let mv :: VElim NoMetas ctx'
+            let mv :: VElim HasMetas ctx'
                 mv = vann (evalTerm ctx.size ctx.values m') mt
 
                 mv' = velim mv
@@ -681,7 +681,7 @@ checkElim' ctx (WInd e m t) = do
             -- ⊢ μ D → U ∋ M
             let mt = VPie "_" Ecit et (Closure EmptyEnv Uni)
             m' <- checkTerm ctx m mt
-            let mv :: VElim NoMetas ctx'
+            let mv :: VElim HasMetas ctx'
                 mv = vann (evalTerm ctx.size ctx.values m') mt
 
                 mv' = velim mv

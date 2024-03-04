@@ -397,7 +397,7 @@ checkElim' ctx (WVar i) = do
 
     pure (Var i, lookupEnv i ctx.types)
 checkElim' ctx (WGbl g) =
-    pure (Gbl g, sinkSize ctx.size g.typ)
+    pure (Gbl g, coeNoMetasVTerm (sinkSize ctx.size g.typ))
 checkElim' ctx (WHol n) =
     checkError ctx
     ("Cannot infer type of a hole" <> prettyHole n)

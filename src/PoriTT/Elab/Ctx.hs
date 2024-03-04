@@ -59,7 +59,7 @@ emptyElabCtx ns = ElabCtx
     , doc    = []
     }
 
-toLintCtx :: ElabCtx ctx ctx' -> LintCtx ctx ctx'
+toLintCtx :: ElabCtx ctx ctx' -> LintCtx HasMetas ctx ctx'
 toLintCtx ctx = LintCtx
     { values = ctx.values
     , types  = ctx.types
@@ -78,7 +78,7 @@ bind
     :: ElabCtx ctx ctx'
     -> Name                     -- ^ term name
     -> Name                     -- ^ name in types
-    -> VTerm NoMetas ctx'       -- ^ type
+    -> VTerm HasMetas ctx'      -- ^ type
     -> ElabCtx (S ctx) (S ctx')
 bind (ElabCtx xs xs' ns v ts ts' rs ss cs s wk l pp) x x' a = ElabCtx
     { names   = xs :> x
@@ -100,9 +100,9 @@ bind (ElabCtx xs xs' ns v ts ts' rs ss cs s wk l pp) x x' a = ElabCtx
 
 bind'
     :: ElabCtx ctx ctx'
-    -> Name                 -- ^ variable name
-    -> EvalElim NoMetas ctx'   -- ^ value
-    -> VTerm NoMetas ctx'   -- ^ type
+    -> Name                     -- ^ variable name
+    -> EvalElim HasMetas ctx'   -- ^ value
+    -> VTerm HasMetas ctx'      -- ^ type
     -> ElabCtx (S ctx) ctx'
 bind' (ElabCtx xs xs' ns v ts ts' rs ss cs s wk l pp) x t a = ElabCtx
     { names   = xs :> x

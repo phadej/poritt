@@ -4,6 +4,7 @@ module PoriTT.Value (
     VElim (..),
     Spine (..),
     coeNoMetasVElim,
+    coeNoMetasVTerm,
     -- ** Closure
     Closure (..),
     ClosureE,
@@ -121,6 +122,11 @@ instance Sinkable (VElim pass) where
 -- | 'VElim' with no metas can be coerced to 'VElim' with metas.
 coeNoMetasVElim :: VElim NoMetas ctx -> VElim pass ctx
 coeNoMetasVElim = unsafeCoerce
+
+-- | 'VTerm' with no metas can be coerced to 'VElim' with metas.
+coeNoMetasVTerm :: VTerm NoMetas ctx -> VTerm pass ctx
+coeNoMetasVTerm = unsafeCoerce
+
 
 -------------------------------------------------------------------------------
 -- Spine

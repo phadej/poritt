@@ -46,6 +46,7 @@ data DistillOpts = DistillOpts
 -- Linting context
 -------------------------------------------------------------------------------
 
+-- TODO: add pass
 data DistillCtx ctx ctx' = DistillCtx
     { values :: EvalEnv NoMetas ctx ctx'
     , types  :: Env ctx (VTerm NoMetas ctx')

@@ -28,11 +28,11 @@ import PoriTT.Value
 -- Linting context
 -------------------------------------------------------------------------------
 
-data LintCtx ctx ctx' = LintCtx
-    { values :: EvalEnv NoMetas ctx ctx'
-    , types  :: Env ctx (VTerm NoMetas ctx')
-    , types' :: Env ctx' (VTerm NoMetas ctx')
-    , rigids :: !(RigidMap ctx' (VTerm NoMetas ctx'))
+data LintCtx pass ctx ctx' = LintCtx
+    { values :: EvalEnv pass ctx ctx'
+    , types  :: Env ctx (VTerm pass ctx')
+    , types' :: Env ctx' (VTerm pass ctx')
+    , rigids :: !(RigidMap ctx' (VTerm pass ctx'))
     , stages :: Env ctx Stage
     , cstage :: Stage
     , names  :: Env ctx Name
@@ -42,19 +42,19 @@ data LintCtx ctx ctx' = LintCtx
     , doc    :: ![Doc]
     }
 
-sinkLintCtx :: Name -> VTerm NoMetas ctx' -> LintCtx ctx ctx' -> LintCtx ctx (S ctx')
+sinkLintCtx :: Name -> VTerm pass ctx' -> LintCtx pass ctx ctx' -> LintCtx pass ctx (S ctx')
 sinkLintCtx x' t' (LintCtx vs ts ts' rs ss cs xs xs' ns s pp) = LintCtx (mapSink vs) (mapSink ts) (mapSink ts' :> sink t') (rigidMapSink (mapSink rs)) ss cs xs (xs' :> x') ns (SS s) pp
 
-emptyLintCtx :: NameScope -> LintCtx EmptyCtx EmptyCtx
+emptyLintCtx :: NameScope -> LintCtx pass EmptyCtx EmptyCtx
 emptyLintCtx ns = LintCtx EmptyEnv EmptyEnv EmptyEnv emptyRigidMap EmptyEnv stage0 EmptyEnv EmptyEnv ns SZ []
 
-bind :: LintCtx ctx ctx' -> Name -> Name -> VTerm NoMetas ctx' -> LintCtx (S ctx) (S ctx')
+bind :: LintCtx pass ctx ctx' -> Name -> Name -> VTerm pass ctx' -> LintCtx pass (S ctx) (S ctx')
 bind ctx x x' a = bind' (sinkLintCtx x' a ctx) x (evalZ ctx.size) (sink a)
 
-bind' :: LintCtx ctx ctx' -> Name -> EvalElim NoMetas ctx' -> VTerm NoMetas ctx' -> LintCtx (S ctx) ctx'
+bind' :: LintCtx pass ctx ctx' -> Name -> EvalElim pass ctx' -> VTerm pass ctx' -> LintCtx pass (S ctx) ctx'
 bind' (LintCtx vs ts ts' rs ss cs xs xs' ns s pp) x v t = LintCtx (vs :> v) (ts :> t) ts' rs (ss :> cs) cs (xs :> x) xs' ns s pp
 
-weakenLintCtx :: Wk ctx ctx' -> LintCtx ctx' ctx'' -> LintCtx ctx ctx''
+weakenLintCtx :: Wk ctx ctx' -> LintCtx pass ctx' ctx'' -> LintCtx pass ctx ctx''
 weakenLintCtx w (LintCtx vs ts ts' rs ss cs xs xs' ns s pp) = LintCtx (weakenEnv w vs) (weakenEnv w ts) ts' rs (weakenEnv w ss) cs (weakenEnv w xs) xs' ns s pp
 
 -------------------------------------------------------------------------------
@@ -63,7 +63,7 @@ weakenLintCtx w (LintCtx vs ts ts' rs ss cs xs xs' ns s pp) = LintCtx (weakenEnv
 
 type LintM = ExceptState Doc RigidState
 
-newRigid :: LintCtx ctx ctx' -> VTerm 'NoMetas ctx' -> LintM (LintCtx ctx ctx', RigidVar ctx')
+newRigid :: LintCtx pass ctx ctx' -> VTerm pass ctx' -> LintM (LintCtx pass ctx ctx', RigidVar ctx')
 newRigid ctx ty = do
     r <- takeRigidVar
     return (ctx { rigids = insertRigidMap r ty ctx.rigids }, r)
@@ -72,14 +72,14 @@ newRigid ctx ty = do
 -- Errors
 -------------------------------------------------------------------------------
 
-lintError :: LintCtx ctx ctx' -> Doc -> [Doc] -> LintM a
+lintError :: LintCtx pass ctx ctx' -> Doc -> [Doc] -> LintM a
 lintError ctx msg extras = throwError $ ppHanging
     ("LINT:" <+> msg)
     [ ppBullet <+> e
     | e <- extras ++ ctx.doc
     ]
 
-prettyVTermCtx :: LintCtx ctx ctx' -> VTerm NoMetas ctx' -> Doc
+prettyVTermCtx :: LintCtx pass ctx ctx' -> VTerm pass ctx' -> Doc
 prettyVTermCtx ctx = prettyVTerm ctx.size ctx.nscope ctx.names'
 
 -------------------------------------------------------------------------------
@@ -93,15 +93,15 @@ prettyVTermCtx ctx = prettyVTerm ctx.size ctx.nscope ctx.names'
 -------------------------------------------------------------------------------
 
 lintTerm
-    :: LintCtx ctx ctx'           -- ^ Elaboration context
-    -> Term NoMetas ctx                   -- ^ Term
-    -> VTerm NoMetas ctx'                 -- ^ Expected type
+    :: LintCtx pass ctx ctx'           -- ^ Elaboration context
+    -> Term pass ctx                   -- ^ Term
+    -> VTerm pass ctx'                 -- ^ Expected type
     -> LintM ()
 lintTerm ctx t a = do
     let d = "When checking that" <+> prettyTerm ctx.nscope ctx.names 0 t <+> "has type" <+> prettyVTermCtx ctx a
     lintTerm' ctx { doc = d : ctx.doc } t a
 
-lintElim :: LintCtx ctx ctx' -> Elim NoMetas ctx -> LintM (VTerm NoMetas ctx')
+lintElim :: LintCtx pass ctx ctx' -> Elim pass ctx -> LintM (VTerm pass ctx')
 lintElim ctx e = do
     let d = "When infering type of" <+> prettyElim ctx.nscope ctx.names 0 e
     lintElim' ctx { doc = d : ctx.doc } e
@@ -110,7 +110,7 @@ lintElim ctx e = do
 -- Check & Infer
 -------------------------------------------------------------------------------
 
-lintIcit :: LintCtx ctx ctx' -> Icit -> Icit -> LintM ()
+lintIcit :: LintCtx pass ctx ctx' -> Icit -> Icit -> LintM ()
 lintIcit ctx i j
     | i == j    = return ()
     | otherwise = lintError ctx "Icity mismatch"
@@ -118,7 +118,7 @@ lintIcit ctx i j
         , "actual:" <+> prettyIcit i
         ]
 
-lintTerm' :: LintCtx ctx ctx' -> Term NoMetas ctx -> VTerm NoMetas ctx' -> LintM ()
+lintTerm' :: LintCtx pass ctx ctx' -> Term pass ctx -> VTerm pass ctx' -> LintM ()
 lintTerm' ctx (Lam x i t)   (force -> VPie y j a b) = do
     --
     --  x : A ⊢ B ∋ t
@@ -369,7 +369,7 @@ lintTerm' ctx (Emb e)     a    = do
 lintTerm' ctx (WkT w t) a =
     lintTerm' (weakenLintCtx w ctx) t a
 
-lintElim' :: forall ctx ctx'. LintCtx ctx ctx' -> Elim NoMetas ctx -> LintM (VTerm NoMetas ctx')
+lintElim' :: forall pass ctx ctx'. LintCtx pass ctx ctx' -> Elim pass ctx -> LintM (VTerm pass ctx')
 lintElim' ctx (Var x)   = do
     --
     --  (x : A) ∈ Γ
@@ -389,7 +389,7 @@ lintElim' ctx (Var x)   = do
 
 lintElim' ctx (Gbl g)   =
     -- Global is similar to variable.
-    return (sinkSize ctx.size g.typ)
+    return (coeNoMetasVTerm (sinkSize ctx.size g.typ))
 
 lintElim' ctx (App i f t) = do
     --
@@ -473,7 +473,7 @@ lintElim' ctx (DeI e m c1 cS cX) = do
             let mt = evalTerm ctx.size EmptyEnv descIndMotive
             lintTerm ctx m mt
 
-            let mv :: VElim NoMetas ctx'
+            let mv :: VElim pass ctx'
                 mv = vann (evalTerm ctx.size ctx.values m) mt
 
             let mv' = velim mv
@@ -513,7 +513,7 @@ lintElim' ctx (Ind e m t) = do
             let mt = VPie "_" Ecit et (Closure EmptyEnv Uni)
             lintTerm ctx m mt
 
-            let mv :: VElim NoMetas ctx'
+            let mv :: VElim pass ctx'
                 mv = vann (evalTerm ctx.size ctx.values m) mt
 
             let mv' = velim mv

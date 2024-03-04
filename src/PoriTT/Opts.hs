@@ -26,6 +26,7 @@ data DumpOpts = DumpOpts
     { ps :: !Bool
     , rn :: !Bool
     , tc :: !Bool
+    , zk :: !Bool
     , st :: !Bool
     , si :: !Bool
     }
@@ -53,6 +54,7 @@ defaultOpts = Opts
         { ps = False
         , rn = False
         , tc = False
+        , zk = False
         , st = False
         , si = False
         }
@@ -120,12 +122,14 @@ optsP = many $ asum
     , O.flag' (set (#dump % #ps) True) $ O.long "dump-ps" <> O.help "Dump parsed term"
     , O.flag' (set (#dump % #rn) True) $ O.long "dump-rn" <> O.help "Dump renamed term"
     , O.flag' (set (#dump % #tc) True) $ O.long "dump-tc" <> O.help "Dump type-checked (elaborated) term"
+    , O.flag' (set (#dump % #zk) True) $ O.long "dump-zk" <> O.help "Dump zonked (meta-substituted) term"
     , O.flag' (set (#dump % #st) True) $ O.long "dump-st" <> O.help "Dump staged term"
     , O.flag' (set (#dump % #si) True) $ O.long "dump-si" <> O.help "Dump simplifier iterations"
 
     , O.flag' (set (#dump % #ps) False) $ O.long "no-dump-ps" <> O.help "Don't dump parsed term" <> O.hidden
     , O.flag' (set (#dump % #rn) False) $ O.long "no-dump-rn" <> O.help "Don't dump renamed term" <> O.hidden
     , O.flag' (set (#dump % #tc) False) $ O.long "no-dump-tc" <> O.help "Don't dump type-checked (elaborated) term" <> O.hidden
+    , O.flag' (set (#dump % #zk) False) $ O.long "no-dump-zk" <> O.help "Don't dump zonked (meta-substituted) term" <> O.hidden
     , O.flag' (set (#dump % #st) False) $ O.long "no-dump-st" <> O.help "Don't dump staged term" <> O.hidden
     , O.flag' (set (#dump % #si) False) $ O.long "no-dump-si" <> O.help "Don't dump simplifier iterations" <> O.hidden
     ]
