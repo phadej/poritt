@@ -260,12 +260,14 @@ stageTerm _ _ _   (EIx l)       = SEIx l
 stageTerm q s env (Emb e)       = SEmb (stageElim q s env e)
 stageTerm q s env (WkT w t)     = stageTerm q s (weakenEnv w env) t
 
--- TODO
 sspl :: Size ctx -> SElim pass ctx -> VElim pass ctx -> SElim pass ctx
 sspl _ _ (VAnn (VQuo (SEmb e') _) (force -> VCod (VQuo _ _))) = e'
-sspl _ _ (VAnn (VQuo t' _) (force -> VCod (VQuo a av))) = SAnn t' a av
+sspl s _ (VAnn (VQuo t' _) (force -> VCod (VQuo a av))) = SAnn t' a (vsplCodArg s av)
+sspl _ _ t@(VAnn _ _)                                     = SErr $ error $ show t
 sspl s e (VGbl _ _ h)                                   = sspl s e h
-sspl s e v                                             = SSpl e (vspl s v)
+sspl _ _ (VFlx h sp)                                    = SSpN (VNFlx h sp)
+sspl _ _ (VRgd h sp)                                    = SSpN (VNRgd h sp)
+sspl _ _ (VErr err)                                     = SErr err
 
 stageElim :: Natural -> Size ctx' -> EvalEnv pass ctx ctx' -> Elim pass ctx -> SElim pass ctx'
 stageElim _ _ env (Var x)   = case lookupEnv x env of
@@ -279,7 +281,7 @@ stageElim q s env (App i f t)     = SApp i (stageElim q s env f) (stageTerm q s 
 stageElim q s env (Sel e r)       = SSel (stageElim q s env e) r
 stageElim q s env (Let x a b)     = SLet x (stageElim q s env a) (Closure env b)
 stageElim NZ     s env (Spl t)    = sspl s (stageElim NZ s env t) (evalElim' s env t)
-stageElim (NS q) s env (Spl t)    = SSpl (stageElim q s env t) (vspl s (evalElim' s env t))
+stageElim (NS q) s env (Spl t)    = SSpl (stageElim q s env t) TODO -- (evalElim' s env t)
 stageElim q s env (Ind e m t)     = SInd (stageElim q s env e) (stageTerm q s env m) (stageTerm q s env t)
 stageElim q s env (DeI e m x y z) = SDeI (stageElim q s env e) (stageTerm q s env m) (stageTerm q s env x) (stageTerm q s env y) (stageTerm q s env z)
 stageElim q s env (WkE w e)       = stageElim q s (weakenEnv w env) e

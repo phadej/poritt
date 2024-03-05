@@ -70,6 +70,11 @@ quoteElim u s (VGbl g sp t) = case u of
 quoteElim u s (VAnn t a)    = ann <$> quoteTerm u s t <*> quoteTerm u s a
 quoteElim _ _ (VErr msg)    = Left msg
 
+quoteNeut :: Unfold -> Size ctx -> VNeut pass ctx -> Either EvalError (Elim pass ctx)
+quoteNeut u s (VNRgd l sp)   = quoteSpine (unfoldSp u) s (pure (Var (lvlToIdx s l))) sp
+quoteNeut u s (VNFlx m sp)   = quoteSpine (unfoldSp u) s (pure (Met m)) sp
+quoteNeut _ _ (VNErr msg)    = Left msg
+
 unfoldSp :: Unfold -> Unfold
 unfoldSp UnfoldElim = UnfoldNone
 unfoldSp u          = u
@@ -119,6 +124,7 @@ quoteSElim l      s (SDeI e m x y z) = DeI <$> quoteSElim l s e <*> quoteSTerm l
 quoteSElim l      s (SAnn t a _)     = Ann <$> quoteSTerm l s t <*> quoteSTerm l s a
 quoteSElim (NS l) s (SSpl e _)       = Spl <$> quoteSElim l s e
 quoteSElim NZ     s (SSpl _ e)       = quoteElim UnfoldNone s e
+quoteSElim _      s (SSpN e)         = Spl <$> quoteNeut UnfoldNone s e
 quoteSElim l      s (SLet x e f)     = Let x <$> quoteSElim l s e <*> quoteSElim l (SS s) (runSEZ l s f)
 quoteSElim _      _ (SErr msg)       = Left msg
 

@@ -123,6 +123,13 @@ convElim ctx x y = do
     -- traceM $ "CONV: " ++ show (ppSep [prettyVTermCtx ctx ty, " |-" <+> prettyVTermCtx ctx x, "=?=" <+> prettyVTermCtx ctx y])
     convElim' ctx x y
 
+-- | Beta-eta conversion checking of eliminations.
+convNeut :: ConvCtx pass ctx -> VNeut pass ctx -> VNeut pass ctx -> ConvM (VTerm pass ctx)
+convNeut ctx x y = do
+    -- we define a helper function, so we can trace when needed.
+    -- traceM $ "CONV: " ++ show (ppSep [prettyVTermCtx ctx ty, " |-" <+> prettyVTermCtx ctx x, "=?=" <+> prettyVTermCtx ctx y])
+    convNeut' ctx x y
+
 -------------------------------------------------------------------------------
 -- Workers
 -------------------------------------------------------------------------------
@@ -237,6 +244,14 @@ convElim' _   (VErr msg)     _             = throwError $ ppStr $ show msg
 convElim' _   _              (VErr msg)    = throwError $ ppStr $ show msg
 convElim' _   (VFlx _ _)     _             = throwError "flex"
 convElim' _   _              (VFlx _ _)    = throwError "flex"
+
+convNeut' :: ConvCtx pass ctx -> VNeut pass ctx -> VNeut pass ctx -> ConvM (VTerm pass ctx)
+-- Globals
+convNeut' ctx (VNRgd h1 sp1)  (VNRgd h2 sp2) = convNeutral ctx h1 sp1 h2 sp2
+convNeut' _   (VNErr msg)     _             = throwError $ ppStr $ show msg
+convNeut' _   _              (VNErr msg)    = throwError $ ppStr $ show msg
+convNeut' _   (VNFlx _ _)     _             = throwError "flex"
+convNeut' _   _              (VNFlx _ _)    = throwError "flex"
 
 -- Eta expand value of function type.
 etaLam :: Size ctx -> Icit -> VElim pass ctx -> VTerm pass (S ctx)
@@ -453,6 +468,15 @@ convSElim' _ env (SVar x) (SVar y)
     = mismatch "variable" (prettyName (lookupLvl env x)) (prettyName (lookupLvl env y))
 convSElim' l env a@SVar {} b = notConvertibleSE l env a b
 
+convSElim' _      env (SSpN t)   (SSpN s) = do
+    ty <- convNeut env t s
+    case force ty of
+        VCod a -> return (vsplCodArg env.size a)
+        _ -> throwError ("splice argument does not have Code-type" <+> ppSep
+            [ "actual:" <+> prettyVTermCtx env ty
+            ])
+convSElim' l env a@SSpN {} b = notConvertibleSE l env a b
+
 convSElim' NZ     env (SSpl _ x) (SSpl _ y) = do
     convElim env x y
 convSElim' (NS l) env (SSpl x _) (SSpl y _) = do
@@ -463,7 +487,7 @@ convSElim' l env a@SSpl {} b = notConvertibleSE l env a b
 convSElim' l      ctx (SApp i f t v) (SApp j g s _) = do
     convIcit ctx i j
     ty <- convSElim' l ctx f g
-    case ty of
+    case force ty of
         VPie _ _i a b -> do
             convSTerm' l ctx a t s
             return (run ctx.size b (vann v ty))
