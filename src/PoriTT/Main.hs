@@ -35,6 +35,7 @@ import PoriTT.Lexer
 import PoriTT.Lint
 import PoriTT.Macro
 import PoriTT.Name
+import PoriTT.Nice
 import PoriTT.Opts
 import PoriTT.Rigid
 import PoriTT.Parser
@@ -45,6 +46,7 @@ import PoriTT.Rename
 import PoriTT.Simpl
 import PoriTT.Term
 import PoriTT.Value
+import PoriTT.Zonk
 import PoriTT.Well
 
 modifyM :: Monad m => (s -> m s) -> StateT s m ()
@@ -59,7 +61,7 @@ data Environment = Environment
     , macros   :: Map Name Macro
     , included :: Set FilePath
     , includeS :: Natural
-    , pending  :: Maybe (Name, VTerm NoMetas EmptyCtx)
+    , pending  :: Maybe (Name, Term NoMetas EmptyCtx, VTerm NoMetas EmptyCtx)
     , opts     :: Opts
     }
 
@@ -137,7 +139,7 @@ checkNoPending = do
     let names = nameScopeFromEnv env
     case p of
         Nothing -> return ()
-        Just (n, ty)  -> printError $ "Pending definition of " <+> prettyName n <+> ":" <+> prettyVTermZ opts UnfoldNone names ty VUni
+        Just (n, ty, _ty)  -> printError $ "Pending definition of " <+> prettyName n <+> ":" <+> prettyTermZ opts names ty VUni
 
 batchFile
     :: FilePath                -- ^ input file
@@ -198,10 +200,19 @@ batchFile fn = execStateT $ do
         -- elaborate, i.e. type-check
         (e0, et') <- either printError return $ evalExceptState (checkElim (emptyCheckCtx names) w) initialRigidState
         when opts.dump.tc $ printDoc $ ppSoftHanging (ppAnnotate ACmd "tc") [ prettyElim names EmptyEnv 0 e0 ]
-        -- lint
 
-        let et = unsafeCoerce et' :: VTerm NoMetas EmptyCtx
-            e1 = unsafeCoerce e0 :: Elim NoMetas EmptyCtx
+        let et = case quoteTerm UnfoldNone SZ et' of
+                Left err -> undefined
+                Right t -> case zonkTerm t of
+                    Nothing -> undefined
+                    Just t' -> evalTerm SZ emptyEvalEnv t'
+
+        printDoc $ ppStr $ show et'
+        printDoc $ ppStr $ show et
+
+        -- lint
+--        let et = unsafeCoerce et' :: VTerm NoMetas EmptyCtx
+        let e1 = unsafeCoerce e0 :: Elim NoMetas EmptyCtx
         -- when opts.dump.tc $ printDoc $ ppSoftHanging (ppAnnotate ACmd "tc") [ prettyElimZ opts names e0 ] -- zonk
         lint "First" e1 et
 
@@ -238,7 +249,8 @@ batchFile fn = execStateT $ do
         -- elaborate, i.e. type-check
         t0 <- either printError return $ evalExceptState (checkTerm (emptyCheckCtx names) w (coeNoMetasVTerm et)) initialRigidState
 
-        let t1 = unsafeCoerce t0 :: Term NoMetas EmptyCtx
+        t1 <- maybe (printError $ "zonk failed") return $ zonkTerm t0
+
         when opts.dump.tc $ printDoc $ ppSoftHanging (ppAnnotate ACmd "tc") [ prettyTermZ opts names t1 et ]
         lintT "First" t1 et
 
@@ -309,7 +321,7 @@ batchFile fn = execStateT $ do
         let t'' = evalTerm SZ emptyEvalEnv t'
 
         let env' :: Environment
-            env' = env { pending = Just (name, t'') }
+            env' = env { pending = Just (name, t', t'') }
 
         put env'
 
@@ -334,13 +346,10 @@ batchFile fn = execStateT $ do
 
         (e', et) <- case env.pending of
             Nothing          -> pipelineElim e
-            Just (name', ty) -> do
+            Just (name', ty', ty) -> do
                 unless (name == name') $ printError $ "Pending definition of " <+> prettyName name' <+> ":" <+> prettyVTermZ opts UnfoldNone names ty VUni
                 t <- pipelineTerm e ty
-
-                case quoteTerm UnfoldNone SZ ty of
-                    Left err -> printError $ ppStr $ show err
-                    Right ty' -> return (Ann t ty', ty)
+                return (Ann t ty', ty)
 
         let ev = evalElim SZ emptyEvalEnv e'
         let g :: Global

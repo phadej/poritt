@@ -24,8 +24,6 @@ import PoriTT.Term
 import PoriTT.Used
 import PoriTT.Value
 
-import Unsafe.Coerce (unsafeCoerce) -- TODO
-
 -- | Conversion context.
 data ConvCtx pass ctx = ConvCtx
     { size   :: Size ctx
@@ -96,6 +94,8 @@ notConvertibleSE l ctx x y = throwError $ ppSep
     [ "not convertible (at level" <+> ppStr (show l) <> "):"
     , prettySElimCtx l ctx x <+> "/="
     , prettySElimCtx l ctx y
+    , ppStr $ show x
+    , ppStr $ show y
     ]
 
 notType :: ConvCtx pass ctx -> VTerm pass ctx -> ConvM a
@@ -226,7 +226,7 @@ convTerm' ctx ty@VTht {} _ _ = notType ctx ty
 convElim' :: ConvCtx pass ctx -> VElim pass ctx -> VElim pass ctx -> ConvM (VTerm pass ctx)
 -- Globals
 convElim' env (VGbl g1 VNil _) (VGbl g2 VNil _)
-    | g1.name == g2.name   = pure (unsafeCoerce (sinkSize env.size g1.typ))
+    | g1.name == g2.name   = pure (coeNoMetasVTerm (sinkSize env.size g1.typ))
 -- otherwise we check the values
 convElim' ctx (VGbl _ _ t)   u             = convElim ctx t u
 convElim' ctx t              (VGbl _ _ u)  = convElim ctx t u
@@ -440,9 +440,9 @@ convSElim' :: Natural -> ConvCtx pass ctx -> SElim pass ctx -> SElim pass ctx ->
 convSElim' _ _ (SErr err) _ = throwError $ ppStr $ show err
 convSElim' _ _ _ (SErr err) = throwError $ ppStr $ show err
 
-convSElim' _ _ (SGbl x) (SGbl y)
+convSElim' _ env (SGbl x) (SGbl y)
     | x.name == y.name
-    = return (unsafeCoerce x.typ) -- TODO
+    = return (sinkSize env.size (coeNoMetasVTerm x.typ))
 convSElim' l env a@SGbl {} b = notConvertibleSE l env a b
 
 convSElim' _ env (SVar x) (SVar y)
