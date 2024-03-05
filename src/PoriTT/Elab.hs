@@ -5,8 +5,8 @@
 module PoriTT.Elab (
     ElabCtx,
     emptyElabCtx,
-    checkTerm,
-    checkElim,
+    elabTerm,
+    elabElim,
 ) where
 
 import PoriTT.Base
@@ -36,20 +36,20 @@ import PoriTT.Elab.Monad
 -- Errors
 -------------------------------------------------------------------------------
 
-checkError :: ElabCtx ctx ctx' -> Doc -> [Doc] -> ElabM a
-checkError ctx msg extras = throwError $ ppHanging
+elabError :: ElabCtx ctx ctx' -> Doc -> [Doc] -> ElabM a
+elabError ctx msg extras = throwError $ ppHanging
     (prettyLoc ctx.loc <> ":" <+> msg)
     [ ppBullet <+> ppAlign e
     | e <- extras ++ take 5 ctx.doc
     ]
 
 notType :: ElabCtx ctx ctx' -> VTerm HasMetas ctx' -> ElabM (Term HasMetas ctx)
-notType ctx ty = checkError ctx "Checking against non-type"
+notType ctx ty = elabError ctx "Checking against non-type"
     [ "not-type:" <+> prettyVTermCtx ctx ty
     ]
 
 invalidTerm :: ElabCtx ctx ctx' -> Doc -> VTerm HasMetas ctx' -> Well (HasTerms HasMetas) ctx -> ElabM (Term HasMetas ctx)
-invalidTerm ctx cls ty t = checkError ctx ("Checking against" <+> cls)
+invalidTerm ctx cls ty t = elabError ctx ("Checking against" <+> cls)
     [ "type:" <+> prettyVTermCtx ctx ty
     , "term:" <+> prettyWell ctx.nscope ctx.names 0 t
     ]
@@ -72,31 +72,31 @@ prettyNamesTypes s ns env (xs :> x) (ts :> t) =
 -------------------------------------------------------------------------------
 
 -- | Check term ('Term') against a type (as 'VTerm').
-checkTerm
+elabTerm
     :: ElabCtx ctx ctx'               -- ^ Type checking context
     -> Well (HasTerms HasMetas) ctx     -- ^ Well scoped term
     -> VTerm HasMetas ctx'              -- ^ Expected type
     -> ElabM (Term HasMetas ctx)   -- ^ Type checked term
-checkTerm ctx t a = do
+elabTerm ctx t a = do
     let d = ppSep
             [ "When checking that"
             , prettyWell ctx.nscope ctx.names 0 t
             , "has type"
             , prettyVTermCtx ctx a
             ]
-    checkTerm' ctx { doc = d : ctx.doc } t a
+    elabTerm' ctx { doc = d : ctx.doc } t a
 
 -- | Infer type of an elimination ('Elim').
-checkElim
+elabElim
     :: ElabCtx ctx ctx'                                   -- ^ Type checking context
     -> Well (HasTerms HasMetas) ctx                         -- ^ Well scoped elimination
     -> ElabM (Elim HasMetas ctx, VTerm HasMetas ctx')   -- ^ Type checked elimination and its type
-checkElim ctx e = do
+elabElim ctx e = do
     let d = ppSep
             [ "When infering type of"
             , prettyWell ctx.nscope ctx.names 0 e
             ]
-    checkElim' ctx { doc = d : ctx.doc } e
+    elabElim' ctx { doc = d : ctx.doc } e
 
 -------------------------------------------------------------------------------
 -- Check helpers
@@ -105,30 +105,30 @@ checkElim ctx e = do
 checkIcit :: ElabCtx ctx ctx' -> Icit -> Icit -> ElabM ()
 checkIcit ctx i j
     | i == j    = return ()
-    | otherwise = checkError ctx "Icity mismatch"
+    | otherwise = elabError ctx "Icity mismatch"
         [ "expected:" <+> prettyIcit j
         , "actual:" <+> prettyIcit i
         ]
 
 checkHole :: ElabCtx ctx ctx' -> Name -> VTerm HasMetas ctx' -> ElabM (Term HasMetas ctx)
-checkHole ctx n ty = checkError ctx ("Checking a hole" <+> prettyHole n) $
+checkHole ctx n ty = elabError ctx ("Checking a hole" <+> prettyHole n) $
     [ "type:" <+> prettyVTermCtx ctx ty
     ] ++
     (prettyNamesTypes ctx.size ctx.nscope ctx.names' ctx.names ctx.types)
 
 checkSkipped :: ElabCtx ctx ctx' -> VTerm HasMetas ctx' -> ElabM (Term HasMetas ctx)
-checkSkipped ctx ty = checkError ctx ("Skipped term") $
+checkSkipped ctx ty = elabError ctx ("Skipped term") $
     [ "type:" <+> prettyVTermCtx ctx ty
     ] ++
     (prettyNamesTypes ctx.size ctx.nscope ctx.names' ctx.names ctx.types)
 
 checkInfer :: ElabCtx ctx ctx' -> Well (HasTerms HasMetas) ctx -> VTerm HasMetas ctx' -> ElabM (Term HasMetas ctx)
 checkInfer ctx e            a = do
-    (e', et) <- checkElim ctx e
+    (e', et) <- elabElim ctx e
     -- traceM $ "CONV: " ++ show (ctx.names', e, et, a)
     case evalExceptState (convTerm (mkConvCtx ctx.size ctx.names' ctx.types' ctx.nscope ctx.rigids) VUni a et) initialRigidState of
         Right () -> pure (Emb e')
-        Left err -> checkError ctx "Couldn't match types"
+        Left err -> elabError ctx "Couldn't match types"
             [ "expected:" <+> prettyVTermCtx ctx a
             , "actual:" <+> prettyVTermCtx ctx et
             , err
@@ -137,7 +137,7 @@ checkInfer ctx e            a = do
 checkLabel :: ElabCtx ctx ctx' -> Label -> [Label] -> ElabM EnumIdx
 checkLabel ctx l0 ls0 = go 0 ls0 where
     go :: Int -> [Label] -> ElabM EnumIdx
-    go !_ [] = checkError ctx ("label" <+> prettyLabel l0 <+> "is not in the set" <+> prettyVTermCtx ctx (VFin ls0)) []
+    go !_ [] = elabError ctx ("label" <+> prettyLabel l0 <+> "is not in the set" <+> prettyVTermCtx ctx (VFin ls0)) []
     go !i (l:ls)
         | l == l0   = return (EnumIdx i)
         | otherwise = go (i + 1) ls
@@ -145,14 +145,14 @@ checkLabel ctx l0 ls0 = go 0 ls0 where
 checkEnumIdx :: ElabCtx ctx ctx' -> EnumIdx -> [Label] -> ElabM EnumIdx
 checkEnumIdx ctx i@(EnumIdx i') ls0
     | i' < length ls0 = return i
-    | otherwise = checkError ctx ("enum index " <+> prettyEnumIdx i <+> "is out of bounds of" <+> prettyVTermCtx ctx (VFin ls0)) []
+    | otherwise = elabError ctx ("enum index " <+> prettyEnumIdx i <+> "is out of bounds of" <+> prettyVTermCtx ctx (VFin ls0)) []
 
 -- TODO: Better name for this.
 foo :: ElabCtx ctx ctx' -> [Label] -> [Either Label EnumIdx := a] -> ElabM (EnumList a)
 foo ctx ls0 m0 = go 0 [] m0 ls0 where
     go _ tgt src []
         | null src   = return $ makeEnumList $ reverse tgt
-        | otherwise = checkError ctx "switch map contains extra keys"
+        | otherwise = elabError ctx "switch map contains extra keys"
             [ ppStr (show (map fst src))
             ]
 
@@ -164,7 +164,7 @@ foo ctx ls0 m0 = go 0 [] m0 ls0 where
         = go (i' + 1) (x : tgt) src' ls
 
         | otherwise
-        = checkError ctx "switch map doesn't contain a key"
+        = elabError ctx "switch map doesn't contain a key"
             [ "missing:" <+> prettyLabel l <+> "or" <+> prettyEnumIdx i
             , "keys:" <+> ppStr (show (map fst src))
             ]
@@ -182,140 +182,140 @@ lookupRemoving k = go id where
 -- Check term
 -------------------------------------------------------------------------------
 
-checkTerm'
+elabTerm'
     :: ElabCtx ctx ctx'                -- ^ Type checking context
     -> Well (HasTerms HasMetas) ctx      -- ^ Well scoped term
     -> VTerm HasMetas ctx'               -- ^ Expected type
     -> ElabM (Term HasMetas ctx)    -- ^ Type checked term
-checkTerm' ctx (WLoc l t) ty = checkTerm' ctx { loc = l } t ty
-checkTerm' ctx (WHol n)   ty = checkHole ctx n ty
-checkTerm' ctx WSkp       ty = checkSkipped ctx ty
-checkTerm' ctx e@WVar {}  ty = checkInfer ctx e ty
-checkTerm' ctx e@WGbl {}  ty = checkInfer ctx e ty
-checkTerm' ctx e@WApp {}  ty = checkInfer ctx e ty
-checkTerm' ctx e@WSel {}  ty = checkInfer ctx e ty
-checkTerm' ctx e@WSwh {}  ty = checkInfer ctx e ty
-checkTerm' ctx e@WDeI {}  ty = checkInfer ctx e ty
-checkTerm' ctx e@WInd {}  ty = checkInfer ctx e ty
-checkTerm' ctx e@WSpl {}  ty = checkInfer ctx e ty
-checkTerm' ctx e@WAnn {}  ty = checkInfer ctx e ty
-checkTerm' ctx e@WLet {}  ty = checkInfer ctx e ty
-checkTerm' ctx (WTcT t)   ty = do
+elabTerm' ctx (WLoc l t) ty = elabTerm' ctx { loc = l } t ty
+elabTerm' ctx (WHol n)   ty = checkHole ctx n ty
+elabTerm' ctx WSkp       ty = checkSkipped ctx ty
+elabTerm' ctx e@WVar {}  ty = checkInfer ctx e ty
+elabTerm' ctx e@WGbl {}  ty = checkInfer ctx e ty
+elabTerm' ctx e@WApp {}  ty = checkInfer ctx e ty
+elabTerm' ctx e@WSel {}  ty = checkInfer ctx e ty
+elabTerm' ctx e@WSwh {}  ty = checkInfer ctx e ty
+elabTerm' ctx e@WDeI {}  ty = checkInfer ctx e ty
+elabTerm' ctx e@WInd {}  ty = checkInfer ctx e ty
+elabTerm' ctx e@WSpl {}  ty = checkInfer ctx e ty
+elabTerm' ctx e@WAnn {}  ty = checkInfer ctx e ty
+elabTerm' ctx e@WLet {}  ty = checkInfer ctx e ty
+elabTerm' ctx (WTcT t)   ty = do
     lintTerm (toLintCtx ctx) t ty
     return t
-checkTerm' ctx t          ty = checkTerm'' ctx ty t
+elabTerm' ctx t          ty = elabTerm'' ctx ty t
 
-checkTerm''
+elabTerm''
     :: ElabCtx ctx ctx'               -- ^ Type checking context
     -> VTerm HasMetas ctx'              -- ^ Expected type
     -> Well (HasTerms HasMetas) ctx     -- ^ Well scoped term
     -> ElabM (Term HasMetas ctx)   -- ^ Type checked term
-checkTerm'' ctx (VEmb (VErr msg)) _t = do
-    checkError ctx "Type evaluation error"
+elabTerm'' ctx (VEmb (VErr msg)) _t = do
+    elabError ctx "Type evaluation error"
         [ ppStr (show msg)
         ]
 
 -- types
-checkTerm'' _ctx VUni WUni = return Uni
-checkTerm'' _ctx VUni WOne = return One
-checkTerm'' _ctx VUni WDsc = return Dsc
-checkTerm'' _ctx VUni (WFin ls) = return (Fin ls)
-checkTerm''  ctx VUni (WPie x i a b) = do
-    a' <- checkTerm ctx a VUni
+elabTerm'' _ctx VUni WUni = return Uni
+elabTerm'' _ctx VUni WOne = return One
+elabTerm'' _ctx VUni WDsc = return Dsc
+elabTerm'' _ctx VUni (WFin ls) = return (Fin ls)
+elabTerm''  ctx VUni (WPie x i a b) = do
+    a' <- elabTerm ctx a VUni
     let av = evalTerm ctx.size ctx.values a'
-    b' <- checkTerm (bind ctx x x av) b VUni
+    b' <- elabTerm (bind ctx x x av) b VUni
     return (Pie x i a' b')
-checkTerm'' ctx VUni (WSgm x i a b) = do
-    a' <- checkTerm ctx a VUni
+elabTerm'' ctx VUni (WSgm x i a b) = do
+    a' <- elabTerm ctx a VUni
     let av = evalTerm ctx.size ctx.values a'
-    b' <- checkTerm (bind ctx x x av) b VUni
+    b' <- elabTerm (bind ctx x x av) b VUni
     return (Sgm x i a' b')
-checkTerm'' ctx VUni (WMuu t) = do
-    t' <- checkTerm ctx t VDsc
+elabTerm'' ctx VUni (WMuu t) = do
+    t' <- elabTerm ctx t VDsc
     return (Muu t')
-checkTerm'' ctx VUni (WCod t) = do
-    t' <- checkTerm ctx t vcodUni
+elabTerm'' ctx VUni (WCod t) = do
+    t' <- elabTerm ctx t vcodUni
     return (Cod t')
-checkTerm'' ctx ty@VUni t = do
+elabTerm'' ctx ty@VUni t = do
     invalidTerm ctx "U" ty t
 
 -- functions
-checkTerm'' ctx (VPie y i a b) (WLam x j t) = do
+elabTerm'' ctx (VPie y i a b) (WLam x j t) = do
     checkIcit ctx i j
     let ctx' = bind ctx x y a
-    t' <- checkTerm ctx' t (runZ ctx.size b)
+    t' <- elabTerm ctx' t (runZ ctx.size b)
     return (Lam x i t')
-checkTerm'' ctx (VPie x Ecit (force -> VFin ls) b) (WLst ts) = do
+elabTerm'' ctx (VPie x Ecit (force -> VFin ls) b) (WLst ts) = do
     --
     let x' = nonAnonName x
     let ty = VPie x' Ecit (VFin ls) b
     b' <- case quoteTerm UnfoldNone ctx.size (VLam x' Ecit b) of
-        Left err -> checkError ctx "Evaluation error"
+        Left err -> elabError ctx "Evaluation error"
             [ ppStr (show err)
             ]
         Right b' -> return b'
 
     let b'' = weaken ctx.wk b'
     let ts' = ifoldr (\i t acc -> (Right (EnumIdx i) := weaken wk1 t) : acc) [] ts
-    checkTerm ctx (WLam x' Ecit $ WSwh (WVar IZ) (weaken wk1 (WTcT b'')) ts') ty
-checkTerm'' ctx ty@(VPie _ _ _ _) t =
+    elabTerm ctx (WLam x' Ecit $ WSwh (WVar IZ) (weaken wk1 (WTcT b'')) ts') ty
+elabTerm'' ctx ty@(VPie _ _ _ _) t =
     invalidTerm ctx "Pi-type" ty t
 
 -- pairs
-checkTerm'' ctx (VSgm _ j a b) (WMul i t s) = do
+elabTerm'' ctx (VSgm _ j a b) (WMul i t s) = do
     checkIcit ctx i j
-    t' <- checkTerm' ctx t a
+    t' <- elabTerm' ctx t a
     let tv = evalTerm ctx.size ctx.values t'
-    s' <- checkTerm ctx s (run ctx.size b (vann tv a))
+    s' <- elabTerm ctx s (run ctx.size b (vann tv a))
     return (Mul i t' s')
-checkTerm'' ctx (VSgm x Ecit a b) (WLst ts0) = do
+elabTerm'' ctx (VSgm x Ecit a b) (WLst ts0) = do
     --
     -- ⊩ Σ (x : A) × B ∋ t , [s...] ▹ r
     -- --------------------------------
     -- ⊩ Σ (x : A) × B ∋ [ t s...] ▹ r
     --
     case ts0 of
-        [] -> checkError ctx
+        [] -> elabError ctx
             "Null list expression checked against sigma type"
             []
         t:ts -> do
-            checkTerm ctx (WMul Ecit t (WLst ts)) (VSgm x Ecit a b)
-checkTerm'' ctx ty@(VSgm _ _ _ _) t =
+            elabTerm ctx (WMul Ecit t (WLst ts)) (VSgm x Ecit a b)
+elabTerm'' ctx ty@(VSgm _ _ _ _) t =
     invalidTerm ctx "Sigma-type" ty t
 
 -- unit
-checkTerm'' _ctx VOne WTht =
+elabTerm'' _ctx VOne WTht =
     return Tht
-checkTerm'' ctx VOne (WLst ts) = do
+elabTerm'' ctx VOne (WLst ts) = do
     --
     -- ------------------
     -- ⊩ Unit ∋ [] ▹ tt
     --
-    when (not (null ts)) $ checkError ctx
+    when (not (null ts)) $ elabError ctx
         "Non-null list expression checked against enum type"
         []
     return Tht
-checkTerm'' ctx ty@VOne t =
+elabTerm'' ctx ty@VOne t =
     invalidTerm ctx "Unit" ty t
 
 -- descriptions
-checkTerm'' _ctx VDsc WDe1 =
+elabTerm'' _ctx VDsc WDe1 =
     return De1
-checkTerm'' ctx VDsc (WDeS t s) = do
-    t' <- checkTerm ctx t VUni
-    s' <- checkTerm ctx s (VPie "_" Ecit (evalTerm ctx.size ctx.values t') (Closure EmptyEnv Dsc))
+elabTerm'' ctx VDsc (WDeS t s) = do
+    t' <- elabTerm ctx t VUni
+    s' <- elabTerm ctx s (VPie "_" Ecit (evalTerm ctx.size ctx.values t') (Closure EmptyEnv Dsc))
     return (DeS t' s')
-checkTerm'' ctx VDsc (WDeX t) = do
-    t' <- checkTerm ctx t VDsc
+elabTerm'' ctx VDsc (WDeX t) = do
+    t' <- elabTerm ctx t VDsc
     return (DeX t')
-checkTerm'' ctx ty@VDsc t =
+elabTerm'' ctx ty@VDsc t =
     invalidTerm ctx "Description" ty t
 
 -- fixed points
-checkTerm'' ctx ty@(VMuu d) (WCon t) = do
-    t' <- checkTerm ctx t $ vemb $ vapps ctx.size (vgbl ctx.size evalDescGlobal) [d, ty]
+elabTerm'' ctx ty@(VMuu d) (WCon t) = do
+    t' <- elabTerm ctx t $ vemb $ vapps ctx.size (vgbl ctx.size evalDescGlobal) [d, ty]
     return (Con t')
-checkTerm'' ctx (VMuu (force -> VDeS (force -> VFin ls) d)) (WLbl l ts) = do
+elabTerm'' ctx (VMuu (force -> VDeS (force -> VFin ls) d)) (WLbl l ts) = do
     --
     -- ⊩ #E ∋ :c ▹ n
     -- ⊩ evalDesc ((D : #E → Desc) n) (μ (`Σ E# D)) ∋ [t...] ▹ t'
@@ -324,58 +324,63 @@ checkTerm'' ctx (VMuu (force -> VDeS (force -> VFin ls) d)) (WLbl l ts) = do
     --
     i' <- checkLabel ctx l ls
     let d' = vann d (VPie "_" Ecit (VFin ls) (Closure EmptyEnv Dsc))
-    t' <- checkTerm ctx (WLst ts) $ vemb $ vapps ctx.size (vgbl ctx.size evalDescGlobal)
+    t' <- elabTerm ctx (WLst ts) $ vemb $ vapps ctx.size (vgbl ctx.size evalDescGlobal)
         [ vemb (vapp ctx.size Ecit d' (VEIx i'))
         , VMuu (VDeS (VFin ls) d)
         ]
 
     return $ Con (Mul Ecit (EIx i') t')
 
-checkTerm'' ctx ty@(VMuu _) t =
+elabTerm'' ctx ty@(VMuu _) t =
     invalidTerm ctx "Mu-type" ty t
 
 -- finite enumerations
-checkTerm'' ctx (VFin ls) (WLbl l ts) = do
-    unless (null ts) $ checkError ctx
+elabTerm'' ctx (VFin ls) (WLbl l ts) = do
+    unless (null ts) $ elabError ctx
         ("label" <+> prettyLabel l <+> "is applied to arguments but checked against finite set type")
         []
     i' <- checkLabel ctx l ls
     return (EIx i')
-checkTerm'' ctx (VFin ls) (WEIx i ts) = do
-    unless (null ts) $ checkError ctx
+elabTerm'' ctx (VFin ls) (WEIx i ts) = do
+    unless (null ts) $ elabError ctx
         ("enum index " <+> prettyEnumIdx i <+> "is applied to arguments but checked against finite set type")
         []
     i' <- checkEnumIdx ctx i ls
     return (EIx i')
-checkTerm'' ctx ty@(VFin _) t =
+elabTerm'' ctx ty@(VFin _) t =
     invalidTerm ctx "finite enumeration" ty t
 
 -- code
-checkTerm'' ctx (VCod a) (WQuo t) = do
-    t' <- checkTerm ctx { cstage = pred ctx.cstage } t (vsplCodArg ctx.size a)
+elabTerm'' ctx (VCod a) (WQuo t) = do
+    t' <- elabTerm ctx { cstage = pred ctx.cstage } t (vsplCodArg ctx.size a)
     return (Quo t')
-checkTerm'' ctx ty@(VCod _) t =
+elabTerm'' ctx ty@(VCod _) t =
     invalidTerm ctx "Code" ty t
 
 -- not types
-checkTerm'' ctx ty@VLam {} _ = notType ctx ty
-checkTerm'' ctx ty@VDe1 {} _ = notType ctx ty
-checkTerm'' ctx ty@VDeS {} _ = notType ctx ty
-checkTerm'' ctx ty@VDeX {} _ = notType ctx ty
-checkTerm'' ctx ty@VCon {} _ = notType ctx ty
-checkTerm'' ctx ty@VMul {} _ = notType ctx ty
-checkTerm'' ctx ty@VEIx {} _ = notType ctx ty
-checkTerm'' ctx ty@VQuo {} _ = notType ctx ty
-checkTerm'' ctx ty@VTht {} _ = notType ctx ty
+elabTerm'' ctx ty@VLam {} _ = notType ctx ty
+elabTerm'' ctx ty@VDe1 {} _ = notType ctx ty
+elabTerm'' ctx ty@VDeS {} _ = notType ctx ty
+elabTerm'' ctx ty@VDeX {} _ = notType ctx ty
+elabTerm'' ctx ty@VCon {} _ = notType ctx ty
+elabTerm'' ctx ty@VMul {} _ = notType ctx ty
+elabTerm'' ctx ty@VEIx {} _ = notType ctx ty
+elabTerm'' ctx ty@VQuo {} _ = notType ctx ty
+elabTerm'' ctx ty@VTht {} _ = notType ctx ty
 
 -- emb ann should be reduced, but we don't enforce that.
-checkTerm'' ctx (VEmb (VAnn ty _))  t = checkTerm'' ctx ty t
+elabTerm'' ctx (VEmb (VAnn ty _))  t = elabTerm'' ctx ty t
 
 -- force
-checkTerm'' ctx (VEmb (VGbl _ _ v)) t = checkTerm'' ctx (vemb v) t
+elabTerm'' ctx (VEmb (VGbl _ _ v)) t = elabTerm'' ctx (vemb v) t
 
-checkTerm'' ctx (VEmb ty@(VRgd _ _)) _ =
-    checkError ctx "Cannot check against neutral-type"
+elabTerm'' ctx (VEmb ty@(VRgd _ _)) _ =
+    elabError ctx "Cannot check against neutral-type"
+        [ "type:" <+> prettyVTermCtx ctx (VEmb ty)
+        ]
+
+elabTerm'' ctx (VEmb ty@(VFlx _ _)) _ =
+    elabError ctx "Cannot check against neutral-type"
         [ "type:" <+> prettyVTermCtx ctx (VEmb ty)
         ]
 
@@ -383,130 +388,130 @@ checkTerm'' ctx (VEmb ty@(VRgd _ _)) _ =
 -- Check Elim
 -------------------------------------------------------------------------------
 
-checkElim' :: forall ctx ctx'. ElabCtx ctx ctx' -> Well (HasTerms HasMetas) ctx -> ElabM (Elim HasMetas ctx, VTerm HasMetas ctx')
-checkElim' ctx (WLoc l r)
-    = checkElim' ctx { loc = l } r
-checkElim' ctx (WVar i) = do
+elabElim' :: forall ctx ctx'. ElabCtx ctx ctx' -> Well (HasTerms HasMetas) ctx -> ElabM (Elim HasMetas ctx, VTerm HasMetas ctx')
+elabElim' ctx (WLoc l r)
+    = elabElim' ctx { loc = l } r
+elabElim' ctx (WVar i) = do
     let s = lookupEnv i ctx.stages
     when (s /= ctx.cstage) $ do
-        checkError ctx "Variable used at different stage"
+        elabError ctx "Variable used at different stage"
             [ "variable:" <+> prettyName (lookupEnv i ctx.names)
             , "expected:" <+> prettyStage ctx.cstage
             , "actual:  " <+> prettyStage s
             ]
 
     pure (Var i, lookupEnv i ctx.types)
-checkElim' ctx (WGbl g) =
+elabElim' ctx (WGbl g) =
     pure (Gbl g, coeNoMetasVTerm (sinkSize ctx.size g.typ))
-checkElim' ctx (WHol n) =
-    checkError ctx
+elabElim' ctx (WHol n) =
+    elabError ctx
     ("Cannot infer type of a hole" <> prettyHole n)
     []
-checkElim' ctx WSkp =
-    checkError ctx
+elabElim' ctx WSkp =
+    elabError ctx
     ("Cannot infer type of skipped term")
     []
-checkElim' ctx (WLam _ _ _) =
-    checkError ctx
+elabElim' ctx (WLam _ _ _) =
+    elabError ctx
     "Cannot infer type of a lambda abstraction"
     []
-checkElim' ctx (WMul _ _ _) =
-    checkError ctx
+elabElim' ctx (WMul _ _ _) =
+    elabError ctx
     "Cannot infer type of a pair constructor"
     []
-checkElim' ctx (WCon _) =
-    checkError ctx
+elabElim' ctx (WCon _) =
+    elabError ctx
     "Cannot infer type of a con constructor"
     []
-checkElim' ctx (WLbl _ _) =
-    checkError ctx
+elabElim' ctx (WLbl _ _) =
+    elabError ctx
     "Cannot infer type of a label"
     []
-checkElim' ctx (WEIx _ _) =
-    checkError ctx
+elabElim' ctx (WEIx _ _) =
+    elabError ctx
     "Cannot infer type of an enum index"
     []
-checkElim' ctx (WQuo _) =
-    checkError ctx
+elabElim' ctx (WQuo _) =
+    elabError ctx
     "Cannot infer type of a quote"
     []
-checkElim' ctx (WLst _) =
-    checkError ctx
+elabElim' ctx (WLst _) =
+    elabError ctx
     "Cannot infer type of a list expression"
     []
-checkElim' ctx  (WTcT _) =
-    checkError ctx
+elabElim' ctx  (WTcT _) =
+    elabError ctx
     "Cannot infer type of a embedded type-checker term"
     []
-checkElim' ctx (WPie x i a b) = do
-    a' <- checkTerm ctx a VUni
+elabElim' ctx (WPie x i a b) = do
+    a' <- elabTerm ctx a VUni
     let av = evalTerm ctx.size ctx.values a'
-    b' <- checkTerm (bind ctx x x av) b VUni
+    b' <- elabTerm (bind ctx x x av) b VUni
     return (Ann (Pie x i a' b') Uni, VUni)
-checkElim' ctx (WSgm x i a b) = do
-    a' <- checkTerm ctx a VUni
+elabElim' ctx (WSgm x i a b) = do
+    a' <- elabTerm ctx a VUni
     let av = evalTerm ctx.size ctx.values a'
-    b' <- checkTerm (bind ctx x x av) b VUni
+    b' <- elabTerm (bind ctx x x av) b VUni
     return (Ann (Sgm x i a' b') Uni, VUni)
-checkElim' _   (WFin ls) =
+elabElim' _   (WFin ls) =
     return (Ann (Fin ls) Uni, VUni)
-checkElim' _   WUni =
+elabElim' _   WUni =
     return (Ann Uni Uni, VUni)
-checkElim' _   WOne =
+elabElim' _   WOne =
     return (Ann One Uni, VUni)
-checkElim' _   WTht =
+elabElim' _   WTht =
     return (Ann Tht One, VOne)
-checkElim' _   WDsc =
+elabElim' _   WDsc =
     return (Ann Dsc Uni, VUni)
-checkElim' _   WDe1 =
+elabElim' _   WDe1 =
     return (Ann De1 Dsc, VDsc)
-checkElim' ctx (WDeX t) = do
-    t' <- checkTerm ctx t VDsc
+elabElim' ctx (WDeX t) = do
+    t' <- elabTerm ctx t VDsc
     return (Ann (DeX t') Dsc, VDsc)
-checkElim' ctx (WDeS t s) = do
-    t' <- checkTerm ctx t VUni
+elabElim' ctx (WDeS t s) = do
+    t' <- elabTerm ctx t VUni
     let tv = evalTerm ctx.size ctx.values t'
-    s' <- checkTerm ctx s (VPie "_" Ecit tv (Closure EmptyEnv Dsc))
+    s' <- elabTerm ctx s (VPie "_" Ecit tv (Closure EmptyEnv Dsc))
     return (Ann (DeS t' s') Dsc, VDsc)
-checkElim' ctx (WMuu t) = do
-    t' <- checkTerm ctx t VDsc
+elabElim' ctx (WMuu t) = do
+    t' <- elabTerm ctx t VDsc
     return (Ann (Muu t') Uni, VUni)
-checkElim' ctx (WCod a) = do
-    a' <- checkTerm ctx a vcodUni
+elabElim' ctx (WCod a) = do
+    a' <- elabTerm ctx a vcodUni
     return (Ann (Cod a') Uni, VUni)
-checkElim' ctx (WApp i f t) = do
-    (f', ft) <- checkElim ctx f
+elabElim' ctx (WApp i f t) = do
+    (f', ft) <- elabElim ctx f
     case force ft of
         VPie _ j a b -> do
             checkIcit ctx j i
-            t' <- checkTerm ctx t a
+            t' <- elabTerm ctx t a
             let tv = evalTerm ctx.size ctx.values t'
             return (App i f' t', run ctx.size b (vann tv a))
-        _ -> checkError ctx "Function application head does not have a pi-type"
+        _ -> elabError ctx "Function application head does not have a pi-type"
             [ "actual:" <+> prettyVTermCtx ctx ft
             ]
-checkElim' ctx (WSel e s) = do
-    (e', et) <- checkElim ctx e
+elabElim' ctx (WSel e s) = do
+    (e', et) <- elabElim ctx e
     case force et of
         VSgm _ _i a b
             | s == "fst" -> return (Sel e' s, a)
             | s == "snd" -> return (Sel e' s, run ctx.size b (evalElim ctx.size ctx.values (Sel e' "fst")))
-            | otherwise  -> checkError ctx ("Sigma type doesn't have field" <+> prettySelector s) []
+            | otherwise  -> elabError ctx ("Sigma type doesn't have field" <+> prettySelector s) []
 
         -- TODO: pie with a ~ WFin
-        _ -> checkError ctx "Selector application head does not have a selectable type"
+        _ -> elabError ctx "Selector application head does not have a selectable type"
             [ "actual:" <+> prettyVTermCtx ctx et
             ]
 
-checkElim' ctx (WSwh e m ts) = do
-    (e', et) <- checkElim ctx e
+elabElim' ctx (WSwh e m ts) = do
+    (e', et) <- elabElim ctx e
     case force et of
         VFin ls -> do
             ts0 <- foo ctx ls ts
 
             -- {:ls...} -> U ∋ M
             let mt = VPie "_" Ecit et (Closure EmptyEnv Uni)
-            m' <- checkTerm ctx m mt
+            m' <- elabTerm ctx m mt
             let mv :: VElim HasMetas ctx'
                 mv = vann (evalTerm ctx.size ctx.values m') mt
 
@@ -515,37 +520,37 @@ checkElim' ctx (WSwh e m ts) = do
             -- in { :l -> t }
             -- M :l ∋ t
             ts' <- ifor ts0 $ \i t -> do
-                checkTerm ctx t $ evalTerm ctx.size (EmptyEnv :> mv') (var IZ @@ EIx i)
+                elabTerm ctx t $ evalTerm ctx.size (EmptyEnv :> mv') (var IZ @@ EIx i)
 
             let ev = evalElim ctx.size ctx.values e'
                 ev' = velim ev
             return (Swh e' m' ts', evalTerm ctx.size (ctx.values :> mv' :> ev') (var I1 @@ var IZ))
 
-        _ -> checkError ctx "Switch case scrutinee doesn't have finite set type"
+        _ -> elabError ctx "Switch case scrutinee doesn't have finite set type"
             [ "actual:" <+> prettyVTermCtx ctx et
             ]
 
-checkElim' ctx (WDeI e m c1 cS cX) = do
+elabElim' ctx (WDeI e m c1 cS cX) = do
     -- ⊢ e ∈ Desc
-    (e', et) <- checkElim ctx e
+    (e', et) <- elabElim ctx e
     case force et of
         VDsc -> do
             -- ⊢ Desc → U ∋ M
             let mt = evalTerm ctx.size EmptyEnv descIndMotive
-            m' <- checkTerm ctx m mt
+            m' <- elabTerm ctx m mt
             let mv :: VElim HasMetas ctx'
                 mv = vann (evalTerm ctx.size ctx.values m') mt
 
                 mv' = velim mv
 
             -- ⊢ M `1 ∋ c1
-            c1' <- checkTerm ctx c1 $ evalTerm ctx.size (EmptyEnv :> mv') descIndMotive1
+            c1' <- elabTerm ctx c1 $ evalTerm ctx.size (EmptyEnv :> mv') descIndMotive1
 
             -- ⊢ Π (S : U) (D : S → Desc) → (Π (s : S) → M (D s)) → M (`S S D) ∋ cS
-            cS' <- checkTerm ctx cS $ evalTerm ctx.size (EmptyEnv :> mv') descIndMotiveS
+            cS' <- elabTerm ctx cS $ evalTerm ctx.size (EmptyEnv :> mv') descIndMotiveS
 
             -- ⊢ Π (D : Desc) → M D → M (`X D) ∋ cX
-            cX' <- checkTerm ctx cX $ evalTerm ctx.size (EmptyEnv :> mv') descIndMotiveX
+            cX' <- elabTerm ctx cX $ evalTerm ctx.size (EmptyEnv :> mv') descIndMotiveX
 
             -- ∈ M e
             let ev = evalElim ctx.size ctx.values e'
@@ -556,25 +561,25 @@ checkElim' ctx (WDeI e m c1 cS cX) = do
               , evalTerm ctx.size (ctx.values :> mv' :> ev') (var I1 @@ var IZ)
               )
 
-        _ -> checkError ctx "Desc induction scrutinee doesn't have type Desc"
+        _ -> elabError ctx "Desc induction scrutinee doesn't have type Desc"
             [ "actual:" <+> prettyVTermCtx ctx et
             ]
 
-checkElim' ctx (WInd e m t) = do
+elabElim' ctx (WInd e m t) = do
     -- ⊢ e ∈ μ D
-    (e', et) <- checkElim ctx e
+    (e', et) <- elabElim ctx e
     case force et of
         VMuu d -> do
             -- ⊢ μ D → U ∋ M
             let mt = VPie "_" Ecit et (Closure EmptyEnv Uni)
-            m' <- checkTerm ctx m mt
+            m' <- elabTerm ctx m mt
             let mv :: VElim HasMetas ctx'
                 mv = vann (evalTerm ctx.size ctx.values m') mt
 
                 mv' = velim mv
 
             -- ⊢ Π (d : evalDesc D (μ D)) → All D (μ D) M d → M (con d) ∋ t
-            t' <- checkTerm ctx t $ evalTerm ctx.size (EmptyEnv :> velim (vann d VDsc) :> mv') muMotiveT
+            t' <- elabTerm ctx t $ evalTerm ctx.size (EmptyEnv :> velim (vann d VDsc) :> mv') muMotiveT
 
             -- ... ∈ M e
             let ev = evalElim ctx.size ctx.values e'
@@ -584,29 +589,29 @@ checkElim' ctx (WInd e m t) = do
                 , evalTerm ctx.size (ctx.values :> mv' :> ev') (var I1 @@ var IZ)
                 )
 
-        _ -> checkError ctx "ind argument doesn't have type mu"
+        _ -> elabError ctx "ind argument doesn't have type mu"
             [ "actual:" <+> prettyVTermCtx ctx et
             ]
 
-checkElim' ctx (WSpl e) = do
-    (e', et) <- checkElim ctx { cstage = succ ctx.cstage } e
+elabElim' ctx (WSpl e) = do
+    (e', et) <- elabElim ctx { cstage = succ ctx.cstage } e
     case force et of
         VCod a -> do
             return (Spl e', vsplCodArg ctx.size a)
 
-        _ -> checkError ctx "splice argument doesn't have type Code"
+        _ -> elabError ctx "splice argument doesn't have type Code"
             [ "actual:" <+> prettyVTermCtx ctx et
             ]
 
-checkElim' ctx (WAnn t s) = do
-    s' <- checkTerm ctx s VUni
+elabElim' ctx (WAnn t s) = do
+    s' <- elabTerm ctx s VUni
     let sv = evalTerm ctx.size ctx.values s'
-    t' <- checkTerm ctx t sv
+    t' <- elabTerm ctx t sv
     return (Ann t' s', sv)
-checkElim' ctx (WLet x t s) = do
-    (t', tt) <- checkElim ctx t
+elabElim' ctx (WLet x t s) = do
+    (t', tt) <- elabElim ctx t
     (ctx', r) <- newRigid ctx tt
     let tv = evalElim ctx.size ctx.values t'
         tv' = EvalElim tv (SRgd r)
-    (s', st) <- checkElim (bind' ctx' x tv' tt) s
+    (s', st) <- elabElim (bind' ctx' x tv' tt) s
     return (Let x t' s', st)

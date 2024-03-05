@@ -269,9 +269,12 @@ distillElim' ctx (Var x)   = do
 
     return (RVar (lookupEnv x ctx.names), lookupEnv x ctx.types)
 
-distillElim' ctx (Gbl g)   =
+distillElim' ctx (Gbl g) =
     -- Global is similar to variable.
     return (RGbl g, sinkSize ctx.size' g.typ)
+
+distillElim' _ctx (Rgd _) =
+    Nothing
 
 distillElim' ctx (App i f t) = do
     (f', fty) <- distillElim' ctx f

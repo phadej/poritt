@@ -492,6 +492,11 @@ checkTerm'' ctx (VEmb ty@(VRgd _ _)) _ =
         [ "type:" <+> prettyVTermCtx ctx (VEmb ty)
         ]
 
+checkTerm'' ctx (VEmb ty@(VFlx _ _)) _ =
+    checkError ctx "Cannot check against neutral-type"
+        [ "type:" <+> prettyVTermCtx ctx (VEmb ty)
+        ]
+
 -------------------------------------------------------------------------------
 -- Check Elim
 -------------------------------------------------------------------------------

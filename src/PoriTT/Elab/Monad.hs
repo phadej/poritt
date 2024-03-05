@@ -3,7 +3,8 @@ module PoriTT.Elab.Monad (
     newRigid,
 ) where
 
-import PoriTT.Base
+-- import PoriTT.Base
+
 import PoriTT.PP
 import PoriTT.Rigid
 import PoriTT.ExceptState

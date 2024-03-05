@@ -370,7 +370,7 @@ lintTerm' ctx (WkT w t) a =
     lintTerm' (weakenLintCtx w ctx) t a
 
 lintElim' :: forall pass ctx ctx'. LintCtx pass ctx ctx' -> Elim pass ctx -> LintM (VTerm pass ctx')
-lintElim' ctx (Var x)   = do
+lintElim' ctx (Var x) = do
     --
     --  (x : A) ∈ Γ
     -- ------------- var
@@ -387,9 +387,15 @@ lintElim' ctx (Var x)   = do
 
     return (lookupEnv x ctx.types)
 
-lintElim' ctx (Gbl g)   =
+lintElim' ctx (Gbl g) =
     -- Global is similar to variable.
     return (coeNoMetasVTerm (sinkSize ctx.size g.typ))
+
+lintElim' ctx (Met _) =
+    lintError ctx "TODO: LINT Meta variable" []
+
+lintElim' ctx (Rgd _) =
+    lintError ctx "Rigid variable" []
 
 lintElim' ctx (App i f t) = do
     --

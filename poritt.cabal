@@ -157,6 +157,7 @@ library
     PoriTT.Used
     PoriTT.Value
     PoriTT.Well
+    PoriTT.Zonk
 
 executable poritt
   import:         common
