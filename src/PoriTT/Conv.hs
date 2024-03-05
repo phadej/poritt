@@ -477,8 +477,8 @@ convSElim' _      env (SSpN t)   (SSpN s) = do
             ])
 convSElim' l env a@SSpN {} b = notConvertibleSE l env a b
 
-convSElim' NZ     env (SSpl _ x) (SSpl _ y) = do
-    convElim env x y
+convSElim' NZ     _env (SSpl _ _x) (SSpl _ _y) = do
+    throwError "nope"
 convSElim' (NS l) env (SSpl x _) (SSpl y _) = do
     ty <- convSElim' l env x y
     return (vsplCodArg env.size ty)
