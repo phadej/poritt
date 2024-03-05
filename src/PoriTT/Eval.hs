@@ -91,7 +91,7 @@ evalTerm' _ _   (EIx i)       = VEIx i
 evalTerm' _ _   (Fin ls)      = VFin ls
 evalTerm' s env (Mul i t r)   = VMul i (evalTerm' s env t) (evalTerm' s env r)
 evalTerm' s env (Cod a)       = VCod (evalTerm' s env a)
-evalTerm' s env (Quo t)       = VQuo (stageTerm s env t) (evalTerm' s env t)
+evalTerm' s env (Quo t)       = VQuo (stageTerm NZ s env t) (evalTerm' s env t)
 evalTerm' s env (WkT w t)     = evalTerm' s (weakenEnv w env) t
 
 evalElim' :: Size ctx' -> EvalEnv pass ctx ctx' -> Elim pass ctx -> VElim pass ctx'
@@ -239,49 +239,57 @@ vsplCodArg s a = vemb (vspl s (vann a vcodUni))
 -- Staging
 -------------------------------------------------------------------------------
 
-stageTerm :: Size ctx' -> EvalEnv pass ctx ctx' -> Term pass ctx -> STerm pass ctx'
-stageTerm s env (Pie x i a b) = SPie x i (stageTerm s env a) (evalTerm s env a) (Closure env b)
-stageTerm _ env (Lam x i t)   = SLam x i (Closure env t)
-stageTerm s env (Sgm x i a b) = SSgm x i (stageTerm s env a) (Closure env b)
-stageTerm s env (Mul i t r)   = SMul i (stageTerm s env t) (stageTerm s env r)
-stageTerm s env (Cod t)       = SCod (stageTerm s env t)
-stageTerm s env (Muu t)       = SMuu (stageTerm s env t)
-stageTerm s env (Con t)       = SCon (stageTerm s env t)
-stageTerm s env (Quo t)       = SQuo (stageTerm s env t)
-stageTerm _ _   Uni           = SUni
-stageTerm _ _   One           = SOne
-stageTerm _ _   Tht           = STht
-stageTerm _ _   Dsc           = SDsc
-stageTerm _ _   De1           = SDe1
-stageTerm s env (DeS t r)     = SDeS (stageTerm s env t) (stageTerm s env r)
-stageTerm s env (DeX t)       = SDeX (stageTerm s env t)
-stageTerm _ _   (Fin ls)      = SFin ls
-stageTerm _ _   (EIx l)       = SEIx l
-stageTerm s env (Emb e)       = SEmb (stageElim s env e)
-stageTerm s env (WkT w t)     = stageTerm s (weakenEnv w env) t
+stageTerm :: Natural -> Size ctx' -> EvalEnv pass ctx ctx' -> Term pass ctx -> STerm pass ctx'
+stageTerm q s env (Pie x i a b) = SPie x i (stageTerm q s env a) (evalTerm s env a) (Closure env b)
+stageTerm _ _ env (Lam x i t)   = SLam x i (Closure env t)
+stageTerm q s env (Sgm x i a b) = SSgm x i (stageTerm q s env a) (Closure env b)
+stageTerm q s env (Mul i t r)   = SMul i (stageTerm q s env t) (stageTerm q s env r)
+stageTerm q s env (Cod t)       = SCod (stageTerm q s env t)
+stageTerm q s env (Muu t)       = SMuu (stageTerm q s env t)
+stageTerm q s env (Con t)       = SCon (stageTerm q s env t)
+stageTerm q s env (Quo t)       = SQuo (stageTerm (NS q) s env t)
+stageTerm _ _ _   Uni           = SUni
+stageTerm _ _ _   One           = SOne
+stageTerm _ _ _   Tht           = STht
+stageTerm _ _ _   Dsc           = SDsc
+stageTerm _ _ _   De1           = SDe1
+stageTerm q s env (DeS t r)     = SDeS (stageTerm q s env t) (stageTerm q s env r)
+stageTerm q s env (DeX t)       = SDeX (stageTerm q s env t)
+stageTerm _ _ _   (Fin ls)      = SFin ls
+stageTerm _ _ _   (EIx l)       = SEIx l
+stageTerm q s env (Emb e)       = SEmb (stageElim q s env e)
+stageTerm q s env (WkT w t)     = stageTerm q s (weakenEnv w env) t
 
-stageElim :: Size ctx' -> EvalEnv pass ctx ctx' -> Elim pass ctx -> SElim pass ctx'
-stageElim _ env (Var x)   = case lookupEnv x env of
+-- TODO
+sspl :: Size ctx -> SElim pass ctx -> VElim pass ctx -> SElim pass ctx
+sspl _ _ (VAnn (VQuo (SEmb e') _) (force -> VCod (VQuo _ _))) = e'
+sspl _ _ (VAnn (VQuo t' _) (force -> VCod (VQuo a av))) = SAnn t' a av
+sspl s e (VGbl _ _ h)                                   = sspl s e h
+sspl s e v                                             = SSpl e (vspl s v)
+
+stageElim :: Natural -> Size ctx' -> EvalEnv pass ctx ctx' -> Elim pass ctx -> SElim pass ctx'
+stageElim _ _ env (Var x)   = case lookupEnv x env of
     EvalElim _ e -> e
-stageElim _ _   (Met _m)        = TODO -- not sure what to do here yet.
-stageElim _ _   (Rgd _)         = TODO
-stageElim _ _   (Gbl g)         = SGbl g
-stageElim s env (Swh e m ts)    = SSwh (stageElim s env e) (stageTerm s env m) (stageTerm s env <$> ts)
-stageElim s env (Ann t a)       = SAnn (stageTerm s env t) (stageTerm s env a) (evalTerm s env a)
-stageElim s env (App i f t)     = SApp i (stageElim s env f) (stageTerm s env t) (evalTerm s env t)
-stageElim s env (Sel e r)       = SSel (stageElim s env e) r
-stageElim s env (Let x a b)     = SLet x (stageElim s env a) (Closure env b)
-stageElim s env (Spl t)         = SSpl (stageElim s env t) (vspl s (evalElim' s env t))
-stageElim s env (Ind e m t)     = SInd (stageElim s env e) (stageTerm s env m) (stageTerm s env t)
-stageElim s env (DeI e m x y z) = SDeI (stageElim s env e) (stageTerm s env m) (stageTerm s env x) (stageTerm s env y) (stageTerm s env z)
-stageElim s env (WkE w e)       = stageElim s (weakenEnv w env) e
+stageElim _ _ _   (Met _m)        = TODO -- not sure what to do here yet.
+stageElim _ _ _   (Rgd _)         = TODO
+stageElim _ _ _   (Gbl g)         = SGbl g
+stageElim q s env (Swh e m ts)    = SSwh (stageElim q s env e) (stageTerm q s env m) (stageTerm q s env <$> ts)
+stageElim q s env (Ann t a)       = SAnn (stageTerm q s env t) (stageTerm q s env a) (evalTerm s env a)
+stageElim q s env (App i f t)     = SApp i (stageElim q s env f) (stageTerm q s env t) (evalTerm s env t)
+stageElim q s env (Sel e r)       = SSel (stageElim q s env e) r
+stageElim q s env (Let x a b)     = SLet x (stageElim q s env a) (Closure env b)
+stageElim NZ     s env (Spl t)    = sspl s (stageElim NZ s env t) (evalElim' s env t)
+stageElim (NS q) s env (Spl t)    = SSpl (stageElim q s env t) (vspl s (evalElim' s env t))
+stageElim q s env (Ind e m t)     = SInd (stageElim q s env e) (stageTerm q s env m) (stageTerm q s env t)
+stageElim q s env (DeI e m x y z) = SDeI (stageElim q s env e) (stageTerm q s env m) (stageTerm q s env x) (stageTerm q s env y) (stageTerm q s env z)
+stageElim q s env (WkE w e)       = stageElim q s (weakenEnv w env) e
 
 -- | Run closure with (neutral) variable as an argument.
-runSTZ :: Size ctx -> ClosureT pass ctx -> STerm pass (S ctx)
-runSTZ s (sink -> Closure env f) = stageTerm (SS s) (env :> evalZ s) f
+runSTZ :: Natural -> Size ctx -> ClosureT pass ctx -> STerm pass (S ctx)
+runSTZ q s (sink -> Closure env f) = stageTerm q (SS s) (env :> evalZ s) f
 
-runSEZ :: Size ctx -> ClosureE pass ctx -> SElim pass (S ctx)
-runSEZ s (sink -> Closure env f) = stageElim (SS s) (env :> evalZ s) f
+runSEZ :: Natural -> Size ctx -> ClosureE pass ctx -> SElim pass (S ctx)
+runSEZ q s (sink -> Closure env f) = stageElim q (SS s) (env :> evalZ s) f
 
-runSE :: Size ctx -> ClosureE pass ctx -> EvalElim pass ctx -> SElim pass ctx
-runSE s (Closure env f) e = stageElim s (env :> e) f
+runSE :: Natural -> Size ctx -> ClosureE pass ctx -> EvalElim pass ctx -> SElim pass ctx
+runSE q s (Closure env f) e = stageElim q s (env :> e) f

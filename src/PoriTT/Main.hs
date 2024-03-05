@@ -207,8 +207,8 @@ batchFile fn = execStateT $ do
                     Nothing -> undefined
                     Just t' -> evalTerm SZ emptyEvalEnv t'
 
-        printDoc $ ppStr $ show et'
-        printDoc $ ppStr $ show et
+        -- printDoc $ ppStr $ show et'
+        -- printDoc $ ppStr $ show et
 
         -- lint
 --        let et = unsafeCoerce et' :: VTerm NoMetas EmptyCtx

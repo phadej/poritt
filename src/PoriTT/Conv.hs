@@ -94,8 +94,8 @@ notConvertibleSE l ctx x y = throwError $ ppSep
     [ "not convertible (at level" <+> ppStr (show l) <> "):"
     , prettySElimCtx l ctx x <+> "/="
     , prettySElimCtx l ctx y
-    , ppStr $ show x
-    , ppStr $ show y
+    -- , ppStr $ show x
+    -- , ppStr $ show y
     ]
 
 notType :: ConvCtx pass ctx -> VTerm pass ctx -> ConvM a
@@ -387,7 +387,7 @@ convSTerm' _ _      VUni    SOne               SOne =
 convSTerm' l ctx    VUni    (SPie x i a1 a b1) (SPie _ j a2 _ b2) = do
     convIcit ctx i j
     convSTerm' l ctx VUni a1 a2
-    convSTerm' l (bind x a ctx) VUni (runSTZ ctx.size b1) (runSTZ ctx.size b2)
+    convSTerm' l (bind x a ctx) VUni (runSTZ l ctx.size b1) (runSTZ l ctx.size b2)
 convSTerm' l ctx ty@VUni    a                  b =
     notConvertibleST l ctx ty a b
 
@@ -488,7 +488,7 @@ convSElim' l      env (SLet _ t u) (SLet _ s v) = do
     ty <- convSElim' l env t s
     (env', r) <- newRigid env ty
     let x = EvalElim (VErr TODO) (SRgd r)
-    convSElim' l env' (runSE env.size u x) (runSE env.size v x)
+    convSElim' l env' (runSE l env.size u x) (runSE l env.size v x)
 convSElim' l      env a@SLet {} b = notConvertibleSE l env a b
 
 convSElim' _ env (SRgd x) (SRgd y)

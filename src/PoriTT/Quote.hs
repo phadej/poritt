@@ -88,9 +88,9 @@ quoteSpine u s h (VSpl sp)         = Spl <$> quoteSpine u s h sp
 -------------------------------------------------------------------------------
 
 quoteSTerm :: Natural -> Size ctx -> STerm pass ctx -> Either EvalError (Term pass ctx)
-quoteSTerm l      s (SLam n i clos) = Lam n i <$> quoteSTerm l (SS s) (runSTZ s clos)
-quoteSTerm l      s (SPie x i a _ b) = Pie x i <$> quoteSTerm l s a <*> quoteSTerm l (SS s) (runSTZ s b)
-quoteSTerm l      s (SSgm x i a b)  = Sgm x i <$> quoteSTerm l s a <*> quoteSTerm l (SS s) (runSTZ s b)
+quoteSTerm l      s (SLam n i clos) = Lam n i <$> quoteSTerm l (SS s) (runSTZ l s clos)
+quoteSTerm l      s (SPie x i a _ b) = Pie x i <$> quoteSTerm l s a <*> quoteSTerm l (SS s) (runSTZ l s b)
+quoteSTerm l      s (SSgm x i a b)  = Sgm x i <$> quoteSTerm l s a <*> quoteSTerm l (SS s) (runSTZ l s b)
 quoteSTerm l      s (SMul i t r)    = Mul i <$> quoteSTerm l s t <*> quoteSTerm l s r
 quoteSTerm _      _ SUni            = pure Uni
 quoteSTerm _      _ SOne            = pure One
@@ -119,7 +119,7 @@ quoteSElim l      s (SDeI e m x y z) = DeI <$> quoteSElim l s e <*> quoteSTerm l
 quoteSElim l      s (SAnn t a _)     = Ann <$> quoteSTerm l s t <*> quoteSTerm l s a
 quoteSElim (NS l) s (SSpl e _)       = Spl <$> quoteSElim l s e
 quoteSElim NZ     s (SSpl _ e)       = quoteElim UnfoldNone s e
-quoteSElim l      s (SLet x e f)     = Let x <$> quoteSElim l s e <*> quoteSElim l (SS s) (runSEZ s f)
+quoteSElim l      s (SLet x e f)     = Let x <$> quoteSElim l s e <*> quoteSElim l (SS s) (runSEZ l s f)
 quoteSElim _      _ (SErr msg)       = Left msg
 
 -------------------------------------------------------------------------------
@@ -137,10 +137,10 @@ nfElim u s ee t = quoteElim u s (evalElim s ee t)
 -------------------------------------------------------------------------------
 
 preElim :: Size ctx' -> EvalEnv pass ctx ctx' -> Elim pass ctx -> Either EvalError (Elim pass ctx')
-preElim s env e = quoteSElim NZ s $ stageElim s env e
+preElim s env e = quoteSElim NZ s $ stageElim NZ s env e
 
 preTerm :: Size ctx' -> EvalEnv pass ctx ctx' -> Term pass ctx -> Either EvalError (Term pass ctx')
-preTerm s env t = quoteSTerm NZ s $ stageTerm s env t
+preTerm s env t = quoteSTerm NZ s $ stageTerm NZ s env t
 
 -------------------------------------------------------------------------------
 -- Pretty printing
