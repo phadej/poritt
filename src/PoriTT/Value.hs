@@ -92,7 +92,7 @@ data VElim pass ctx where
 
 -- | Neutral term is elimination which is not annotation.
 type VNeut :: TermPass -> Ctx -> Type
-data VNeut pass ctx where 
+data VNeut pass ctx where
     VNErr :: EvalError -> VNeut pass ctx
     VNRgd :: Lvl ctx -> Spine pass ctx -> VNeut pass ctx
     VNFlx :: MetaVar -> Spine HasMetas ctx -> VNeut HasMetas ctx

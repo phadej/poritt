@@ -37,17 +37,17 @@ import PoriTT.Macro
 import PoriTT.Name
 import PoriTT.Nice
 import PoriTT.Opts
-import PoriTT.Rigid
 import PoriTT.Parser
 import PoriTT.PP
 import PoriTT.Quote
 import PoriTT.Raw
 import PoriTT.Rename
+import PoriTT.Rigid
 import PoriTT.Simpl
 import PoriTT.Term
 import PoriTT.Value
-import PoriTT.Zonk
 import PoriTT.Well
+import PoriTT.Zonk
 
 modifyM :: Monad m => (s -> m s) -> StateT s m ()
 modifyM f = StateT $ \ s -> do
@@ -161,10 +161,9 @@ batchFile fn = execStateT $ do
         when (isNothing p) $ printDoc ""
         stmt s
 
-    lint :: Doc -> Elim NoMetas EmptyCtx -> VTerm NoMetas EmptyCtx -> MainM ()
-    lint pass e et = do
+    lintE :: Doc -> Elim pass EmptyCtx -> VTerm pass EmptyCtx -> MainM ()
+    lintE pass e et = do
         env <- get
-        let opts  = env.opts
         let names = nameScopeFromEnv env
 
         et' <- either printError return $ evalExceptState (lintElim (emptyLintCtx names) e) initialRigidState
@@ -173,17 +172,21 @@ batchFile fn = execStateT $ do
             Left msg -> printError $ ppVCat
                 [ pass <+> "lint failed"
                 , msg
-                , ppBullet <+> prettyVTermZ opts UnfoldNone names et VUni
-                , ppBullet <+> prettyVTermZ opts UnfoldNone names et' VUni
+                -- , ppBullet <+> prettyVTermZ opts UnfoldNone names et VUni
+                -- , ppBullet <+> prettyVTermZ opts UnfoldNone names et' VUni
                 ]
 
-    -- TODO: use only lintT
-    lintT :: Doc -> Term NoMetas EmptyCtx -> VTerm NoMetas EmptyCtx -> MainM ()
-    lintT _pass t et = do
+    lintT :: Doc -> Term pass EmptyCtx -> VTerm NoMetas EmptyCtx -> MainM ()
+    lintT pass t et = do
         env <- get
         let names = nameScopeFromEnv env
 
-        either printError return $ evalExceptState (lintTerm (emptyLintCtx names) t et) initialRigidState
+        case evalExceptState (lintTerm (emptyLintCtx names) t (coeNoMetasVTerm et)) initialRigidState of
+            Right _  -> pure ()
+            Left msg -> printError $ ppVCat
+                [ pass <+> "lint failed"
+                , msg
+                ]
 
     pipelineElim :: Raw -> MainM (Elim NoMetas EmptyCtx, VTerm NoMetas EmptyCtx)
     pipelineElim e = do
@@ -191,48 +194,26 @@ batchFile fn = execStateT $ do
         let opts  = env.opts
         let names = nameScopeFromEnv env
 
-        when opts.dump.ps $ printDoc $ ppSoftHanging (ppAnnotate ACmd "ps") [ prettyRaw 0 e ]
-
         -- resolve names: rename
-        w <- either printErrors return $ resolve (emptyRenameCtx env.globals env.macros) e
-        when opts.dump.rn $  printDoc $ ppSoftHanging (ppAnnotate ACmd "rn") [ prettyWell names EmptyEnv 0 w ]
+        w <- pipelineBegin e
 
         -- elaborate, i.e. type-check
         (e0, et') <- either printError return $ evalExceptState (checkElim (emptyCheckCtx names) w) initialRigidState
         when opts.dump.tc $ printDoc $ ppSoftHanging (ppAnnotate ACmd "tc") [ prettyElim names EmptyEnv 0 e0 ]
+        lintE "tc" e0 et'
 
-        let et = case quoteTerm UnfoldNone SZ et' of
-                Left err -> undefined
-                Right t -> case zonkTerm t of
-                    Nothing -> undefined
-                    Just t' -> evalTerm SZ emptyEvalEnv t'
+        -- type pipeline
+        ty' <- case quoteTerm UnfoldNone SZ et' of
+            Left err -> printError $ ppStr $ show err
+            Right ty -> pure ty
 
-        -- printDoc $ ppStr $ show et'
-        -- printDoc $ ppStr $ show et
+        ty <- fastPipelineEnd ty' VUni
+        let et = evalTerm SZ emptyEvalEnv ty
 
-        -- lint
---        let et = unsafeCoerce et' :: VTerm NoMetas EmptyCtx
-        let e1 = unsafeCoerce e0 :: Elim NoMetas EmptyCtx
-        -- when opts.dump.tc $ printDoc $ ppSoftHanging (ppAnnotate ACmd "tc") [ prettyElimZ opts names e0 ] -- zonk
-        lint "First" e1 et
+        -- term pipeline
+        t <- pipelineEnd (emb_ e0) et
 
-        e2 <- either (printError . ppStr . show) return $ preElim SZ EmptyEnv e1
-        when opts.dump.st $ printDoc $ ppSoftHanging (ppAnnotate ACmd "st") [ prettyElimZ opts names e2 ]
-        lint "Staging" e2 et
-
-        e' <- if opts.simplify
-            then do
-                let loop :: Int -> Elim NoMetas EmptyCtx -> MainM (Elim NoMetas EmptyCtx)
-                    loop n e' | n > opts.simplOpts.iters = return e'
-                    loop n e' = do
-                        e'' <- simplLoop ("s" <> ppInt n) e' et
-                        loop (n + 1) e''
-
-                loop 1 e2
-
-            else return e2
-
-        return (e', et)
+        return (ann_ t ty, et)
 
     pipelineTerm :: Raw -> VTerm NoMetas EmptyCtx -> MainM (Term NoMetas EmptyCtx)
     pipelineTerm t et = do
@@ -240,30 +221,55 @@ batchFile fn = execStateT $ do
         let opts  = env.opts
         let names = nameScopeFromEnv env
 
+        w <- pipelineBegin t
+
+        -- elaborate, i.e. type-check
+        t0 <- either printError return $ evalExceptState (checkTerm (emptyCheckCtx names) w (coeNoMetasVTerm et)) initialRigidState
+        when opts.dump.tc $ printDoc $ ppSoftHanging (ppAnnotate ACmd "tc") [ prettyTerm names EmptyEnv 0 t0 ]
+        lintT "tc" t0 et
+
+        pipelineEnd t0 et
+
+    -- pipeline beginning, before typechecking: name resolution
+    pipelineBegin :: Raw -> MainM (Well pass EmptyCtx)
+    pipelineBegin t = do
+        env <- get
+        let opts  = env.opts
+        let names = nameScopeFromEnv env
+
+        -- parsing (already done)
         when opts.dump.ps $ printDoc $ ppSoftHanging (ppAnnotate ACmd "ps") [ prettyRaw 0 t ]
 
         -- resolve names: rename
         w <- either printErrors return $ resolve (emptyRenameCtx env.globals env.macros) t
         when opts.dump.rn $  printDoc $ ppSoftHanging (ppAnnotate ACmd "rn") [ prettyWell names EmptyEnv 0 w ]
 
-        -- elaborate, i.e. type-check
-        t0 <- either printError return $ evalExceptState (checkTerm (emptyCheckCtx names) w (coeNoMetasVTerm et)) initialRigidState
+        return w
 
+    -- pipeline end, after typechecking: zonk, stage, simplify
+    pipelineEnd :: Term HasMetas EmptyCtx -> VTerm NoMetas EmptyCtx -> MainM (Term NoMetas EmptyCtx)
+    pipelineEnd t0 et = do
+        env <- get
+        let opts  = env.opts
+        let names = nameScopeFromEnv env
+
+        -- zonk: substitute metavariable solutions
         t1 <- maybe (printError $ "zonk failed") return $ zonkTerm t0
+        when opts.dump.zk $ printDoc $ ppSoftHanging (ppAnnotate ACmd "zk") [ prettyTermZ opts names t1 et ]
+        lintT "zk" t1 et
 
-        when opts.dump.tc $ printDoc $ ppSoftHanging (ppAnnotate ACmd "tc") [ prettyTermZ opts names t1 et ]
-        lintT "First" t1 et
-
+        -- stage: normalise top-level splices
         t2 <- either (printError . ppStr . show) return $ preTerm SZ EmptyEnv t1
         when opts.dump.st $ printDoc $ ppSoftHanging (ppAnnotate ACmd "st") [ prettyTermZ opts names t2 et ]
-        lintT "Staging" t2 et
+        lintT "st" t2 et
 
+        -- simplify
         t' <- if opts.simplify
             then do
                 let loop :: Int -> Term NoMetas EmptyCtx -> MainM (Term NoMetas EmptyCtx)
                     loop n e' | n > opts.simplOpts.iters = return e'
                     loop n e' = do
-                        e'' <- simplLoopT ("s" <> ppInt n) e' et
+                        e'' <- simplLoopT (ppInt n) e' et
                         loop (n + 1) e''
 
                 loop 1 t2
@@ -272,20 +278,19 @@ batchFile fn = execStateT $ do
 
         return t'
 
-    simplLoop :: Doc -> Elim NoMetas EmptyCtx -> VTerm NoMetas EmptyCtx -> MainM (Elim NoMetas EmptyCtx)
-    simplLoop iter e et = do
+    -- fast pipeline for just quoted terms.
+    fastPipelineEnd :: Term HasMetas EmptyCtx -> VTerm NoMetas EmptyCtx -> MainM (Term NoMetas EmptyCtx)
+    fastPipelineEnd t0 et = do
         env <- get
         let opts  = env.opts
         let names = nameScopeFromEnv env
 
-        let e' = simplElim (emptySimplCtx opts.simplOpts) e
+        -- zonk: substitute metavariable solutions
+        t1 <- maybe (printError $ "zonk failed") return $ zonkTerm t0
+        when opts.dump.zk $ printDoc $ ppSoftHanging (ppAnnotate ACmd "zk") [ prettyTermZ opts names t1 et ]
+        lintT "zk" t1 et
 
-        -- check that we simplified correctly
-        lint ("Simplify" <+> iter) e' et
-
-        when opts.dump.si $ printDoc $ ppSoftHanging (ppAnnotate ACmd iter) [ prettyElimZ opts names e' ]
-
-        return e'
+        return t1
 
     simplLoopT :: Doc -> Term NoMetas EmptyCtx -> VTerm NoMetas EmptyCtx -> MainM (Term NoMetas EmptyCtx)
     simplLoopT iter e et = do
@@ -296,7 +301,7 @@ batchFile fn = execStateT $ do
         let e' = simplTerm (emptySimplCtx opts.simplOpts) e
 
         -- check that we simplified correctly
-        lintT ("Simplify" <+> iter) e' et
+        lintT ("si" <> iter) e' et
 
         when opts.dump.si $ printDoc $ ppSoftHanging (ppAnnotate ACmd iter) [ prettyTermZ opts names e' et ]
 

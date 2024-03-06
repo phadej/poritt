@@ -14,7 +14,6 @@ import qualified Data.Set as Set
 import PoriTT.Base
 import PoriTT.Builtins
 import PoriTT.Conv
-import PoriTT.Rigid
 import PoriTT.Enum
 import PoriTT.Eval
 import PoriTT.ExceptState
@@ -24,6 +23,7 @@ import PoriTT.Name
 import PoriTT.Nice
 import PoriTT.PP
 import PoriTT.Raw
+import PoriTT.Rigid
 import PoriTT.Stage
 import PoriTT.Term
 import PoriTT.Used

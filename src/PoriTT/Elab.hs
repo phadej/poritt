@@ -12,6 +12,8 @@ module PoriTT.Elab (
 import PoriTT.Base
 import PoriTT.Builtins
 import PoriTT.Conv
+import PoriTT.Elab.Ctx
+import PoriTT.Elab.Monad
 import PoriTT.Enum
 import PoriTT.Eval
 import PoriTT.ExceptState
@@ -23,14 +25,12 @@ import PoriTT.Name
 import PoriTT.Nice
 import PoriTT.PP
 import PoriTT.Quote
+import PoriTT.Rigid
 import PoriTT.Stage
 import PoriTT.Term
-import PoriTT.Rigid
 import PoriTT.Used
 import PoriTT.Value
 import PoriTT.Well
-import PoriTT.Elab.Ctx
-import PoriTT.Elab.Monad
 
 -------------------------------------------------------------------------------
 -- Errors
