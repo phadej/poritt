@@ -1,5 +1,6 @@
 module PoriTT.Elab.Monad (
     ElabM,
+    forceM,
     ElabState (..), -- TODO
     Hole (..),
     newRigid,
@@ -13,6 +14,7 @@ import PoriTT.ExceptState
 import PoriTT.Name
 import PoriTT.Value
 import PoriTT.Term
+import PoriTT.Eval
 import PoriTT.Elab.Ctx
 
 type ElabM = ExceptState Doc ElabState
@@ -22,6 +24,11 @@ data ElabState = ElabState
     , holes  :: !(Map Name Hole)
     }
   deriving Generic
+
+-- | During elaboration we don't only need to force globals,
+-- but also metavariables.
+forceM :: VTerm HasMetas ctx -> ElabM (VTerm HasMetas ctx)
+forceM t = return (force t) -- TODO
 
 data Hole where
     Hole

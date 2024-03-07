@@ -13,8 +13,8 @@ module PoriTT.Meta (
     newMetaVar,
 ) where
 
-import PoriTT.PP
 import PoriTT.Base
+import PoriTT.PP
 
 import Optics.Core (castOptic, simple)
 

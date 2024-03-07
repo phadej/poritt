@@ -23,11 +23,11 @@ import qualified System.FilePath as FP
 import qualified Text.Parsec     as P
 
 import PoriTT.Base
-import PoriTT.Elab
 import PoriTT.Builtins
 import PoriTT.Check
 import PoriTT.Conv
 import PoriTT.Distill
+import PoriTT.Elab
 import PoriTT.Eval
 import PoriTT.ExceptState
 import PoriTT.Global
