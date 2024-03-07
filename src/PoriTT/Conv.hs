@@ -269,95 +269,100 @@ convNeutral ctx x sp1 y sp2
 
 convSpine :: forall ctx pass. ConvCtx pass ctx -> Lvl ctx -> Spine pass ctx -> Spine pass ctx -> ConvM (VTerm pass ctx)
 convSpine ctx headLvl sp1' sp2' = do
-    bwd [] sp1' sp2'
+    let len1 = spineLength sp1'
+        len2 = spineLength sp2'
+
+    unless (len1 == len2) $
+        mismatch "spine length" (ppInt (spineLength sp1')) (ppInt (spineLength sp2'))
+
+    snd <$> go sp1' sp2'
+
   where
+    headTy :: VTerm pass ctx
     headTy = lookupEnv (lvlToIdx ctx.size headLvl) ctx.types
 
-    bwd :: [(SpinePart pass ctx, SpinePart pass ctx)] -> Spine pass ctx -> Spine pass ctx -> ConvM (VTerm pass ctx)
-    bwd acc sp1 sp2 = case (unsnocSpine sp1, unsnocSpine sp2) of
-        (Nothing, Nothing)           -> snd <$> foldParts fwd (VRgd headLvl VNil, headTy) acc
-        (Just (xs, x), Just (ys, y)) -> bwd ((x,y) : acc) xs ys
-        _                            -> mismatch "spine length" (ppInt (spineLength sp1')) (ppInt (spineLength sp2'))
+    go :: Spine pass ctx -> Spine pass ctx -> ConvM (VElim pass ctx, VTerm pass ctx)
+    go VNil VNil = pure (VRgd headLvl VNil, headTy)
+    go (VApp sp1 i x) (VApp sp2 j y) = do
+        (h, ty) <- go sp1 sp2
+        case force ty of
+            VPie _ _ a b -> do
+                convIcit ctx i j
+                convTerm ctx a x y
+                return (vapp ctx.size i h x, run ctx.size b (vann x a))
 
-    fwd :: (VElim pass ctx, VTerm pass ctx) -> SpinePart pass ctx -> SpinePart pass ctx -> ConvM (VElim pass ctx, VTerm pass ctx)
-    fwd (sp, (VEmb (VGbl _ _ t))) x           y =
-        fwd (sp, vemb t) x y
+            _ -> TODO
 
-    fwd (sp, VPie _ _ a b) (PApp i x)    (PApp j y) = do
-        convIcit ctx i j
-        convTerm ctx a x y
-        return (vapp ctx.size i sp x, run ctx.size b (vann x a))
+    go (VSel sp1 x) (VSel sp2 y) = do
+        (h, ty) <- go sp1 sp2
+        unless (x == y ) $ mismatch "selector" (prettySelector x) (prettySelector y)
+        case force ty of
+            VSgm _ _ a b -> case x of
+                "fst" -> return (vsel ctx.size h x, a)
+                "snd" -> return (vsel ctx.size h x, run ctx.size b (vsel ctx.size h "fst"))
+                _     -> throwError $ "conv panic: sigma with" <+> prettySelector x
 
-    fwd (sp, VSgm _ _ a b) (PSel x)    (PSel y)
-        | x == y = case x of
-            "fst" -> return (vsel ctx.size sp x, a)
-            "snd" -> return (vsel ctx.size sp x, run ctx.size b (vsel ctx.size sp "fst"))
-            _     -> throwError $ "conv panic: sigma with" <+> prettySelector x
-        | otherwise                            = mismatch "selector" (prettySelector x) (prettySelector y)
+            _ -> TODO
+        
+    go (VSwh sp1 m1 xs) (VSwh sp2 m2 ys) = do
+        (h, ty) <- go sp1 sp2
+        unless (length xs == length ys) $ mismatch "switch case arity" (ppInt (length xs)) (ppInt (length ys))
+        case force ty of
+            VFin ls -> do
+                convTerm ctx (VPie "_" Ecit (VFin ls) (Closure EmptyEnv Uni)) m1 m2
+                let m :: VElim pass ctx
+                    m = vann m1 $ varr (VFin ls) Uni
 
-    fwd (sp, VFin ls)    (PSwh m1 xs) (PSwh m2 ys)
-        | length xs /= length ys               = mismatch "switch case arity" (ppInt (length xs)) (ppInt (length ys))
-        | otherwise                            = do
-            convTerm ctx (VPie "_" Ecit (VFin ls) (Closure EmptyEnv Uni)) m1 m2
-            let m :: VElim pass ctx
-                m = vann m1 $ varr (VFin ls) Uni
+                ifor_ ls $ \i' l -> do
+                    let i = EnumIdx i'
+                    x <- maybe (throwError $ "missing case in throwError"  <+> prettyLabel l) return $ lookupEnumList i xs
+                    y <- maybe (throwError $ "missing case in right" <+> prettyLabel l) return $ lookupEnumList i ys
+                    convTerm ctx (evalTerm ctx.size (EmptyEnv :> velim m) (var IZ @@ EIx i)) x y
 
-            ifor_ ls $ \i' l -> do
-                let i = EnumIdx i'
-                x <- maybe (throwError $ "missing case in throwError"  <+> prettyLabel l) return $ lookupEnumList i xs
-                y <- maybe (throwError $ "missing case in right" <+> prettyLabel l) return $ lookupEnumList i ys
-                convTerm ctx (evalTerm ctx.size (EmptyEnv :> velim m) (var IZ @@ EIx i)) x y
+                return (vswh ctx.size h m1 xs, vemb (vapp ctx.size Ecit m (vemb h)))
 
-            return (vswh ctx.size sp m1 xs, vemb (vapp ctx.size Ecit m (vemb sp)))
+            _ -> TODO
 
-    fwd (sp, VDsc)   (PDeI m1 t1 s1 r1)
-                     (PDeI m2 t2 s2 r2)        = do
-        convTerm ctx (evalTerm ctx.size EmptyEnv         descIndMotive)  m1 m2
-        let m :: VElim pass ctx
-            m = vann m1 $ varr VDsc Uni
-        convTerm ctx (evalTerm ctx.size (EmptyEnv :> velim m) descIndMotive1) t1 t2
-        convTerm ctx (evalTerm ctx.size (EmptyEnv :> velim m) descIndMotiveS) s1 s2
-        convTerm ctx (evalTerm ctx.size (EmptyEnv :> velim m) descIndMotiveX) r1 r2
-        return (vdei ctx.size sp m1 t1 s1 r1, vemb (vapp ctx.size Ecit m (vemb sp)))
+    go (VDeI sp1 m1 t1 s1 r1) (VDeI sp2 m2 t2 s2 r2) = do
+        (h, ty) <- go sp1 sp2
+        case force ty of
+            VDsc -> do
+                convTerm ctx (evalTerm ctx.size EmptyEnv         descIndMotive)  m1 m2
+                let m :: VElim pass ctx
+                    m = vann m1 $ varr VDsc Uni
+                convTerm ctx (evalTerm ctx.size (EmptyEnv :> velim m) descIndMotive1) t1 t2
+                convTerm ctx (evalTerm ctx.size (EmptyEnv :> velim m) descIndMotiveS) s1 s2
+                convTerm ctx (evalTerm ctx.size (EmptyEnv :> velim m) descIndMotiveX) r1 r2
+                return (vdei ctx.size h m1 t1 s1 r1, vemb (vapp ctx.size Ecit m (vemb h)))
 
-    fwd (sp, VMuu d)     (PInd m1 c1) (PInd m2 c2) = do
-        convTerm ctx (VPie "_" Ecit (VMuu d) (Closure EmptyEnv Uni))      m1 m2
-        let m :: VElim pass ctx
-            m = vann m1 $ varr (VMuu d) Uni
+            _ -> TODO
 
-            d' :: VElim pass ctx
-            d' = vann d VDsc
+    go (VInd sp1 m1 c1) (VInd sp2 m2 c2) = do
+        (h, ty) <- go sp1 sp2
+        case force ty of
+            VMuu d -> do
+                convTerm ctx (VPie "_" Ecit (VMuu d) (Closure EmptyEnv Uni))      m1 m2
+                let m :: VElim pass ctx
+                    m = vann m1 $ varr (VMuu d) Uni
 
-        convTerm ctx (evalTerm ctx.size (EmptyEnv :> velim d' :> velim m) muMotiveT) c1 c2
-        return (vind ctx.size sp m1 c1, vemb (vapp ctx.size Ecit m (vemb sp)))
+                    d' :: VElim pass ctx
+                    d' = vann d VDsc
 
-    fwd (sp, VCod a)        PSpl         PSpl         =
-        -- throwError $ "eliminator todo" <+> prettyVTermCtx ctx a -- TODO
-        return (vspl ctx.size sp, vsplCodArg ctx.size a)
+                convTerm ctx (evalTerm ctx.size (EmptyEnv :> velim d' :> velim m) muMotiveT) c1 c2
+                return (vind ctx.size h m1 c1, vemb (vapp ctx.size Ecit m (vemb h)))
 
-    fwd (_sp, ty)        x            y            =
-        throwError $ "eliminator mismatch" <+> prettyVTermCtx ctx ty <+> "|-" <+> prettySpinePart ctx x <+> "/=" <+> prettySpinePart ctx y
+            _ -> TODO
 
-foldParts :: Monad m => (a -> b -> b -> m a) -> a -> [(b,b)] -> m a
-foldParts _ a []         = return a
-foldParts f a ((x,y):zs) = f a x y >>= \b -> foldParts f b zs
+    go (VSpl sp1) (VSpl sp2) = do
+        (h, ty) <- go sp1 sp2
+        case force ty of
+            VCod a -> 
+                return (vspl ctx.size h, vsplCodArg ctx.size a)
 
-unsnocSpine :: Spine pass ctx -> Maybe (Spine pass ctx, SpinePart pass ctx)
-unsnocSpine VNil                 = Nothing
-unsnocSpine (VApp sp i x)        = Just (sp, PApp i x)
-unsnocSpine (VSel sp x)          = Just (sp, PSel x)
-unsnocSpine (VSwh sp m ts)       = Just (sp, PSwh m ts)
-unsnocSpine (VDeI sp m c1 c2 c3) = Just (sp, PDeI m c1 c2 c3)
-unsnocSpine (VInd sp m c)        = Just (sp, PInd m c)
-unsnocSpine (VSpl sp)            = Just (sp, PSpl)
-{-
-snocSpine :: Spine pass ctx -> SpinePart ctx -> Spine pass ctx
-snocSpine sp (SApp x)          = VApp sp x
-snocSpine sp (SSel s)          = VSel sp s
-snocSpine sp (SSwh m ts)       = VSwh sp m ts
-snocSpine sp (SDeI m c1 c2 c3) = VDeI sp m c1 c2 c3
-snocSpine sp (SInd m t)        = VInd sp m t
--}
+            _ -> TODO
+
+    go x y =
+        throwError $ "last eliminator mismatch" <+> prettySpinePart ctx x <+> "/=" <+> prettySpinePart ctx y
 
 spineLength :: Spine pass ctx -> Int
 spineLength = go 0 where
@@ -369,24 +374,15 @@ spineLength = go 0 where
     go !n (VInd sp _ _)     = go (n + 1) sp
     go !n (VSpl sp)         = go (n + 1) sp
 
--- /Verterbrae/
-data SpinePart pass ctx
-    = PApp !Icit (VTerm pass ctx)
-    | PSel !Selector
-    | PSwh (VTerm pass ctx) (EnumList (VTerm pass ctx))
-    | PDeI (VTerm pass ctx) (VTerm pass ctx) (VTerm pass ctx) (VTerm pass ctx)
-    | PInd (VTerm pass ctx) (VTerm pass ctx)
-    | PSpl
-  deriving Show
-
-prettySpinePart :: ConvCtx pass ctx -> SpinePart pass ctx -> Doc
-prettySpinePart ctx (PApp Ecit v)  = "application" <+> prettyVTermCtx ctx v
-prettySpinePart ctx (PApp Icit v)  = "application" <+> ppBraces (prettyVTermCtx ctx v)
-prettySpinePart _   (PSel s)       = "selector" <+> prettySelector s
-prettySpinePart _   (PSwh _ _)     = "switch"
-prettySpinePart _   (PDeI _ _ _ _) = "indDesc"
-prettySpinePart _   (PInd _ _)     = "ind"
-prettySpinePart _   PSpl           = "splice"
+prettySpinePart :: ConvCtx pass ctx -> Spine pass ctx -> Doc
+prettySpinePart ctx (VApp _sp Ecit v)  = "application" <+> prettyVTermCtx ctx v
+prettySpinePart ctx (VApp _sp Icit v)  = "application" <+> ppBraces (prettyVTermCtx ctx v)
+prettySpinePart _   (VSel _sp s)       = "selector" <+> prettySelector s
+prettySpinePart _   (VSwh _sp _ _)     = "switch"
+prettySpinePart _   (VDeI _sp _ _ _ _) = "indDesc"
+prettySpinePart _   (VInd _sp _ _)     = "ind"
+prettySpinePart _   (VSpl _sp)         = "splice"
+prettySpinePart _   VNil               = "none"
 
 convSTerm :: Natural -> ConvCtx pass ctx -> VTerm pass ctx -> STerm pass ctx -> STerm pass ctx -> ConvM ()
 convSTerm l env ty x y = convSTerm' l env ty x y
