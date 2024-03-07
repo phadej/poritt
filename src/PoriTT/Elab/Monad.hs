@@ -1,8 +1,8 @@
 module PoriTT.Elab.Monad (
     ElabM,
     forceM,
-    ElabState (..), -- TODO
     newRigid,
+    newMeta,
     evalElabM,
 ) where
 
@@ -20,9 +20,9 @@ type ElabM = ExceptState Doc ElabState
 
 data ElabState = ElabState
     { rigidGen :: !RigidGen
+    , metaGen  :: !MetaGen -- for next  meta
+    , mvalues  :: !(MetaMap (VTerm HasMetas EmptyCtx))
     -- , holes  :: !(Map Name Hole)
-    -- , metaGen MetaGen -- for next  meta
-    -- , mvalues  :: !(MetaMap (VTerm HasMetas EmptyCtx)
     }
   deriving Generic
 
@@ -47,9 +47,9 @@ data Hole where
 initialElabState :: ElabState
 initialElabState = ElabState
     { rigidGen = initialRigidGen
+    , metaGen = initialMetaGen
+    , mvalues = emptyMetaMap
     -- , holes  = mempty
-    -- , metaGen = initialMetaGen
-    -- , mvalues = emptyMetaMap
     }
 
 -------------------------------------------------------------------------------
@@ -68,7 +68,15 @@ newRigid ctx ty = do
 -- Metas
 -------------------------------------------------------------------------------
 
--- newMeta :: ElabCtx ctx ctx' -> VTerm HasMetas ctx' -> ElabM (ElabCtx ctx ctx', RigidVar ctx')
+instance HasMetaGen ElabState where
+    metaGen = #metaGen
+
+newMeta :: ElabCtx ctx ctx' -> VTerm HasMetas ctx' -> ElabM (ElabCtx ctx ctx', MetaVar)
+newMeta ctx ty = do
+    m <- newMetaVar
+    case ctx.size of
+        SZ -> return (ctx { mtypes = insertMetaMap m ty ctx.mtypes }, m)
+        _  -> throwError "TODO: can create metas in empty contexts only"
 
 -------------------------------------------------------------------------------
 -- Running elaboration monad

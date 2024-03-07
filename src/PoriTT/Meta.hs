@@ -9,6 +9,7 @@ module PoriTT.Meta (
     insertMetaMap,
     -- * Meta state
     MetaGen,
+    HasMetaGen (..),
     initialMetaGen,
     newMetaVar,
 ) where
@@ -51,7 +52,6 @@ newtype MetaMap a = MetaMap (IM.IntMap a)
 
 instance Show a => Show (MetaMap a) where
     showsPrec d (MetaMap m) = showsPrec d (IM.toList m)
-
 
 emptyMetaMap :: MetaMap a
 emptyMetaMap = MetaMap IM.empty
