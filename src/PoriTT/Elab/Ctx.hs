@@ -6,13 +6,14 @@ module PoriTT.Elab.Ctx (
 ) where
 
 import PoriTT.Base
+import PoriTT.Loc
+import PoriTT.Meta
 import PoriTT.Name
-import PoriTT.Value
-import PoriTT.Term
+import PoriTT.PP
 import PoriTT.Rigid
 import PoriTT.Stage
-import PoriTT.PP
-import PoriTT.Loc
+import PoriTT.Term
+import PoriTT.Value
 
 -------------------------------------------------------------------------------
 -- Elaboration context
@@ -28,6 +29,7 @@ data ElabCtx ctx ctx' = ElabCtx
     , types  :: !(Env ctx (VTerm HasMetas ctx'))
     , types' :: !(Env ctx' (VTerm HasMetas ctx'))
     , rigids :: !(RigidMap ctx' (VTerm HasMetas ctx'))
+    -- , mtypes :: !(MetaMap (VTerm HasMetas EmptyCtx))
     , stages :: !(Env ctx Stage)
     , cstage :: !Stage
     , size   :: !(Size ctx')
