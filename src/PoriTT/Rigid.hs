@@ -9,10 +9,10 @@ module PoriTT.Rigid (
     lookupRigidMap,
     rigidMapSink,
     -- * Rigid State
-    RigidState,
-    initialRigidState,
-    HasRigidState (..),
-    takeRigidVar,
+    RigidGen,
+    initialRigidGen,
+    HasRigidGen (..),
+    newRigidVar,
 ) where
 
 import PoriTT.Base
@@ -72,24 +72,24 @@ rigidMapSink :: RigidMap ctx a -> RigidMap (S ctx) a
 rigidMapSink = coerce
 
 -------------------------------------------------------------------------------
--- RigidState
+-- RigidGen
 -------------------------------------------------------------------------------
 
-newtype RigidState = RigidState Int
+newtype RigidGen = RigidGen Int
   deriving Show
 
-initialRigidState :: RigidState
-initialRigidState = RigidState 0
+initialRigidGen :: RigidGen
+initialRigidGen = RigidGen 0
 
-class HasRigidState s where
-    rigidState :: Lens' s RigidState
+class HasRigidGen s where
+    rigidGen :: Lens' s RigidGen
 
-instance HasRigidState RigidState where
-    rigidState = castOptic simple
+instance HasRigidGen RigidGen where
+    rigidGen = castOptic simple
 
-takeRigidVar :: (MonadState s m, HasRigidState s) => m (RigidVar ctx)
-takeRigidVar = do
+newRigidVar :: (MonadState s m, HasRigidGen s) => m (RigidVar ctx)
+newRigidVar = do
     s <- get
-    let RigidState r = view rigidState s
-    put $! set rigidState (RigidState (r + 1)) s
+    let RigidGen r = view rigidGen s
+    put $! set rigidGen (RigidGen (r + 1)) s
     return (RigidVar r)

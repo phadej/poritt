@@ -61,11 +61,11 @@ weakenLintCtx w (LintCtx vs ts ts' rs ss cs xs xs' ns s pp) = LintCtx (weakenEnv
 -- Monad
 -------------------------------------------------------------------------------
 
-type LintM = ExceptState Doc RigidState
+type LintM = ExceptState Doc RigidGen
 
 newRigid :: LintCtx pass ctx ctx' -> VTerm pass ctx' -> LintM (LintCtx pass ctx ctx', RigidVar ctx')
 newRigid ctx ty = do
-    r <- takeRigidVar
+    r <- newRigidVar
     return (ctx { rigids = insertRigidMap r ty ctx.rigids }, r)
 
 -------------------------------------------------------------------------------
@@ -358,7 +358,7 @@ lintTerm' ctx (Emb e)     a    = do
     --  ⊢ A ∋ e
     --
     b <- lintElim ctx e
-    case evalExceptState (convTerm (mkConvCtx ctx.size ctx.names' ctx.types' ctx.nscope ctx.rigids) VUni a b) initialRigidState of
+    case evalExceptState (convTerm (mkConvCtx ctx.size ctx.names' ctx.types' ctx.nscope ctx.rigids) VUni a b) initialRigidGen of
         Right () -> pure ()
         Left err -> lintError ctx "Couldn't match types"
             [ "expected:" <+> prettyVTermCtx ctx a

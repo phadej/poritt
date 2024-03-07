@@ -127,7 +127,7 @@ checkInfer :: ElabCtx ctx ctx' -> Well (HasTerms HasMetas) ctx -> VTerm HasMetas
 checkInfer ctx e            a = do
     (e', et) <- elabElim ctx e
     -- traceM $ "CONV: " ++ show (ctx.names', e, et, a)
-    case evalExceptState (convTerm (mkConvCtx ctx.size ctx.names' ctx.types' ctx.nscope ctx.rigids) VUni a et) initialRigidState of
+    case evalExceptState (convTerm (mkConvCtx ctx.size ctx.names' ctx.types' ctx.nscope ctx.rigids) VUni a et) initialRigidGen of
         Right () -> pure (Emb e')
         Left err -> elabError ctx "Couldn't match types"
             [ "expected:" <+> prettyVTermCtx ctx a

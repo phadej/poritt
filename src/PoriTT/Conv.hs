@@ -36,11 +36,11 @@ data ConvCtx pass ctx = ConvCtx
 bind :: Name -> VTerm pass ctx -> ConvCtx pass ctx -> ConvCtx pass (S ctx)
 bind x t (ConvCtx s xs ts gs rs) = ConvCtx (SS s) (xs :> x) (mapSink ts :> sink t) gs (rigidMapSink (mapSink rs))
 
-type ConvM = ExceptState Doc RigidState
+type ConvM = ExceptState Doc RigidGen
 
 newRigid :: ConvCtx pass ctx -> VTerm pass ctx -> ConvM (ConvCtx pass ctx, RigidVar ctx)
 newRigid ctx ty = do
-    r <- takeRigidVar
+    r <- newRigidVar
     return (ctx { rigids = insertRigidMap r ty ctx.rigids }, r)
 
 -- | Create conversion context.

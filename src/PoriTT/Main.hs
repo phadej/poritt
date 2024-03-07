@@ -167,8 +167,8 @@ batchFile fn = execStateT $ do
         env <- get
         let names = nameScopeFromEnv env
 
-        et' <- either printError return $ evalExceptState (lintElim (emptyLintCtx names) e) initialRigidState
-        case evalExceptState (convTerm (mkConvCtx SZ EmptyEnv EmptyEnv names emptyRigidMap) VUni et et') initialRigidState of
+        et' <- either printError return $ evalExceptState (lintElim (emptyLintCtx names) e) initialRigidGen
+        case evalExceptState (convTerm (mkConvCtx SZ EmptyEnv EmptyEnv names emptyRigidMap) VUni et et') initialRigidGen of
             Right _  -> pure ()
             Left msg -> printError $ ppVCat
                 [ pass <+> "lint failed"
@@ -182,7 +182,7 @@ batchFile fn = execStateT $ do
         env <- get
         let names = nameScopeFromEnv env
 
-        case evalExceptState (lintTerm (emptyLintCtx names) t (coeNoMetasVTerm et)) initialRigidState of
+        case evalExceptState (lintTerm (emptyLintCtx names) t (coeNoMetasVTerm et)) initialRigidGen of
             Right _  -> pure ()
             Left msg -> printError $ ppVCat
                 [ pass <+> "lint failed"
@@ -199,7 +199,7 @@ batchFile fn = execStateT $ do
         w <- pipelineBegin e
 
         -- elaborate, i.e. type-check
-        (e0, et') <- either printError return $ evalExceptState (checkElim (emptyCheckCtx names) w) initialRigidState
+        (e0, et') <- either printError return $ evalExceptState (checkElim (emptyCheckCtx names) w) initialRigidGen
         when opts.dump.tc $ printDoc $ ppSoftHanging (ppAnnotate ACmd "tc") [ prettyElim names EmptyEnv 0 e0 ]
         lintE "tc" e0 et'
 
@@ -469,7 +469,7 @@ batchFile fn = execStateT $ do
         when opts.dump.rn $  printDoc $ ppSoftHanging (ppAnnotate ACmd "rn") [ prettyWell names EmptyEnv 0 w ]
 
         -- elaborate, i.e. type-check
-        case evalExceptState (checkElim (emptyCheckCtx names) w) initialRigidState of
+        case evalExceptState (checkElim (emptyCheckCtx names) w) initialRigidGen of
             Right (unsafeCoerce -> e', unsafeCoerce -> et) -> printError $ ppSoftHanging ("Unexpected type-check success")
                 [ ":" <+> prettyVTermZ opts UnfoldNone names et VUni
                 , "=" <+> case e' of

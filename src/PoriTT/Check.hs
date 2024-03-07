@@ -124,15 +124,15 @@ bind' (CheckCtx xs xs' ns v ts ts' rs ss cs s wk l pp) x t a = CheckCtx
 -- Monad
 -------------------------------------------------------------------------------
 
-type CheckM = ExceptState Doc RigidState
+type CheckM = ExceptState Doc RigidGen
 
 newRigid :: CheckCtx ctx ctx' -> VTerm 'HasMetas ctx' -> CheckM (CheckCtx ctx ctx', RigidVar ctx')
 newRigid ctx ty = do
-    r <- takeRigidVar
+    r <- newRigidVar
     return (ctx { rigids = insertRigidMap r ty ctx.rigids }, r)
 
 evalCheckM :: CheckM a -> Either Doc a
-evalCheckM m = evalExceptState m initialRigidState
+evalCheckM m = evalExceptState m initialRigidGen
 
 -------------------------------------------------------------------------------
 -- Errors
@@ -228,7 +228,7 @@ checkInfer :: CheckCtx ctx ctx' -> Well (HasTerms HasMetas) ctx -> VTerm HasMeta
 checkInfer ctx e            a = do
     (e', et) <- checkElim ctx e
     -- traceM $ "CONV: " ++ show (ctx.names', e, et, a)
-    case evalExceptState (convTerm (mkConvCtx ctx.size ctx.names' ctx.types' ctx.nscope ctx.rigids) VUni a et) initialRigidState of
+    case evalExceptState (convTerm (mkConvCtx ctx.size ctx.names' ctx.types' ctx.nscope ctx.rigids) VUni a et) initialRigidGen of
         Right () -> pure (Emb e')
         Left err -> checkError ctx "Couldn't match types"
             [ "expected:" <+> prettyVTermCtx ctx a
