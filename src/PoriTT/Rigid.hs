@@ -20,7 +20,7 @@ import PoriTT.PP
 
 import Optics.Core (castOptic, simple)
 
-import qualified Data.IntMap as IM
+import qualified Data.IntMap.Lazy as IM
 
 -------------------------------------------------------------------------------
 -- Rigid
