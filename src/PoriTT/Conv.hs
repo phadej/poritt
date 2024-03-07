@@ -306,7 +306,7 @@ convSpine ctx headLvl sp1' sp2' = do
                 _     -> throwError $ "conv panic: sigma with" <+> prettySelector x
 
             _ -> TODO
-        
+
     go (VSwh sp1 m1 xs) (VSwh sp2 m2 ys) = do
         (h, ty) <- go sp1 sp2
         unless (length xs == length ys) $ mismatch "switch case arity" (ppInt (length xs)) (ppInt (length ys))
@@ -359,7 +359,7 @@ convSpine ctx headLvl sp1' sp2' = do
     go (VSpl sp1) (VSpl sp2) = do
         (h, ty) <- go sp1 sp2
         case force ty of
-            VCod a -> 
+            VCod a ->
                 return (vspl ctx.size h, vsplCodArg ctx.size a)
 
             _ -> TODO
