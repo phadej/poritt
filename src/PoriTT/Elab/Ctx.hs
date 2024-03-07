@@ -1,6 +1,5 @@
 module PoriTT.Elab.Ctx (
     ElabCtx (..),
-    toLintCtx,
     bind,
     bind',
     emptyElabCtx,
@@ -12,7 +11,6 @@ import PoriTT.Value
 import PoriTT.Term
 import PoriTT.Rigid
 import PoriTT.Stage
-import PoriTT.Lint
 import PoriTT.PP
 import PoriTT.Loc
 
@@ -57,21 +55,6 @@ emptyElabCtx ns = ElabCtx
     , wk     = IdWk
     , loc    = startLoc "<unknown>"
     , doc    = []
-    }
-
-toLintCtx :: ElabCtx ctx ctx' -> LintCtx HasMetas ctx ctx'
-toLintCtx ctx = LintCtx
-    { values = ctx.values
-    , types  = ctx.types
-    , types' = ctx.types'
-    , rigids = ctx.rigids
-    , stages = ctx.stages
-    , cstage = ctx.cstage
-    , names  = ctx.names
-    , names' = ctx.names'
-    , nscope = ctx.nscope
-    , size   = ctx.size
-    , doc    = ctx.doc
     }
 
 bind

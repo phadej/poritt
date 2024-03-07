@@ -1,0 +1,11 @@
+options 
+
+id : ∀ {A : U} → A → A
+id = λ {_} x ↦ x
+
+eval id {Unit} tt = [] : Unit
+
+id' : ∀ {A : U} → A → A
+id' = λ {_} x ↦ x
+
+eval id' {Unit} tt = [] : Unit

@@ -5,6 +5,8 @@
 module PoriTT.Check (
     CheckCtx,
     emptyCheckCtx,
+    CheckM,
+    evalCheckM,
     checkTerm,
     checkElim,
 ) where
@@ -17,7 +19,6 @@ import PoriTT.Eval
 import PoriTT.ExceptState
 import PoriTT.Global
 import PoriTT.Icit
-import PoriTT.Lint
 import PoriTT.Loc
 import PoriTT.Name
 import PoriTT.Nice
@@ -71,21 +72,6 @@ emptyCheckCtx ns = CheckCtx
     , wk     = IdWk
     , loc    = startLoc "<unknown>"
     , doc    = []
-    }
-
-toLintCtx :: CheckCtx ctx ctx' -> LintCtx HasMetas ctx ctx'
-toLintCtx ctx = LintCtx
-    { values = ctx.values
-    , types  = ctx.types
-    , types' = ctx.types'
-    , rigids = ctx.rigids
-    , stages = ctx.stages
-    , cstage = ctx.cstage
-    , names  = ctx.names
-    , names' = ctx.names'
-    , nscope = ctx.nscope
-    , size   = ctx.size
-    , doc    = ctx.doc
     }
 
 bind
@@ -144,6 +130,9 @@ newRigid :: CheckCtx ctx ctx' -> VTerm 'HasMetas ctx' -> CheckM (CheckCtx ctx ct
 newRigid ctx ty = do
     r <- takeRigidVar
     return (ctx { rigids = insertRigidMap r ty ctx.rigids }, r)
+
+evalCheckM :: CheckM a -> Either Doc a
+evalCheckM m = evalExceptState m initialRigidState
 
 -------------------------------------------------------------------------------
 -- Errors
@@ -313,9 +302,6 @@ checkTerm' ctx e@WInd {}  ty = checkInfer ctx e ty
 checkTerm' ctx e@WSpl {}  ty = checkInfer ctx e ty
 checkTerm' ctx e@WAnn {}  ty = checkInfer ctx e ty
 checkTerm' ctx e@WLet {}  ty = checkInfer ctx e ty
-checkTerm' ctx (WTcT t)   ty = do
-    lintTerm (toLintCtx ctx) t ty
-    return t
 checkTerm' ctx t          ty = checkTerm'' ctx ty t
 
 checkTerm''
@@ -360,8 +346,20 @@ checkTerm'' ctx (VPie y i a b) (WLam x j t) = do
     return (Lam x i t')
 checkTerm'' ctx (VPie x Ecit (force -> VFin ls) b) (WLst ts) = do
     --
+    --  ⊢ Pi (x : #[l ...]) -> B ∋ \ e -> switch e (\x -> B) { .0 -> t..} ▹ t'
+    -- ------------------------------------------------------------------
+    --  ⊢ Pi (x : #[l ...]) -> B ∋ [t ...] ▹ t'
+    --
+    let lenTy = length ls
+    let lenTm = length ts
+    unless (lenTy == lenTm) $ checkError ctx
+        "Term list has different size than domain enumeration"
+        [ "domain size" <+> ppInt lenTy
+        , "list length" <+> ppInt lenTm
+        ]
+
     let x' = nonAnonName x
-    let ty = VPie x' Ecit (VFin ls) b
+    let e = VFin ls
     b' <- case quoteTerm UnfoldNone ctx.size (VLam x' Ecit b) of
         Left err -> checkError ctx "Evaluation error"
             [ ppStr (show err)
@@ -369,8 +367,14 @@ checkTerm'' ctx (VPie x Ecit (force -> VFin ls) b) (WLst ts) = do
         Right b' -> return b'
 
     let b'' = weaken ctx.wk b'
-    let ts' = ifoldr (\i t acc -> (Right (EnumIdx i) := weaken wk1 t) : acc) [] ts
-    checkTerm ctx (WLam x' Ecit $ WSwh (WVar IZ) (weaken wk1 (WTcT b'')) ts') ty
+
+    ts' <- ifor ts $ \i' t -> do
+        let i = EnumIdx i'
+        t' <- checkTerm ctx t $ run ctx.size b (VAnn (VEIx i) e)
+        return (weaken wk1 t')
+
+    return $ Lam x' Ecit $ Emb $ Swh (Var IZ) (weaken wk1 b'') (makeEnumList ts')
+
 checkTerm'' ctx ty@(VPie _ _ _ _) t =
     invalidTerm ctx "Pi-type" ty t
 
@@ -431,7 +435,7 @@ checkTerm'' ctx ty@(VMuu d) (WCon t) = do
 checkTerm'' ctx (VMuu (force -> VDeS (force -> VFin ls) d)) (WLbl l ts) = do
     --
     -- ⊩ #E ∋ :c ▹ n
-    -- ⊩ evalDesc ((D : #E → Desc) n) (μ (`Σ E# D)) ∋ [t...] ▹ t'
+    -- ⊩ evalDesc ((D : #E → Desc) n) (μ (`Σ #E D)) ∋ [t...] ▹ t'
     -- ------------------------------------------------------------
     -- ⊩ μ (`Σ #E D) ∋ :c t... ▹ con (n , t')
     --
@@ -551,10 +555,6 @@ checkElim' ctx (WQuo _) =
 checkElim' ctx (WLst _) =
     checkError ctx
     "Cannot infer type of a list expression"
-    []
-checkElim' ctx  (WTcT _) =
-    checkError ctx
-    "Cannot infer type of a embedded type-checker term"
     []
 checkElim' ctx (WPie x i a b) = do
     a' <- checkTerm ctx a VUni

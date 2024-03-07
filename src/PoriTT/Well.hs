@@ -54,7 +54,6 @@ data Well pass ctx where
     WHol :: Name -> Well pass ctx
     WSkp :: Well pass ctx
     WLst :: [Well pass ctx] -> Well pass ctx
-    WTcT :: Term pass ctx -> Well (HasTerms pass) ctx
     WLoc :: Loc -> Well pass ctx -> Well pass ctx
 
 deriving instance Show (Well pass ctx)
@@ -96,7 +95,6 @@ instance RenamableA (Well pass) where
     grename r (WSpl t)         = WSpl <$> grename r t
     grename r (WInd e m c)     = WInd <$> grename r e <*> grename r m <*> grename r c
     grename r (WLst ts)        = WLst <$> traverse (grename r) ts
-    grename r (WTcT t)         = WTcT <$> grename r t
     grename r (WLoc l t)       = WLoc l <$> grename r t
     grename _ WSkp             = pure WSkp
 
@@ -209,6 +207,5 @@ instance ToRaw (Well pass) where
     toRaw ns env (WInd e m c)     = RInd (toRaw ns env e) (toRaw ns env m) (toRaw ns env c)
     toRaw ns env (WAnn t s)       = RAnn (toRaw ns env t) (toRaw ns env s)
     toRaw ns env (WLst ts)        = RLst (toRaw ns env <$> ts)
-    toRaw ns env (WTcT t)         = toRaw ns env t
     toRaw _  _   WSkp             = RSkp
     toRaw ns env (WLoc _ t)       = toRaw ns env t

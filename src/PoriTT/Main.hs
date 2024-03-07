@@ -23,6 +23,7 @@ import qualified System.FilePath as FP
 import qualified Text.Parsec     as P
 
 import PoriTT.Base
+import PoriTT.Elab
 import PoriTT.Builtins
 import PoriTT.Check
 import PoriTT.Conv
@@ -224,7 +225,10 @@ batchFile fn = execStateT $ do
         w <- pipelineBegin t
 
         -- elaborate, i.e. type-check
-        t0 <- either printError return $ evalExceptState (checkTerm (emptyCheckCtx names) w (coeNoMetasVTerm et)) initialRigidState
+        t0 <-
+            if opts.elaborate
+            then either printError return $ evalElabM (elabTerm (emptyElabCtx names) w (coeNoMetasVTerm et))
+            else either printError return $ evalCheckM (checkTerm (emptyCheckCtx names) w (coeNoMetasVTerm et))
         when opts.dump.tc $ printDoc $ ppSoftHanging (ppAnnotate ACmd "tc") [ prettyTerm names EmptyEnv 0 t0 ]
         lintT "tc" t0 et
 
@@ -350,7 +354,7 @@ batchFile fn = execStateT $ do
             printError $ prettyName name <+> "is already defined"
 
         (e', et) <- case env.pending of
-            Nothing          -> pipelineElim e
+            Nothing               -> pipelineElim e
             Just (name', ty', ty) -> do
                 unless (name == name') $ printError $ "Pending definition of " <+> prettyName name' <+> ":" <+> prettyVTermZ opts UnfoldNone names ty VUni
                 t <- pipelineTerm e ty

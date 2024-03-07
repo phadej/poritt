@@ -5,6 +5,8 @@
 module PoriTT.Elab (
     ElabCtx,
     emptyElabCtx,
+    ElabM,
+    evalElabM,
     elabTerm,
     elabElim,
 ) where
@@ -19,7 +21,6 @@ import PoriTT.Eval
 import PoriTT.ExceptState
 import PoriTT.Global
 import PoriTT.Icit
-import PoriTT.Lint
 import PoriTT.Loc
 import PoriTT.Name
 import PoriTT.Nice
@@ -151,7 +152,7 @@ checkEnumIdx ctx i@(EnumIdx i') ls0
 foo :: ElabCtx ctx ctx' -> [Label] -> [Either Label EnumIdx := a] -> ElabM (EnumList a)
 foo ctx ls0 m0 = go 0 [] m0 ls0 where
     go _ tgt src []
-        | null src   = return $ makeEnumList $ reverse tgt
+        | null src  = return $ makeEnumList $ reverse tgt
         | otherwise = elabError ctx "switch map contains extra keys"
             [ ppStr (show (map fst src))
             ]
@@ -200,9 +201,6 @@ elabTerm' ctx e@WInd {}  ty = checkInfer ctx e ty
 elabTerm' ctx e@WSpl {}  ty = checkInfer ctx e ty
 elabTerm' ctx e@WAnn {}  ty = checkInfer ctx e ty
 elabTerm' ctx e@WLet {}  ty = checkInfer ctx e ty
-elabTerm' ctx (WTcT t)   ty = do
-    lintTerm (toLintCtx ctx) t ty
-    return t
 elabTerm' ctx t          ty = elabTerm'' ctx ty t
 
 elabTerm''
@@ -245,19 +243,10 @@ elabTerm'' ctx (VPie y i a b) (WLam x j t) = do
     let ctx' = bind ctx x y a
     t' <- elabTerm ctx' t (runZ ctx.size b)
     return (Lam x i t')
+{-
 elabTerm'' ctx (VPie x Ecit (force -> VFin ls) b) (WLst ts) = do
-    --
-    let x' = nonAnonName x
-    let ty = VPie x' Ecit (VFin ls) b
-    b' <- case quoteTerm UnfoldNone ctx.size (VLam x' Ecit b) of
-        Left err -> elabError ctx "Evaluation error"
-            [ ppStr (show err)
-            ]
-        Right b' -> return b'
-
-    let b'' = weaken ctx.wk b'
-    let ts' = ifoldr (\i t acc -> (Right (EnumIdx i) := weaken wk1 t) : acc) [] ts
-    elabTerm ctx (WLam x' Ecit $ WSwh (WVar IZ) (weaken wk1 (WTcT b'')) ts') ty
+    TODO
+-}
 elabTerm'' ctx ty@(VPie _ _ _ _) t =
     invalidTerm ctx "Pi-type" ty t
 
@@ -438,10 +427,6 @@ elabElim' ctx (WQuo _) =
 elabElim' ctx (WLst _) =
     elabError ctx
     "Cannot infer type of a list expression"
-    []
-elabElim' ctx  (WTcT _) =
-    elabError ctx
-    "Cannot infer type of a embedded type-checker term"
     []
 elabElim' ctx (WPie x i a b) = do
     a' <- elabTerm ctx a VUni
