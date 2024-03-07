@@ -229,7 +229,6 @@ convTerm' ctx ty@VEIx {} _ _ = notType ctx ty
 convTerm' ctx ty@VQuo {} _ _ = notType ctx ty
 convTerm' ctx ty@VTht {} _ _ = notType ctx ty
 
-
 convElim' :: ConvCtx pass ctx -> VElim pass ctx -> VElim pass ctx -> ConvM (VTerm pass ctx)
 -- Globals
 convElim' env (VGbl g1 VNil _) (VGbl g2 VNil _)
@@ -256,6 +255,10 @@ convNeut' _   _              (VNFlx _ _)    = throwError "flex"
 -- Eta expand value of function type.
 etaLam :: Size ctx -> Icit -> VElim pass ctx -> VTerm pass (S ctx)
 etaLam s i f = vemb (vapp (SS s) i (sink f) (vemb (valZ s)))
+
+-------------------------------------------------------------------------------
+-- Rigid
+-------------------------------------------------------------------------------
 
 convNeutral :: ConvCtx pass ctx -> Lvl ctx -> Spine pass ctx -> Lvl ctx -> Spine pass ctx -> ConvM (VTerm pass ctx)
 convNeutral ctx x sp1 y sp2
@@ -383,6 +386,10 @@ prettySpinePart _   (VDeI _sp _ _ _ _) = "indDesc"
 prettySpinePart _   (VInd _sp _ _)     = "ind"
 prettySpinePart _   (VSpl _sp)         = "splice"
 prettySpinePart _   VNil               = "none"
+
+-------------------------------------------------------------------------------
+-- Syntactical
+-------------------------------------------------------------------------------
 
 convSTerm :: Natural -> ConvCtx pass ctx -> VTerm pass ctx -> STerm pass ctx -> STerm pass ctx -> ConvM ()
 convSTerm l env ty x y = convSTerm' l env ty x y
