@@ -14,6 +14,7 @@ module PoriTT.Eval (
     -- ** Eliminations
     vapp,
     vapps,
+    vappSpine,
     vsel,
     vswh,
     vdei,
@@ -143,6 +144,15 @@ vapp _ _ (VErr msg)        _ = VErr msg
 
 vapps :: Size ctx -> VElim pass ctx -> [VTerm pass ctx] -> VElim pass ctx
 vapps s f xs = foldl' (vapp s Ecit) f xs
+
+vappSpine :: Size ctx -> VElim pass ctx -> Spine pass ctx -> VElim pass ctx
+vappSpine _ e VNil              = e
+vappSpine s e (VApp sp i t)     = vapp s i (vappSpine s e sp) t
+vappSpine s e (VSel sp r)       = vsel s (vappSpine s e sp) r
+vappSpine s e (VSwh sp m ts)    = vswh s (vappSpine s e sp) m ts
+vappSpine s e (VDeI sp m x y z) = vdei s (vappSpine s e sp) m x y z
+vappSpine s e (VInd sp m t)     = vind s (vappSpine s e sp) m t
+vappSpine s e (VSpl sp)         = vspl s (vappSpine s e sp)
 
 vsel :: Size ctx -> VElim pass ctx -> Selector -> VElim pass ctx
 vsel s (VAnn (VMul _ t r) (force -> VSgm _ _ a b)) z
