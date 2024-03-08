@@ -67,7 +67,10 @@ unify ctx ty t s = do
 -------------------------------------------------------------------------------
 
 elabError :: ElabCtx ctx ctx' -> Doc -> [Doc] -> ElabM a
-elabError ctx msg extras = throwError $ ppHanging
+elabError ctx msg extras = throwError $ elabError' ctx msg extras
+
+elabError' :: ElabCtx ctx ctx' -> Doc -> [Doc] -> Doc
+elabError' ctx msg extras = ppHanging
     (prettyLoc ctx.loc <> ":" <+> msg)
     [ ppBullet <+> ppAlign e
     | e <- extras ++ take 5 ctx.doc
