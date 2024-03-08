@@ -48,11 +48,11 @@ toUnifyEnv ctx = UnifyEnv
     }
 
 unify
-    :: ElabCtx ctx ctx'
-    -> VTerm HasMetas ctx'
-    -> VTerm HasMetas ctx'
-    -> VTerm HasMetas ctx'
-    -> ElabM (VTerm HasMetas ctx') 
+    :: ElabCtx ctx ctx'             -- ^ elaboration context
+    -> VTerm HasMetas ctx'          -- ^ type to unify at
+    -> VTerm HasMetas ctx'          -- ^ actual term
+    -> VTerm HasMetas ctx'          -- ^ expected term
+    -> ElabM (VTerm HasMetas ctx')  -- ^ unified term as result (to avoid re-traversals)
 unify ctx ty t s = do
     case evalExceptState (convTerm (ConvCtx ctx.size ctx.names' ctx.types' ctx.nscope ctx.rigids) ty t s) initialRigidGen of
         Right () -> pure t
