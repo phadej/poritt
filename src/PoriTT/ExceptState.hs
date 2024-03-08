@@ -4,6 +4,7 @@ module PoriTT.ExceptState (
     ExceptState,
     runExceptState,
     evalExceptState,
+    mapError,
 ) where
 
 import PoriTT.Base
@@ -64,3 +65,8 @@ instance MonadState s (ExceptState e s) where
 
 instance MonadThrowError e (ExceptState e s) where
     throwError err = ExceptState $ \_ -> (# err | #)
+
+mapError :: (e -> e') -> ExceptState e s a -> ExceptState e' s a
+mapError f (ExceptState g) = ExceptState $ \s -> case g s of
+    (# err | #) -> (# f err | #)
+    (# | (# s', x #) #) -> (# | (# s', x #) #)

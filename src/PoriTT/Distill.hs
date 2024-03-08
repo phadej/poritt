@@ -61,6 +61,15 @@ data DistillCtx ctx ctx' = DistillCtx
     , opts   :: DistillOpts
     }
 
+toConvCtx :: DistillCtx ctx ctx' -> ConvCtx NoMetas ctx'
+toConvCtx ctx = ConvCtx
+    { size   = ctx.size'
+    , names  = ctx.names'
+    , types  = ctx.types'
+    , nscope = ctx.nscope
+    , rigids = emptyRigidMap
+    }
+
 sinkDistillCtx :: Name -> VTerm NoMetas ctx' -> DistillCtx ctx ctx' -> DistillCtx ctx (S ctx')
 sinkDistillCtx x' t' (DistillCtx vs ts ts' ss cs xs xs' ns s s' o) = DistillCtx (mapSink vs) (mapSink ts) (mapSink ts' :> sink t') ss cs xs (xs' :> x') ns s (SS s') o
 
@@ -246,7 +255,7 @@ distillTerm' _ (Quo _) _ =
 
 distillTerm' ctx (Emb e) a = do
     (e', b) <- distillElim' ctx e
-    case evalExceptState (convTerm (mkConvCtx ctx.size' ctx.names' ctx.types' ctx.nscope TODO) VUni a b) initialRigidGen of
+    case evalExceptState (convTerm (toConvCtx ctx) VUni a b) initialRigidGen of
         Right () -> pure e'
         Left _   -> Nothing
 

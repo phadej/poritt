@@ -53,6 +53,15 @@ data CheckCtx ctx ctx' = CheckCtx
     , doc    :: ![Doc]
     }
 
+toConvCtx :: CheckCtx ctx ctx' -> ConvCtx HasMetas ctx'
+toConvCtx ctx = ConvCtx
+    { size   = ctx.size
+    , names  = ctx.names'
+    , types  = ctx.types'
+    , nscope = ctx.nscope
+    , rigids = ctx.rigids
+    }
+
 -- | Empty elaboration context.
 --
 -- Needs global 'NameScope' for pretty-printing.
@@ -228,7 +237,7 @@ checkInfer :: CheckCtx ctx ctx' -> Well (HasTerms HasMetas) ctx -> VTerm HasMeta
 checkInfer ctx e            a = do
     (e', et) <- checkElim ctx e
     -- traceM $ "CONV: " ++ show (ctx.names', e, et, a)
-    case evalExceptState (convTerm (mkConvCtx ctx.size ctx.names' ctx.types' ctx.nscope ctx.rigids) VUni a et) initialRigidGen of
+    case evalExceptState (convTerm (toConvCtx ctx) VUni a et) initialRigidGen of
         Right () -> pure (Emb e')
         Left err -> checkError ctx "Couldn't match types"
             [ "expected:" <+> prettyVTermCtx ctx a

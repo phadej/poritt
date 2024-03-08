@@ -4,8 +4,8 @@
 module PoriTT.Conv (
     convTerm,
     convElim,
-    ConvCtx,
-    mkConvCtx,
+    ConvCtx (..),
+    emptyConvCtx,
 ) where
 
 import PoriTT.Base
@@ -25,12 +25,30 @@ import PoriTT.Used
 import PoriTT.Value
 
 -- | Conversion context.
+--
+-- * context size
+--
+-- * names of the variables in the cotnext (for pretty printing)
+--
+-- * types of things in context
+--
+-- * and a global 'NameScope' (for pretty-printing)
+--
 data ConvCtx pass ctx = ConvCtx
-    { size   :: Size ctx
-    , names  :: Env ctx Name
-    , types  :: Env ctx (VTerm pass ctx)
-    , nscope :: NameScope
-    , rigids :: RigidMap ctx (VTerm pass ctx) -- We could add names here to have nicer rigid printing
+    { size   :: !(Size ctx)
+    , names  :: !(Env ctx Name)
+    , types  :: !(Env ctx (VTerm pass ctx))
+    , nscope :: !(NameScope)
+    , rigids :: !(RigidMap ctx (VTerm pass ctx)) -- We could add names here to have nicer rigid printing
+    }
+
+emptyConvCtx :: NameScope -> ConvCtx pass EmptyCtx
+emptyConvCtx ns = ConvCtx
+    { size   = SZ
+    , names  = EmptyEnv
+    , types  = EmptyEnv
+    , nscope = ns
+    , rigids = emptyRigidMap
     }
 
 bind :: Name -> VTerm pass ctx -> ConvCtx pass ctx -> ConvCtx pass (S ctx)
@@ -43,20 +61,6 @@ newRigid ctx ty = do
     r <- newRigidVar
     return (ctx { rigids = insertRigidMap r ty ctx.rigids }, r)
 
--- | Create conversion context.
---
--- Requires
---
--- * context size
---
--- * names of the variables in the cotnext (for pretty printing)
---
--- * types of things in context
---
--- * and a global 'NameScope' (for pretty-printing)
---
-mkConvCtx :: Size ctx -> Env ctx Name -> Env ctx (VTerm pass ctx) -> NameScope -> RigidMap ctx (VTerm pass ctx) -> ConvCtx pass ctx
-mkConvCtx = ConvCtx
 
 prettyVTermCtx :: ConvCtx pass ctx -> VTerm pass ctx -> Doc
 prettyVTermCtx ctx = prettyVTerm ctx.size ctx.nscope ctx.names

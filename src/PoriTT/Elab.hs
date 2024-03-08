@@ -29,9 +29,38 @@ import PoriTT.Quote
 import PoriTT.Rigid
 import PoriTT.Stage
 import PoriTT.Term
+import PoriTT.Unify
 import PoriTT.Used
 import PoriTT.Value
 import PoriTT.Well
+
+-------------------------------------------------------------------------------
+-- Unification
+-------------------------------------------------------------------------------
+
+toUnifyEnv :: ElabCtx ctx ctx' -> UnifyEnv ctx'
+toUnifyEnv ctx = UnifyEnv
+    { size   = ctx.size
+    , names  = ctx.names'
+    , types  = ctx.types'
+    , nscope = ctx.nscope
+    , rigids = ctx.rigids
+    }
+
+unify
+    :: ElabCtx ctx ctx'
+    -> VTerm HasMetas ctx'
+    -> VTerm HasMetas ctx'
+    -> VTerm HasMetas ctx'
+    -> ElabM (VTerm HasMetas ctx') 
+unify ctx ty t s = do
+    case evalExceptState (convTerm (ConvCtx ctx.size ctx.names' ctx.types' ctx.nscope ctx.rigids) ty t s) initialRigidGen of
+        Right () -> pure t
+        Left err -> elabError ctx "Couldn't unify terms"
+            [ "expected:" <+> prettyVTermCtx ctx s
+            , "actual:" <+> prettyVTermCtx ctx t
+            , err
+            ]
 
 -------------------------------------------------------------------------------
 -- Errors
@@ -113,16 +142,16 @@ elabElim ctx e = do
 -- Check helpers
 -------------------------------------------------------------------------------
 
-checkIcit :: ElabCtx ctx ctx' -> Icit -> Icit -> ElabM ()
-checkIcit ctx i j
+elabIcit :: ElabCtx ctx ctx' -> Icit -> Icit -> ElabM ()
+elabIcit ctx i j
     | i == j    = return ()
     | otherwise = elabError ctx "Icity mismatch"
         [ "expected:" <+> prettyIcit j
         , "actual:" <+> prettyIcit i
         ]
 
-checkHole :: ElabCtx ctx ctx' -> Name -> VTerm HasMetas ctx' -> ElabM (Term HasMetas ctx)
-checkHole ctx n ty = elabError ctx ("Checking a hole" <+> prettyHole n) $
+elabHole :: ElabCtx ctx ctx' -> Name -> VTerm HasMetas ctx' -> ElabM (Term HasMetas ctx)
+elabHole ctx n ty = elabError ctx ("Checking a hole" <+> prettyHole n) $
     [ "type:" <+> prettyVTermCtx ctx ty
     ] ++
     (prettyNamesTypes ctx.size ctx.nscope ctx.names' ctx.names ctx.types)
@@ -136,16 +165,11 @@ elabInfer :: ElabCtx ctx ctx' -> Well (HasTerms HasMetas) ctx -> VTerm HasMetas 
 elabInfer ctx e            a = do
     (e', et) <- elabElim ctx e
     -- traceM $ "CONV: " ++ show (ctx.names', e, et, a)
-    case evalExceptState (convTerm (mkConvCtx ctx.size ctx.names' ctx.types' ctx.nscope ctx.rigids) VUni a et) initialRigidGen of
-        Right () -> pure (Emb e')
-        Left err -> elabError ctx "Couldn't match types"
-            [ "expected:" <+> prettyVTermCtx ctx a
-            , "actual:" <+> prettyVTermCtx ctx et
-            , err
-            ]
+    _ <- unify ctx VUni a et
+    return (Emb e')
 
-checkLabel :: ElabCtx ctx ctx' -> Label -> [Label] -> ElabM EnumIdx
-checkLabel ctx l0 ls0 = go 0 ls0 where
+elabLabel :: ElabCtx ctx ctx' -> Label -> [Label] -> ElabM EnumIdx
+elabLabel ctx l0 ls0 = go 0 ls0 where
     go :: Int -> [Label] -> ElabM EnumIdx
     go !_ [] = elabError ctx ("label" <+> prettyLabel l0 <+> "is not in the set" <+> prettyVTermCtx ctx (VFin ls0)) []
     go !i (l:ls)
@@ -198,7 +222,7 @@ elabTerm'
     -> VTerm HasMetas ctx'               -- ^ Expected type
     -> ElabM (Term HasMetas ctx)    -- ^ Type checked term
 elabTerm' ctx (WLoc l t) ty = elabTerm' ctx { loc = l } t ty
-elabTerm' ctx (WHol n)   ty = checkHole ctx n ty
+elabTerm' ctx (WHol n)   ty = elabHole ctx n ty
 elabTerm' ctx WSkp       ty = elabSkipped ctx ty
 elabTerm' ctx e@WVar {}  ty = elabInfer ctx e ty
 elabTerm' ctx e@WGbl {}  ty = elabInfer ctx e ty
@@ -248,7 +272,7 @@ elabTerm'' ctx ty@VUni t = do
 
 -- functions
 elabTerm'' ctx (VPie y i a b) (WLam x j t) = do
-    checkIcit ctx i j
+    elabIcit ctx i j
     let ctx' = bind ctx x y a
     t' <- elabTerm ctx' t (runZ ctx.size b)
     return (Lam x i t')
@@ -261,7 +285,7 @@ elabTerm'' ctx ty@(VPie _ _ _ _) t =
 
 -- pairs
 elabTerm'' ctx (VSgm _ j a b) (WMul i t s) = do
-    checkIcit ctx i j
+    elabIcit ctx i j
     t' <- elabTerm' ctx t a
     let tv = evalTerm ctx.size ctx.values t'
     s' <- elabTerm ctx s (run ctx.size b (vann tv a))
@@ -320,7 +344,7 @@ elabTerm'' ctx (VMuu (force -> VDeS (force -> VFin ls) d)) (WLbl l ts) = do
     -- ------------------------------------------------------------
     -- ⊩ μ (`Σ #E D) ∋ :c t... ▹ con (n , t')
     --
-    i' <- checkLabel ctx l ls
+    i' <- elabLabel ctx l ls
     let d' = vann d (VPie "_" Ecit (VFin ls) (Closure EmptyEnv Dsc))
     t' <- elabTerm ctx (WLst ts) $ vemb $ vapps ctx.size (vgbl ctx.size evalDescGlobal)
         [ vemb (vapp ctx.size Ecit d' (VEIx i'))
@@ -337,7 +361,7 @@ elabTerm'' ctx (VFin ls) (WLbl l ts) = do
     unless (null ts) $ elabError ctx
         ("label" <+> prettyLabel l <+> "is applied to arguments but checked against finite set type")
         []
-    i' <- checkLabel ctx l ls
+    i' <- elabLabel ctx l ls
     return (EIx i')
 elabTerm'' ctx (VFin ls) (WEIx i ts) = do
     unless (null ts) $ elabError ctx
@@ -474,7 +498,7 @@ elabElim' ctx (WApp i f t) = do
     (f', ft) <- elabElim ctx f
     case force ft of
         VPie _ j a b -> do
-            checkIcit ctx j i
+            elabIcit ctx j i
             t' <- elabTerm ctx t a
             let tv = evalTerm ctx.size ctx.values t'
             return (App i f' t', run ctx.size b (vann tv a))

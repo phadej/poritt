@@ -42,6 +42,15 @@ data LintCtx pass ctx ctx' = LintCtx
     , doc    :: ![Doc]
     }
 
+toConvCtx :: LintCtx pass ctx ctx' -> ConvCtx pass ctx'
+toConvCtx ctx = ConvCtx
+    { size   = ctx.size
+    , names  = ctx.names'
+    , types  = ctx.types'
+    , nscope = ctx.nscope
+    , rigids = ctx.rigids
+    }
+
 sinkLintCtx :: Name -> VTerm pass ctx' -> LintCtx pass ctx ctx' -> LintCtx pass ctx (S ctx')
 sinkLintCtx x' t' (LintCtx vs ts ts' rs ss cs xs xs' ns s pp) = LintCtx (mapSink vs) (mapSink ts) (mapSink ts' :> sink t') (rigidMapSink (mapSink rs)) ss cs xs (xs' :> x') ns (SS s) pp
 
@@ -358,7 +367,7 @@ lintTerm' ctx (Emb e)     a    = do
     --  ⊢ A ∋ e
     --
     b <- lintElim ctx e
-    case evalExceptState (convTerm (mkConvCtx ctx.size ctx.names' ctx.types' ctx.nscope ctx.rigids) VUni a b) initialRigidGen of
+    case evalExceptState (convTerm (toConvCtx ctx) VUni a b) initialRigidGen of
         Right () -> pure ()
         Left err -> lintError ctx "Couldn't match types"
             [ "expected:" <+> prettyVTermCtx ctx a
