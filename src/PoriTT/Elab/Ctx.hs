@@ -29,7 +29,6 @@ data ElabCtx ctx ctx' = ElabCtx
     , types  :: !(Env ctx (VTerm HasMetas ctx'))
     , types' :: !(Env ctx' (VTerm HasMetas ctx'))
     , rigids :: !(RigidMap ctx' (VTerm HasMetas ctx'))
-    , mtypes :: !(MetaMap (VTerm HasMetas EmptyCtx))
     , stages :: !(Env ctx Stage)
     , cstage :: !Stage
     , size   :: !(Size ctx')
@@ -51,7 +50,6 @@ emptyElabCtx ns = ElabCtx
     , types  = EmptyEnv
     , types' = EmptyEnv
     , rigids = emptyRigidMap
-    , mtypes = emptyMetaMap
     , stages = EmptyEnv
     , cstage = stage0
     , size   = SZ
@@ -66,7 +64,7 @@ bind
     -> Name                     -- ^ name in types
     -> VTerm HasMetas ctx'      -- ^ type
     -> ElabCtx (S ctx) (S ctx')
-bind (ElabCtx xs xs' ns v ts ts' rs ms ss cs s wk l pp) x x' a = ElabCtx
+bind (ElabCtx xs xs' ns v ts ts' rs ss cs s wk l pp) x x' a = ElabCtx
     { names   = xs :> x
     , names'  = xs' :> x'
     , nscope  = ns
@@ -74,7 +72,6 @@ bind (ElabCtx xs xs' ns v ts ts' rs ms ss cs s wk l pp) x x' a = ElabCtx
     , types   = mapSink ts :> sink a
     , types'  = mapSink ts' :> sink a
     , rigids  = rigidMapSink (mapSink rs)
-    , mtypes  = ms
     , stages  = ss :> cs
     , cstage  = cs
     , size    = SS s
@@ -91,7 +88,7 @@ bind'
     -> EvalElim HasMetas ctx'   -- ^ value
     -> VTerm HasMetas ctx'      -- ^ type
     -> ElabCtx (S ctx) ctx'
-bind' (ElabCtx xs xs' ns v ts ts' rs ms ss cs s wk l pp) x t a = ElabCtx
+bind' (ElabCtx xs xs' ns v ts ts' rs ss cs s wk l pp) x t a = ElabCtx
     { names   = xs :> x
     , names'  = xs'
     , nscope  = ns
@@ -99,7 +96,6 @@ bind' (ElabCtx xs xs' ns v ts ts' rs ms ss cs s wk l pp) x t a = ElabCtx
     , types   = ts :> a
     , types'  = ts'
     , rigids  = rs
-    , mtypes  = ms
     , stages  = ss :> cs
     , cstage  = cs
     , size    = s

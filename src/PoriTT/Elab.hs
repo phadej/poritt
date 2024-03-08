@@ -69,6 +69,16 @@ prettyNamesTypes s ns env (xs :> x) (ts :> t) =
         Right n  -> prettyTerm ns env 0 n
 
 -------------------------------------------------------------------------------
+-- insertion
+-------------------------------------------------------------------------------
+
+-- | Insert implicit arguments for as long as there are in type.
+insert :: ElabCtx ctx ctx'
+    -> (Elim HasMetas ctx, VTerm HasMetas ctx')
+    -> ElabM (Elim HasMetas ctx, VTerm HasMetas ctx')
+insert _ x = return x
+
+-------------------------------------------------------------------------------
 -- Check & Infer wrappers
 -------------------------------------------------------------------------------
 
@@ -117,14 +127,13 @@ checkHole ctx n ty = elabError ctx ("Checking a hole" <+> prettyHole n) $
     ] ++
     (prettyNamesTypes ctx.size ctx.nscope ctx.names' ctx.names ctx.types)
 
-checkSkipped :: ElabCtx ctx ctx' -> VTerm HasMetas ctx' -> ElabM (Term HasMetas ctx)
-checkSkipped ctx ty = elabError ctx ("Skipped term") $
-    [ "type:" <+> prettyVTermCtx ctx ty
-    ] ++
-    (prettyNamesTypes ctx.size ctx.nscope ctx.names' ctx.names ctx.types)
+elabSkipped :: ElabCtx ctx ctx' -> VTerm HasMetas ctx' -> ElabM (Term HasMetas ctx)
+elabSkipped ctx ty = do
+    m <- newMeta ctx ty
+    return (Emb (Met m))
 
-checkInfer :: ElabCtx ctx ctx' -> Well (HasTerms HasMetas) ctx -> VTerm HasMetas ctx' -> ElabM (Term HasMetas ctx)
-checkInfer ctx e            a = do
+elabInfer :: ElabCtx ctx ctx' -> Well (HasTerms HasMetas) ctx -> VTerm HasMetas ctx' -> ElabM (Term HasMetas ctx)
+elabInfer ctx e            a = do
     (e', et) <- elabElim ctx e
     -- traceM $ "CONV: " ++ show (ctx.names', e, et, a)
     case evalExceptState (convTerm (mkConvCtx ctx.size ctx.names' ctx.types' ctx.nscope ctx.rigids) VUni a et) initialRigidGen of
@@ -190,18 +199,18 @@ elabTerm'
     -> ElabM (Term HasMetas ctx)    -- ^ Type checked term
 elabTerm' ctx (WLoc l t) ty = elabTerm' ctx { loc = l } t ty
 elabTerm' ctx (WHol n)   ty = checkHole ctx n ty
-elabTerm' ctx WSkp       ty = checkSkipped ctx ty
-elabTerm' ctx e@WVar {}  ty = checkInfer ctx e ty
-elabTerm' ctx e@WGbl {}  ty = checkInfer ctx e ty
-elabTerm' ctx e@WApp {}  ty = checkInfer ctx e ty
-elabTerm' ctx e@WSel {}  ty = checkInfer ctx e ty
-elabTerm' ctx e@WSwh {}  ty = checkInfer ctx e ty
-elabTerm' ctx e@WDeI {}  ty = checkInfer ctx e ty
-elabTerm' ctx e@WInd {}  ty = checkInfer ctx e ty
-elabTerm' ctx e@WSpl {}  ty = checkInfer ctx e ty
-elabTerm' ctx e@WAnn {}  ty = checkInfer ctx e ty
-elabTerm' ctx e@WLet {}  ty = checkInfer ctx e ty
-elabTerm' ctx t          ty = elabTerm'' ctx ty t
+elabTerm' ctx WSkp       ty = elabSkipped ctx ty
+elabTerm' ctx e@WVar {}  ty = elabInfer ctx e ty
+elabTerm' ctx e@WGbl {}  ty = elabInfer ctx e ty
+elabTerm' ctx e@WApp {}  ty = elabInfer ctx e ty
+elabTerm' ctx e@WSel {}  ty = elabInfer ctx e ty
+elabTerm' ctx e@WSwh {}  ty = elabInfer ctx e ty
+elabTerm' ctx e@WDeI {}  ty = elabInfer ctx e ty
+elabTerm' ctx e@WInd {}  ty = elabInfer ctx e ty
+elabTerm' ctx e@WSpl {}  ty = elabInfer ctx e ty
+elabTerm' ctx e@WAnn {}  ty = elabInfer ctx e ty
+elabTerm' ctx e@WLet {}  ty = elabInfer ctx e ty
+elabTerm' ctx t          ty = forceM ty >>= \ty' -> elabTerm'' ctx ty' t
 
 elabTerm''
     :: ElabCtx ctx ctx'               -- ^ Type checking context
@@ -368,10 +377,7 @@ elabTerm'' ctx (VEmb ty@(VRgd _ _)) _ =
         [ "type:" <+> prettyVTermCtx ctx (VEmb ty)
         ]
 
-elabTerm'' ctx (VEmb ty@(VFlx _ _)) _ =
-    elabError ctx "Cannot check against neutral-type"
-        [ "type:" <+> prettyVTermCtx ctx (VEmb ty)
-        ]
+elabTerm'' ctx ty@(VEmb (VFlx _ _)) t = elabInfer ctx t ty
 
 -------------------------------------------------------------------------------
 -- Check Elim

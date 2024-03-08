@@ -199,7 +199,10 @@ batchFile fn = execStateT $ do
         w <- pipelineBegin e
 
         -- elaborate, i.e. type-check
-        (e0, et') <- either printError return $ evalExceptState (checkElim (emptyCheckCtx names) w) initialRigidGen
+        (e0, et') <-
+            if opts.elaborate
+            then either printError return $ evalElabM (elabElim (emptyElabCtx names) w)
+            else either printError return $ evalCheckM (checkElim (emptyCheckCtx names) w)
         when opts.dump.tc $ printDoc $ ppSoftHanging (ppAnnotate ACmd "tc") [ prettyElim names EmptyEnv 0 e0 ]
         lintE "tc" e0 et'
 

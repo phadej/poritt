@@ -97,7 +97,7 @@ evalTerm' s env (WkT w t)     = evalTerm' s (weakenEnv w env) t
 
 evalElim' :: Size ctx' -> EvalEnv pass ctx ctx' -> Elim pass ctx -> VElim pass ctx'
 evalElim' _ env (Var x)         = case lookupEnv x env of EvalElim v _ -> v
-evalElim' _ _   (Met _)         = TODO -- TODO: we need metacontext.
+evalElim' _ _   (Met m)         = VFlx m VNil
 evalElim' _ _   (Rgd _)         = TODO -- error?
 evalElim' s _   (Gbl g)         = vgbl s g
 evalElim' s env (Ann t a)       = vann (evalTerm' s env t) (evalTerm' s env a)

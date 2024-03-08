@@ -47,8 +47,8 @@ data Hole where
 initialElabState :: ElabState
 initialElabState = ElabState
     { rigidGen = initialRigidGen
-    , metaGen = initialMetaGen
-    , mvalues = emptyMetaMap
+    , metaGen  = initialMetaGen
+    , mvalues  = emptyMetaMap
     -- , holes  = mempty
     }
 
@@ -71,11 +71,11 @@ newRigid ctx ty = do
 instance HasMetaGen ElabState where
     metaGen = #metaGen
 
-newMeta :: ElabCtx ctx ctx' -> VTerm HasMetas ctx' -> ElabM (ElabCtx ctx ctx', MetaVar)
+newMeta :: ElabCtx ctx ctx' -> VTerm HasMetas ctx' -> ElabM MetaVar
 newMeta ctx ty = do
     m <- newMetaVar
     case ctx.size of
-        SZ -> return (ctx { mtypes = insertMetaMap m ty ctx.mtypes }, m)
+        SZ -> return m
         _  -> throwError "TODO: can create metas in empty contexts only"
 
 -------------------------------------------------------------------------------
