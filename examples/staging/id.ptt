@@ -10,3 +10,6 @@ define id2 : forall (B : CodeU) -> Code B -> Code B
 
 define id3 : forall (C : U) -> C -> C
            = \ C z -> $(id2 [| C |] [| z |])
+
+id4 : forall {D : U} -> D -> D
+id4 x = x

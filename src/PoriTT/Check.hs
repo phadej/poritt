@@ -348,6 +348,9 @@ checkTerm'' ctx ty@VUni t = do
     invalidTerm ctx "U" ty t
 
 -- functions
+checkTerm'' ctx ty@(VPie y Icit _ _) t@(WLam _ Ecit _) = do
+    checkTerm ctx (WLam y Icit (weaken wk1 t)) ty
+
 checkTerm'' ctx (VPie y i a b) (WLam x j t) = do
     checkIcit ctx i j
     let ctx' = bind ctx x y a
@@ -383,6 +386,9 @@ checkTerm'' ctx (VPie x Ecit (force -> VFin ls) b) (WLst ts) = do
         return (weaken wk1 t')
 
     return $ Lam x' Ecit $ Emb $ Swh (Var IZ) (weaken wk1 b'') (makeEnumList ts')
+
+checkTerm'' ctx ty@(VPie x Icit _ _) t =
+    checkTerm ctx (WLam x Icit (weaken wk1 t)) ty
 
 checkTerm'' ctx ty@(VPie _ _ _ _) t =
     invalidTerm ctx "Pi-type" ty t
