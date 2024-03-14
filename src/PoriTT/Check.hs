@@ -353,7 +353,7 @@ checkTerm'' ctx ty@VUni t = do
     invalidTerm ctx "U" ty t
 
 -- functions
-checkTerm'' ctx ty@(VPie y i a b) t = case insertIcitLam y i t of
+checkTerm'' ctx ty@(VPie y i a b) t0 = case insertIcitLam y i t0 of
     WLam x j t -> do
         checkIcit ctx i j
         let ctx' = bind ctx x y a
@@ -391,7 +391,7 @@ checkTerm'' ctx ty@(VPie y i a b) t = case insertIcitLam y i t of
 
         return $ Lam x' Ecit $ Emb $ Swh (Var IZ) (weaken wk1 b'') (makeEnumList ts')
 
-    t' -> invalidTerm ctx "Pi-type" ty t'
+    t -> invalidTerm ctx "Pi-type" ty t
 
 -- pairs
 checkTerm'' ctx (VSgm _ j a b) (WMul i t s) = do
