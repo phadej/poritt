@@ -5,7 +5,9 @@ id = λ {_} x ↦ x
 
 eval id {Unit} tt = [] : Unit
 
-id' : ∀ {A : U} → A → A
-id' = λ {_} x ↦ x
-
-eval id' {Unit} tt = [] : Unit
+Error: examples/elab.ptt:7:10: Skipped term
+  • type: U
+  • When checking that _ has type U
+  • When infering type of id {_}
+  • When infering type of id {_} tt
+ExitFailure
