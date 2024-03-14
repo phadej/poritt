@@ -293,6 +293,11 @@ lookupRemoving k = go id where
 -- Check term
 -------------------------------------------------------------------------------
 
+insertLam :: Name -> Icit -> Well pass ctx -> Well pass ctx
+insertLam _ Ecit t                 = t
+insertLam _ Icit t@(WLam _ Icit _) = t
+insertLam x Icit t                 = WLam x Icit (weaken wk1 t)
+
 checkTerm'
     :: CheckCtx ctx ctx'                -- ^ Type checking context
     -> Well (HasTerms HasMetas) ctx      -- ^ Well scoped term
@@ -348,50 +353,45 @@ checkTerm'' ctx ty@VUni t = do
     invalidTerm ctx "U" ty t
 
 -- functions
-checkTerm'' ctx ty@(VPie y Icit _ _) t@(WLam _ Ecit _) = do
-    checkTerm ctx (WLam y Icit (weaken wk1 t)) ty
+checkTerm'' ctx ty@(VPie y i a b) t = case insertLam y i t of 
+    WLam x j t -> do
+        checkIcit ctx i j
+        let ctx' = bind ctx x y a
+        t' <- checkTerm ctx' t (runZ ctx.size b)
+        return (Lam x i t')
 
-checkTerm'' ctx (VPie y i a b) (WLam x j t) = do
-    checkIcit ctx i j
-    let ctx' = bind ctx x y a
-    t' <- checkTerm ctx' t (runZ ctx.size b)
-    return (Lam x i t')
-checkTerm'' ctx (VPie x Ecit (force -> VFin ls) b) (WLst ts) = do
-    --
-    --  ⊢ Pi (x : #[l ...]) -> B ∋ \ e -> switch e (\x -> B) { .0 -> t..} ▹ t'
-    -- ------------------------------------------------------------------
-    --  ⊢ Pi (x : #[l ...]) -> B ∋ [t ...] ▹ t'
-    --
-    let lenTy = length ls
-    let lenTm = length ts
-    unless (lenTy == lenTm) $ checkError ctx
-        "Term list has different size than domain enumeration"
-        [ "domain size" <+> ppInt lenTy
-        , "list length" <+> ppInt lenTm
-        ]
-
-    let x' = nonAnonName x
-    let e = VFin ls
-    b' <- case quoteTerm UnfoldNone ctx.size (VLam x' Ecit b) of
-        Left err -> checkError ctx "Evaluation error"
-            [ ppStr (show err)
+    WLst ts | Ecit <- i, VFin ls <- force a -> do
+        --
+        --  ⊢ Pi (x : #[l ...]) -> B ∋ \ e -> switch e (\x -> B) { .0 -> t..} ▹ t'
+        -- ------------------------------------------------------------------
+        --  ⊢ Pi (x : #[l ...]) -> B ∋ [t ...] ▹ t'
+        --
+        let lenTy = length ls
+        let lenTm = length ts
+        unless (lenTy == lenTm) $ checkError ctx
+            "Term list has different size than domain enumeration"
+            [ "domain size" <+> ppInt lenTy
+            , "list length" <+> ppInt lenTm
             ]
-        Right b' -> return b'
 
-    let b'' = weaken ctx.wk b'
+        let x' = nonAnonName y
+        let e = VFin ls
+        b' <- case quoteTerm UnfoldNone ctx.size (VLam x' Ecit b) of
+            Left err -> checkError ctx "Evaluation error"
+                [ ppStr (show err)
+                ]
+            Right b' -> return b'
 
-    ts' <- ifor ts $ \i' t -> do
-        let i = EnumIdx i'
-        t' <- checkTerm ctx t $ run ctx.size b (VAnn (VEIx i) e)
-        return (weaken wk1 t')
+        let b'' = weaken ctx.wk b'
 
-    return $ Lam x' Ecit $ Emb $ Swh (Var IZ) (weaken wk1 b'') (makeEnumList ts')
+        ts' <- ifor ts $ \i' t -> do
+            let i = EnumIdx i'
+            t' <- checkTerm ctx t $ run ctx.size b (VAnn (VEIx i) e)
+            return (weaken wk1 t')
 
-checkTerm'' ctx ty@(VPie x Icit _ _) t =
-    checkTerm ctx (WLam x Icit (weaken wk1 t)) ty
+        return $ Lam x' Ecit $ Emb $ Swh (Var IZ) (weaken wk1 b'') (makeEnumList ts')
 
-checkTerm'' ctx ty@(VPie _ _ _ _) t =
-    invalidTerm ctx "Pi-type" ty t
+    t' -> invalidTerm ctx "Pi-type" ty t'
 
 -- pairs
 checkTerm'' ctx (VSgm _ j a b) (WMul i t s) = do
