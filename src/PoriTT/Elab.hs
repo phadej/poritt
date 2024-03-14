@@ -274,6 +274,13 @@ elabTerm'' ctx ty@VUni t = do
     invalidTerm ctx "U" ty t
 
 -- functions
+{-
+TODO
+
+checkTerm'' ctx ty@(VPie y Icit _ _) t@(WLam _ Ecit _) = do
+    checkTerm ctx (WLam y Icit (weaken wk1 t)) ty
+-}
+
 elabTerm'' ctx (VPie y i a b) (WLam x j t) = do
     elabIcit ctx i j
     let ctx' = bind ctx x y a
