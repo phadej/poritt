@@ -385,8 +385,8 @@ checkTerm'' ctx ty@(VPie y i a b) t0 = case insertIcitLam y i t0 of
         let b'' = weaken ctx.wk b'
 
         ts' <- ifor ts $ \i' t -> do
-            let i = EnumIdx i'
-            t' <- checkTerm ctx t $ run ctx.size b (VAnn (VEIx i) e)
+            let i'' = EnumIdx i'
+            t' <- checkTerm ctx t $ run ctx.size b (VAnn (VEIx i'') e)
             return (weaken wk1 t')
 
         return $ Lam x' Ecit $ Emb $ Swh (Var IZ) (weaken wk1 b'') (makeEnumList ts')
