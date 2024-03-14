@@ -293,10 +293,10 @@ lookupRemoving k = go id where
 -- Check term
 -------------------------------------------------------------------------------
 
-insertLam :: Name -> Icit -> Well pass ctx -> Well pass ctx
-insertLam _ Ecit t                 = t
-insertLam _ Icit t@(WLam _ Icit _) = t
-insertLam x Icit t                 = WLam x Icit (weaken wk1 t)
+insertIcitLam :: Name -> Icit -> Well pass ctx -> Well pass ctx
+insertIcitLam _ Ecit t                 = t
+insertIcitLam _ Icit t@(WLam _ Icit _) = t
+insertIcitLam x Icit t                 = WLam x Icit (weaken wk1 t)
 
 checkTerm'
     :: CheckCtx ctx ctx'                -- ^ Type checking context
@@ -353,7 +353,7 @@ checkTerm'' ctx ty@VUni t = do
     invalidTerm ctx "U" ty t
 
 -- functions
-checkTerm'' ctx ty@(VPie y i a b) t = case insertLam y i t of 
+checkTerm'' ctx ty@(VPie y i a b) t = case insertIcitLam y i t of
     WLam x j t -> do
         checkIcit ctx i j
         let ctx' = bind ctx x y a
