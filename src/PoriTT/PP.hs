@@ -172,7 +172,7 @@ sgrCode ACon = sgrCode' ANSI.Cyan
 sgrCode AErr = ANSI.SetConsoleIntensity ANSI.BoldIntensity : sgrCode' ANSI.Red
 sgrCode ACmd = [ANSI.SetConsoleIntensity ANSI.BoldIntensity, ANSI.SetColor ANSI.Foreground ANSI.Vivid ANSI.White]
 sgrCode AEch = [ANSI.SetConsoleIntensity ANSI.BoldIntensity, ANSI.SetColor ANSI.Foreground ANSI.Dull ANSI.White]
-sgrCode ASkp = [ANSI.SetColor ANSI.Background ANSI.Dull ANSI.Yellow]
+sgrCode ASkp = ANSI.SetColor ANSI.Background ANSI.Vivid ANSI.Yellow : sgrCode' ANSI.Black
 
 sgrCode' :: ANSI.Color -> [ANSI.SGR]
 sgrCode' c = [ANSI.SetColor ANSI.Foreground ANSI.Vivid c]

@@ -40,7 +40,7 @@ instance Enum MetaVar where
     toEnum = MetaVar
 
 prettyMetaVar :: MetaVar -> Doc
-prettyMetaVar (MetaVar i) = ppAnnotate AErr (ppStr ('?' : show i))
+prettyMetaVar (MetaVar i) = ppAnnotate ASkp (ppStr ('?' : show i))
 
 -------------------------------------------------------------------------------
 -- MetaMap
