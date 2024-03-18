@@ -4,18 +4,19 @@ module PoriTT.Unify (
 ) where
 
 import PoriTT.Base
-import PoriTT.Elab.Monad
 import PoriTT.Builtins
-import PoriTT.Name
+import PoriTT.Elab.Monad
 import PoriTT.Enum
-import PoriTT.Term
-import PoriTT.Global
-import PoriTT.Rigid
-import PoriTT.Icit
-import PoriTT.Value
 import PoriTT.Eval
+import PoriTT.Global
+import PoriTT.Icit
+import PoriTT.Name
 import PoriTT.PP
+import PoriTT.PRen
 import PoriTT.Quote
+import PoriTT.Rigid
+import PoriTT.Term
+import PoriTT.Value
 
 -------------------------------------------------------------------------------
 -- Unification environment
