@@ -9,6 +9,7 @@ import PoriTT.Builtins
 import PoriTT.Name
 import PoriTT.Enum
 import PoriTT.Term
+import PoriTT.Global
 import PoriTT.Rigid
 import PoriTT.Icit
 import PoriTT.Value
@@ -109,7 +110,9 @@ unifyTerm env ty a b = do
     unifyTerm' env ty a b
 
 unifyElim :: UnifyEnv ctx -> VElim HasMetas ctx -> VElim HasMetas ctx -> ElabM (VElim HasMetas ctx, VTerm HasMetas ctx)
-unifyElim _env _a _b = TODO
+unifyElim env a b = do
+    traceM $ "unifyElim " ++ show [a, b]
+    unifyElim' env a b
 
 unifySTerm :: UnifyEnv ctx -> VTerm HasMetas ctx -> STerm HasMetas ctx -> STerm HasMetas ctx -> ElabM (STerm HasMetas ctx)
 unifySTerm _ _ty a _b = return a
@@ -136,9 +139,12 @@ unifyTerm' ctx ty x (VEmb (VGbl _ _ y)) = unifyTerm ctx ty x (vemb y)
 unifyTerm' ctx (VEmb (VAnn t _)) x y = unifyTerm' ctx t x y
 
 -- ⊢ U ∋ t ≡ s
-unifyTerm' _   VUni VUni             VUni           = pure VUni
-unifyTerm' _   VUni VDsc             VDsc           = pure VDsc
-unifyTerm' _   VUni VOne             VOne           = pure VOne
+unifyTerm' _   VUni VUni             VUni =
+    pure VUni
+unifyTerm' _   VUni VDsc             VDsc =
+    pure VDsc
+unifyTerm' _   VUni VOne             VOne =
+    pure VOne
 unifyTerm' ctx VUni (VPie x i a1 b1) (VPie _ j a2 b2) = do
     convIcit ctx i j
     a <- unifyTerm ctx VUni a1 a2
@@ -149,16 +155,20 @@ unifyTerm' ctx VUni (VSgm x i a1 b1) (VSgm _ j a2 b2) = do
     a <- unifyTerm ctx VUni a1 a2
     _ <- unifyTerm (bind x a1 ctx) VUni (runZ ctx.size b1) (runZ ctx.size b2)
     return (VSgm x i a b1)
-unifyTerm' ctx VUni (VMuu x)         (VMuu y)       =
+unifyTerm' ctx VUni (VMuu x)         (VMuu y) =
     VMuu <$> unifyTerm ctx VDsc x y
-unifyTerm' _   VUni (VFin ls1)       (VFin ls2)     =
+unifyTerm' _   VUni (VFin ls1)       (VFin ls2) =
     if ls1 == ls2
         then pure (VFin ls1)
     else mismatch "finite set" (prettyLabels ls1) (prettyLabels ls2)
-unifyTerm' ctx VUni (VCod x)         (VCod y)       =
+unifyTerm' ctx VUni (VCod x)         (VCod y) =
     VCod <$> unifyTerm ctx vcodUni x y
 unifyTerm' ctx VUni (VEmb e1)        (VEmb e2) =
     unifyEmbTerm ctx e1 e2
+unifyTerm' ctx VUni (VEmb (VFlx _ _)) t =
+    TODO
+unifyTerm' ctx VUni t (VEmb (VFlx _ _)) =
+    TODO
 unifyTerm' ctx VUni x                y              =
     notConvertible ctx VUni x y
 
@@ -262,6 +272,28 @@ unifyTerm' ctx ty@VMul {} _ _ = notType ctx ty
 unifyTerm' ctx ty@VEIx {} _ _ = notType ctx ty
 unifyTerm' ctx ty@VQuo {} _ _ = notType ctx ty
 unifyTerm' ctx ty@VTht {} _ _ = notType ctx ty
+
+-- | Unify eliminations
+--
+-- Return unified elimination and its type.
+unifyElim' :: UnifyEnv ctx -> VElim HasMetas ctx -> VElim HasMetas ctx -> ElabM (VElim HasMetas ctx, VTerm HasMetas ctx)
+-- Globals
+unifyElim' env e@(VGbl g1 VNil _) (VGbl g2 VNil _)
+    | g1.name == g2.name   = pure (e, coeNoMetasVTerm (sinkSize env.size g1.typ))
+-- otherwise we check the values
+unifyElim' ctx (VGbl _ _ t)   u             = unifyElim ctx t u
+unifyElim' ctx t              (VGbl _ _ u)  = unifyElim ctx t u
+unifyElim' ctx (VRgd h1 sp1)  (VRgd h2 sp2) = unifyRigidRigid ctx h1 sp1 h2 sp2
+unifyElim' ctx (VAnn t ty)    e             = do
+    t' <- unifyTerm ctx ty t (vemb e)
+    return (VAnn t ty, ty)
+unifyElim' ctx e              (VAnn t ty)   = do
+    t' <- unifyTerm ctx ty (vemb e) t
+    return (VAnn t ty, ty)
+unifyElim' _   (VErr msg)     _             = throwError $ ppStr $ show msg
+unifyElim' _   _              (VErr msg)    = throwError $ ppStr $ show msg
+unifyElim' _   (VFlx _ _)     _             = throwError "flex"
+unifyElim' _   _              (VFlx _ _)    = throwError "flex"
 
 -------------------------------------------------------------------------------
 -- Rigid-Rigid
