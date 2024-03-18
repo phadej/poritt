@@ -10,6 +10,7 @@ import PoriTT.Enum
 import PoriTT.Eval
 import PoriTT.Global
 import PoriTT.Icit
+import PoriTT.Meta
 import PoriTT.Name
 import PoriTT.PP
 import PoriTT.PRen
@@ -168,10 +169,12 @@ unifyTerm' ctx VUni (VCod x)         (VCod y) =
 unifyTerm' ctx VUni (VEmb e1)        (VEmb e2) =
     unifyEmbTerm ctx e1 e2
 -- TBW comment: flex terms
-unifyTerm' ctx VUni (VEmb (VFlx _ _)) t =
-    TODO ctx t
-unifyTerm' ctx VUni t (VEmb (VFlx _ _)) =
-    TODO ctx t
+unifyTerm' ctx VUni (VEmb (VFlx x sp)) t = do
+    solve ctx x sp t
+    pure t
+unifyTerm' ctx VUni t (VEmb (VFlx x sp)) = do
+    solve ctx x sp t
+    pure t
 unifyTerm' ctx VUni x                y              =
     notConvertible ctx VUni x y
 
@@ -396,3 +399,11 @@ solve gamma m sp rhs = do
   modifyIORef' mcxt $ IM.insert (unMetaVar m) (Solved solution)
 
 -}
+
+solve :: UnifyEnv ctx -> MetaVar -> Spine HasMetas ctx -> VTerm HasMetas ctx -> ElabM ()
+solve ctx m sp rhs = throwError $ ppSep
+    [ "solve:"
+    , prettyVTermCtx ctx (VEmb (VFlx m sp))
+    , "=?="
+    , prettyVTermCtx ctx rhs
+    ]
