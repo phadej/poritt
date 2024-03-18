@@ -32,6 +32,7 @@ import PoriTT.Eval
 import PoriTT.ExceptState
 import PoriTT.Global
 import PoriTT.Info
+import PoriTT.Icit
 import PoriTT.Lexer
 import PoriTT.Lint
 import PoriTT.Macro
@@ -344,7 +345,7 @@ batchFile fn = execStateT $ do
 
     stmt (DefineStmt name xs e_) = do
         echo "define" (prettyName name)
-            [ ppStr (show xs) <+> "=" <+> prettyRaw 0 e_
+            [ ppHSep [ prettyLamArg i x | (i, x) <- xs ] <+> "=" <+> prettyRaw 0 e_
             ]
 
         let e = foldr (\(i, x) t -> RLam x i t) e_ xs
@@ -570,6 +571,10 @@ prettyVElimZ opts unfold ns (VAnn t a) = prettyVTermZ opts unfold ns t a
 prettyVElimZ opts unfold ns e          = case quoteElim unfold SZ e of
     Left err -> ppStr (show err)           -- This shouldn't happen if type-checker is correct.
     Right e' -> prettyElimZ' opts ns e'
+
+prettyLamArg :: Icit -> Name -> Doc
+prettyLamArg Ecit x = prettyName  x
+prettyLamArg Icit x = ppBraces (prettyName x)
 
 -- always prints
 printDoc' :: Doc -> MainM ()

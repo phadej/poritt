@@ -19,6 +19,7 @@ module PoriTT.PP (
     ppBracesSemi,
     ppBraces,
     ppSep,
+    ppHSep,
     ppVCat,
     ppText,
     ppStr,
@@ -216,6 +217,9 @@ ppSoftHanging d ds = ppHang 2 (ppSep (d : ds))
 
 ppSep :: [Doc] -> Doc
 ppSep ds = D $ \opts -> PP.sep [ d opts | D d <- ds ]
+
+ppHSep :: [Doc] -> Doc
+ppHSep ds = D $ \opts -> PP.hsep [ d opts | D d <- ds ]
 
 ppVCat :: [Doc] -> Doc
 ppVCat ds = D $ \opts -> PP.vcat [ d opts | D d <- ds ]

@@ -139,11 +139,6 @@ unifyTerm' ctx ty x (VEmb (VGbl _ _ y)) = unifyTerm ctx ty x (vemb y)
 
 unifyTerm' ctx (VEmb (VAnn t _)) x y = unifyTerm' ctx t x y
 
--- TBW comment: flex terms
-unifyTerm' ctx ty (VEmb (VFlx _ _)) t =
-    TODO ctx ty t
-unifyTerm' ctx ty t (VEmb (VFlx _ _)) =
-    TODO ctx ty t
 
 -- ⊢ U ∋ t ≡ s
 unifyTerm' _   VUni VUni             VUni =
@@ -172,6 +167,11 @@ unifyTerm' ctx VUni (VCod x)         (VCod y) =
     VCod <$> unifyTerm ctx vcodUni x y
 unifyTerm' ctx VUni (VEmb e1)        (VEmb e2) =
     unifyEmbTerm ctx e1 e2
+-- TBW comment: flex terms
+unifyTerm' ctx VUni (VEmb (VFlx _ _)) t =
+    TODO ctx t
+unifyTerm' ctx VUni t (VEmb (VFlx _ _)) =
+    TODO ctx t
 unifyTerm' ctx VUni x                y              =
     notConvertible ctx VUni x y
 
@@ -209,6 +209,7 @@ unifyTerm' ctx (VSgm z i a b) x              y              = notConvertible ctx
 
 -- ⊢ Unit ∋ t ≡ s
 unifyTerm' _   VOne      _            _            = pure VTht
+-- TODO: unify (i.e. solve) flex metas with VTht
 
 -- ⊢ {:a ... :z} ∋ t ≡ s
 unifyTerm' _   (VFin ls) _            _
