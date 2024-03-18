@@ -1,13 +1,24 @@
 module PoriTT.Unify (
     UnifyEnv (..),
+    unifyTerm,
 ) where
 
 import PoriTT.Base
 import PoriTT.Elab.Monad
+import PoriTT.Builtins
 import PoriTT.Name
+import PoriTT.Enum
 import PoriTT.Term
 import PoriTT.Rigid
+import PoriTT.Icit
 import PoriTT.Value
+import PoriTT.Eval
+import PoriTT.PP
+import PoriTT.Quote
+
+-------------------------------------------------------------------------------
+-- Unification environment
+-------------------------------------------------------------------------------
 
 data UnifyEnv ctx = UnifyEnv
     { size   :: Size ctx
@@ -19,3 +30,238 @@ data UnifyEnv ctx = UnifyEnv
 
 bind :: Name -> VTerm HasMetas ctx -> UnifyEnv ctx -> UnifyEnv (S ctx)
 bind x t (UnifyEnv s xs ts gs rs) = UnifyEnv (SS s) (xs :> x) (mapSink ts :> sink t) gs (rigidMapSink (mapSink rs))
+
+newRigid :: UnifyEnv ctx -> VTerm HasMetas ctx -> ElabM (UnifyEnv ctx, RigidVar ctx)
+newRigid ctx ty = do
+    r <- newRigidVar
+    return (ctx { rigids = insertRigidMap r ty ctx.rigids }, r)
+
+-------------------------------------------------------------------------------
+-- Pretty
+-------------------------------------------------------------------------------
+
+prettyVTermCtx :: UnifyEnv ctx -> VTerm pass ctx -> Doc
+prettyVTermCtx ctx = prettyVTerm ctx.size ctx.nscope ctx.names
+
+prettySTermCtx :: Natural -> UnifyEnv ctx -> STerm pass ctx -> Doc
+prettySTermCtx l ctx = prettySTerm l ctx.size ctx.nscope ctx.names
+
+prettySElimCtx :: Natural -> UnifyEnv ctx -> SElim pass ctx -> Doc
+prettySElimCtx l ctx = prettySElim l ctx.size ctx.nscope ctx.names
+
+lookupLvl :: UnifyEnv ctx -> Lvl ctx -> Name
+lookupLvl ctx l = lookupEnv (lvlToIdx ctx.size l) ctx.names
+
+
+-------------------------------------------------------------------------------
+-- Errors
+-------------------------------------------------------------------------------
+
+mismatch :: Doc -> Doc -> Doc -> ElabM a
+mismatch t x y = throwError $ t <+> "mismatch:" <+> x <+> "/=" <+> y
+
+notConvertible :: UnifyEnv ctx -> VTerm pass ctx -> VTerm pass ctx -> VTerm pass ctx -> ElabM a
+notConvertible ctx ty x y = throwError $ ppSep
+    [ "not convertible:"
+    , prettyVTermCtx ctx ty <+> ":"
+    , prettyVTermCtx ctx x <+> "/="
+    , prettyVTermCtx ctx y
+    ]
+
+notConvertibleST :: Natural -> UnifyEnv ctx -> VTerm pass ctx -> STerm pass ctx -> STerm pass ctx -> ElabM a
+notConvertibleST l ctx ty x y = throwError $ ppSep
+    [ "not convertible (at level" <+> ppStr (show l) <> "):"
+    , prettyVTermCtx ctx ty <+> ":"
+    , prettySTermCtx l ctx x <+> "/="
+    , prettySTermCtx l ctx y
+    ]
+
+notConvertibleSE :: Natural -> UnifyEnv ctx -> SElim pass ctx -> SElim pass ctx -> ElabM a
+notConvertibleSE l ctx x y = throwError $ ppSep
+    [ "not convertible (at level" <+> ppStr (show l) <> "):"
+    , prettySElimCtx l ctx x <+> "/="
+    , prettySElimCtx l ctx y
+    -- , ppStr $ show x
+    -- , ppStr $ show y
+    ]
+
+notType :: UnifyEnv ctx -> VTerm pass ctx -> ElabM a
+notType ctx ty = throwError $ ppSep
+    [ "CONV PANIC: NOT A TYPE"
+    , prettyVTermCtx ctx ty
+    ]
+
+-------------------------------------------------------------------------------
+-- Entry functions
+-------------------------------------------------------------------------------
+
+unifyTerm :: UnifyEnv ctx -> VTerm HasMetas ctx -> VTerm HasMetas ctx -> VTerm HasMetas ctx -> ElabM (VTerm HasMetas ctx)
+unifyTerm env ty a b = do
+    unifyTerm' env ty a b
+
+unifyElim :: UnifyEnv ctx -> VElim HasMetas ctx -> VElim HasMetas ctx -> ElabM (VElim HasMetas ctx, VTerm HasMetas ctx)
+unifyElim _env _a _b = TODO
+
+unifySTerm :: UnifyEnv ctx -> VTerm HasMetas ctx -> STerm HasMetas ctx -> STerm HasMetas ctx -> ElabM (STerm HasMetas ctx)
+unifySTerm _ _ty a _b = return a
+
+-------------------------------------------------------------------------------
+-- Workers
+-------------------------------------------------------------------------------
+
+convIcit :: UnifyEnv ctx -> Icit -> Icit -> ElabM ()
+convIcit _ctx i j
+    | i == j    = return ()
+    | otherwise = mismatch "icity" (prettyIcit i) (prettyIcit j)
+
+unifyTerm' :: UnifyEnv ctx -> VTerm HasMetas ctx -> VTerm HasMetas ctx -> VTerm HasMetas ctx -> ElabM (VTerm HasMetas ctx)
+unifyTerm' ctx (VEmb (VGbl _ _ t)) x y  = unifyTerm ctx (vemb t) x y
+unifyTerm' ctx ty (VEmb (VGbl _ _ x)) y = unifyTerm ctx ty (vemb x) y
+unifyTerm' ctx ty x (VEmb (VGbl _ _ y)) = unifyTerm ctx ty x (vemb y)
+
+unifyTerm' ctx (VEmb (VAnn t _)) x y = unifyTerm' ctx t x y
+
+-- ⊢ U ∋ t ≡ s
+unifyTerm' _   VUni VUni             VUni           = pure VUni
+unifyTerm' _   VUni VDsc             VDsc           = pure VDsc
+unifyTerm' _   VUni VOne             VOne           = pure VOne
+unifyTerm' ctx VUni (VPie x i a1 b1) (VPie _ j a2 b2) = do
+    convIcit ctx i j
+    a <- unifyTerm ctx VUni a1 a2
+    _ <- unifyTerm (bind x a1 ctx) VUni (runZ ctx.size b1) (runZ ctx.size b2)
+    return (VPie x i a b1)
+unifyTerm' ctx VUni (VSgm x i a1 b1) (VSgm _ j a2 b2) = do
+    convIcit ctx i j
+    a <- unifyTerm ctx VUni a1 a2
+    _ <- unifyTerm (bind x a1 ctx) VUni (runZ ctx.size b1) (runZ ctx.size b2)
+    return (VSgm x i a b1)
+unifyTerm' ctx VUni (VMuu x)         (VMuu y)       =
+    VMuu <$> unifyTerm ctx VDsc x y
+unifyTerm' ctx VUni (VEmb (VRgd x sp1)) (VEmb (VRgd y sp2)) = do
+    (sp, _) <- unifyRigidRigid ctx x sp1 y sp2
+    return (VEmb (VRgd x sp))
+unifyTerm' _   VUni (VFin ls1)       (VFin ls2)     =
+    if ls1 == ls2
+        then pure (VFin ls1)
+    else mismatch "finite set" (prettyLabels ls1) (prettyLabels ls2)
+unifyTerm' ctx VUni (VCod x)         (VCod y)       =
+    VCod <$> unifyTerm ctx vcodUni x y
+unifyTerm' ctx VUni x                y              =
+    notConvertible ctx VUni x y
+
+-- ⊢ Π (x : A) → B ∋ t ≡ s
+unifyTerm' ctx (VPie _ _ a b) (VLam x i b1)  (VLam _ j b2) = do
+    convIcit ctx i j
+    _b <- unifyTerm (bind x a ctx) (runZ ctx.size b) (runZ ctx.size b1)  (runZ ctx.size b2)
+    return (VLam x i b1)
+unifyTerm' ctx (VPie _ _ a b) (VLam x i b1)  (VEmb u) = do
+    _b <- unifyTerm (bind x a ctx) (runZ ctx.size b) (runZ ctx.size b1)  (etaLam ctx.size i u)
+    return (VLam x i b1)
+unifyTerm' ctx (VPie _ _ a b) (VEmb t)       (VLam x i b2) = do
+    _b <- unifyTerm (bind x a ctx) (runZ ctx.size b) (etaLam ctx.size i t) (runZ ctx.size b2)
+    return (VLam x i b2)
+unifyTerm' ctx (VPie x i a b) (VEmb t)       (VEmb u) = do
+    -- we need to eta expand, so we can unify singletons
+    _ <- unifyTerm (bind x a ctx) (runZ ctx.size b) (etaLam ctx.size i t) (etaLam ctx.size i u)
+    return (VEmb t)
+unifyTerm' ctx (VPie z i a b) x              y               =
+    notConvertible ctx (VPie z i a b) x y
+
+-- ⊢ Σ (z : A) × B ∋ t ≡ s
+unifyTerm' ctx (VSgm _ _ a b) (VMul i x1 y1) (VMul j x2 y2) = convIcit ctx i j >> unifyTerm ctx a x1 x2 >> unifyTerm ctx (run ctx.size b (vann x1 a)) y1 y2
+unifyTerm' ctx (VSgm _ _ a b) (VMul _ x y)   (VEmb q)       = unifyTerm ctx a x (vemb (vsel ctx.size q "fst")) >> unifyTerm ctx (run ctx.size b (vann x a)) y (vemb (vsel ctx.size q "snd"))
+unifyTerm' ctx (VSgm _ _ a b) (VEmb p)       (VMul _ x y)   = unifyTerm ctx a (vemb (vsel ctx.size p "fst")) x >> unifyTerm ctx (run ctx.size b (vann x a)) (vemb (vsel ctx.size p "snd")) y
+unifyTerm' ctx (VSgm _ _ a b) (VEmb p)       (VEmb q)       = do
+    TODO
+{-
+    let p1 = vsel ctx.size p "fst"
+    unifyTerm ctx a                   (vemb p1)                      (vemb (vsel ctx.size q "fst"))
+    unifyTerm ctx (run ctx.size b p1) (vemb (vsel ctx.size p "snd")) (vemb (vsel ctx.size q "snd"))
+-}
+-- unifyTerm' ctx (VSgm _ _ _) (VRgd x sp1)   (VRgd y sp2)   = unifyRigidRigid ctx x sp1 y sp2
+unifyTerm' ctx (VSgm z i a b) x              y              = notConvertible ctx (VSgm z i a b) x y
+
+-- ⊢ Unit ∋ t ≡ s
+unifyTerm' _   VOne      _            _            = pure VTht
+
+-- ⊢ {:a ... :z} ∋ t ≡ s
+unifyTerm' _   (VFin ls) _            _
+    -- eta expansion singletons: treat all elements equally
+    | length ls == 1
+    = pure (VEIx (EnumIdx 0))
+unifyTerm' _   (VFin _)  (VEIx i1)    (VEIx i2)    =
+    if i1 == i2
+    then pure (VEIx i1)
+    else mismatch "enum idx" (prettyEnumIdx i1) (prettyEnumIdx i2)
+unifyTerm' ctx (VFin _)  (VEmb x)     (VEmb y) = do
+    (e, _ty) <- unifyElim ctx x y
+    return (VEmb e)
+unifyTerm' ctx (VFin ls) x            y            =
+    notConvertible ctx (VFin ls) x y
+
+-- ⊢ Desc ∋ t ≡ s
+unifyTerm' _   VDsc VDe1           VDe1           =
+    pure VDe1
+unifyTerm' ctx VDsc (VDeS t1 s1)   (VDeS t2 s2)   = do
+    t <- unifyTerm ctx VUni t1 t2
+    s <- unifyTerm ctx (VPie "S" Ecit t1 (Closure EmptyEnv Dsc)) s1 s2
+    return (VDeS t s)
+unifyTerm' ctx VDsc (VDeX t1)      (VDeX t2)      = do
+    t <- unifyTerm ctx VDsc t1 t2
+    return (VDeX t )
+unifyTerm' ctx VDsc (VEmb x)       (VEmb y)       = do
+    (e, _ty) <- unifyElim ctx x y
+    return (VEmb e)
+unifyTerm' ctx VDsc x              y              =
+    notConvertible ctx VDsc x y
+
+-- ⊢ μ d ∋ t ≡ s
+unifyTerm' ctx (VMuu d) (VCon x)       (VCon y)     = do
+    let xty = vapps ctx.size (vgbl ctx.size evalDescGlobal) [d, VMuu d]
+    t <- unifyTerm ctx (vemb xty) x y
+    return (VCon t)
+unifyTerm' ctx (VMuu _) (VEmb x)       (VEmb y)     = do
+    (e, _ty) <- unifyElim ctx x y
+    return (VEmb e)
+unifyTerm' ctx (VMuu d) x              y            =
+    notConvertible ctx (VMuu d) x y
+
+-- ⊢ Code a ∋ t ≡ s
+unifyTerm' ctx (VCod a) (VQuo x _)     (VQuo y _)   = do
+    TODO
+    -- unifySTerm NZ ctx (vsplCodArg ctx.size a) x y
+unifyTerm' ctx (VCod _) (VEmb x)       (VEmb y)     = do
+    (e, _ty) <- unifyElim ctx x y
+    return (VEmb e)
+unifyTerm' ctx (VCod a) x              y            = notConvertible ctx (VCod a) x y
+
+-- Only neutral terms can be convertible under neutral type
+unifyTerm' ctx (VEmb VRgd {})     (VEmb x) (VEmb y) = do
+    (e, _ty) <- unifyElim ctx x y
+    return (VEmb e)
+unifyTerm' ctx (VEmb (VRgd h sp)) x y = notConvertible ctx (VEmb (VRgd h sp)) x y
+
+unifyTerm' _   (VEmb (VErr msg)) _ _ = throwError $ ppStr $ show msg
+unifyTerm' ctx ty@(VEmb (VFlx _ _)) _ _ = notType ctx ty
+
+-- value constructors cannot be types
+unifyTerm' ctx ty@VLam {} _ _ = notType ctx ty
+unifyTerm' ctx ty@VDe1 {} _ _ = notType ctx ty
+unifyTerm' ctx ty@VDeS {} _ _ = notType ctx ty
+unifyTerm' ctx ty@VDeX {} _ _ = notType ctx ty
+unifyTerm' ctx ty@VCon {} _ _ = notType ctx ty
+unifyTerm' ctx ty@VMul {} _ _ = notType ctx ty
+unifyTerm' ctx ty@VEIx {} _ _ = notType ctx ty
+unifyTerm' ctx ty@VQuo {} _ _ = notType ctx ty
+unifyTerm' ctx ty@VTht {} _ _ = notType ctx ty
+
+-- Eta expand value of function type.
+etaLam :: Size ctx -> Icit -> VElim pass ctx -> VTerm pass (S ctx)
+etaLam s i f = vemb (vapp (SS s) i (sink f) (vemb (valZ s)))
+
+-------------------------------------------------------------------------------
+-- Rigid
+-------------------------------------------------------------------------------
+
+unifyRigidRigid :: UnifyEnv ctx -> Lvl ctx -> Spine HasMetas ctx -> Lvl ctx -> Spine HasMetas ctx -> ElabM (Spine HasMetas ctx, VTerm HasMetas ctx)
+unifyRigidRigid = TODO

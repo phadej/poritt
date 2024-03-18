@@ -13,7 +13,7 @@ module PoriTT.Elab (
 
 import PoriTT.Base
 import PoriTT.Builtins
-import PoriTT.Conv
+import PoriTT.Unify
 import PoriTT.Elab.Ctx
 import PoriTT.Elab.Monad
 import PoriTT.Enum
@@ -53,14 +53,13 @@ unify
     -> VTerm HasMetas ctx'          -- ^ actual term
     -> VTerm HasMetas ctx'          -- ^ expected term
     -> ElabM (VTerm HasMetas ctx')  -- ^ unified term as result (to avoid re-traversals)
-unify ctx ty t s = do
-    case evalExceptState (convTerm (ConvCtx ctx.size ctx.names' ctx.types' ctx.nscope ctx.rigids) ty t s) initialRigidGen of
-        Right () -> pure t
-        Left err -> elabError ctx "Couldn't unify terms"
-            [ "expected:" <+> prettyVTermCtx ctx s
-            , "actual:" <+> prettyVTermCtx ctx t
-            , err
-            ]
+unify ctx ty t s = mapError f (unifyTerm (toUnifyEnv ctx) ty t s)
+  where
+    f err = elabError' ctx "Couldn't unify terms"
+        [ "expected:" <+> prettyVTermCtx ctx s
+        , "actual:" <+> prettyVTermCtx ctx t
+        , err
+        ]
 
 -------------------------------------------------------------------------------
 -- Errors

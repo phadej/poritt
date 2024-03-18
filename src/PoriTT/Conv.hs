@@ -168,7 +168,7 @@ convTerm' _   VUni VOne             VOne           = pure ()
 convTerm' ctx VUni (VPie x i a1 b1) (VPie _ j a2 b2) = convIcit ctx i j >> convTerm ctx VUni a1 a2 >> convTerm (bind x a1 ctx) VUni (runZ ctx.size b1) (runZ ctx.size b2)
 convTerm' ctx VUni (VSgm x i a1 b1) (VSgm _ j a2 b2) = convIcit ctx i j >> convTerm ctx VUni a1 a2 >> convTerm (bind x a1 ctx) VUni (runZ ctx.size b1) (runZ ctx.size b2)
 convTerm' ctx VUni (VMuu x)         (VMuu y)       = convTerm ctx VDsc x y
-convTerm' ctx VUni (VEmb (VRgd x sp1)) (VEmb (VRgd y sp2))   = void $ convNeutral ctx x sp1 y sp2
+convTerm' ctx VUni (VEmb (VRgd x sp1)) (VEmb (VRgd y sp2))   = void $ convRigidRigid ctx x sp1 y sp2
 convTerm' _   VUni (VFin ls1)       (VFin ls2)     = if ls1 == ls2 then pure () else mismatch "finite set" (prettyLabels ls1) (prettyLabels ls2)
 convTerm' ctx VUni (VCod x)         (VCod y)       = convTerm ctx vcodUni x y
 convTerm' ctx VUni x                y              = notConvertible ctx VUni x y
@@ -178,7 +178,7 @@ convTerm' ctx (VPie _ _ a b) (VLam x i b1)  (VLam _ j b2) = convIcit ctx i j >> 
 convTerm' ctx (VPie _ _ a b) (VLam x i b1)  (VEmb u)      = convTerm (bind x a ctx) (runZ ctx.size b) (runZ ctx.size b1)  (etaLam ctx.size i u)
 convTerm' ctx (VPie _ _ a b) (VEmb t)       (VLam x i b2)   = convTerm (bind x a ctx) (runZ ctx.size b) (etaLam ctx.size i t) (runZ ctx.size b2)
 convTerm' ctx (VPie x i a b) (VEmb t)       (VEmb u)        = convTerm (bind x a ctx) (runZ ctx.size b) (etaLam ctx.size i t) (etaLam ctx.size i u)
--- convTerm' ctx (VPie _ _ _) (VRgd x sp1)   (VRgd y sp2)   = convNeutral ctx x sp1 y sp2
+-- convTerm' ctx (VPie _ _ _) (VRgd x sp1)   (VRgd y sp2)   = convRigidRigid ctx x sp1 y sp2
 convTerm' ctx (VPie z i a b) x              y               = notConvertible ctx (VPie z i a b) x y
 
 -- ⊢ Σ (z : A) × B ∋ t ≡ s
@@ -189,7 +189,7 @@ convTerm' ctx (VSgm _ _ a b) (VEmb p)       (VEmb q)       = do
     let p1 = vsel ctx.size p "fst"
     convTerm ctx a                   (vemb p1)                      (vemb (vsel ctx.size q "fst"))
     convTerm ctx (run ctx.size b p1) (vemb (vsel ctx.size p "snd")) (vemb (vsel ctx.size q "snd"))
--- convTerm' ctx (VSgm _ _ _) (VRgd x sp1)   (VRgd y sp2)   = convNeutral ctx x sp1 y sp2
+-- convTerm' ctx (VSgm _ _ _) (VRgd x sp1)   (VRgd y sp2)   = convRigidRigid ctx x sp1 y sp2
 convTerm' ctx (VSgm z i a b) x              y              = notConvertible ctx (VSgm z i a b) x y
 
 -- ⊢ Unit ∋ t ≡ s
@@ -251,7 +251,7 @@ convElim' env (VGbl g1 VNil _) (VGbl g2 VNil _)
 -- otherwise we check the values
 convElim' ctx (VGbl _ _ t)   u             = convElim ctx t u
 convElim' ctx t              (VGbl _ _ u)  = convElim ctx t u
-convElim' ctx (VRgd h1 sp1)  (VRgd h2 sp2) = convNeutral ctx h1 sp1 h2 sp2
+convElim' ctx (VRgd h1 sp1)  (VRgd h2 sp2) = convRigidRigid ctx h1 sp1 h2 sp2
 convElim' ctx (VAnn t ty)    e             = convTerm ctx ty t (vemb e) >> return ty
 convElim' ctx e              (VAnn t ty)   = convTerm ctx ty (vemb e) t >> return ty
 convElim' _   (VErr msg)     _             = throwError $ ppStr $ show msg
@@ -261,7 +261,7 @@ convElim' _   _              (VFlx _ _)    = throwError "flex"
 
 convNeut' :: ConvCtx pass ctx -> VNeut pass ctx -> VNeut pass ctx -> ConvM (VTerm pass ctx)
 -- Globals
-convNeut' ctx (VNRgd h1 sp1)  (VNRgd h2 sp2) = convNeutral ctx h1 sp1 h2 sp2
+convNeut' ctx (VNRgd h1 sp1)  (VNRgd h2 sp2) = convRigidRigid ctx h1 sp1 h2 sp2
 convNeut' _   (VNErr msg)     _             = throwError $ ppStr $ show msg
 convNeut' _   _              (VNErr msg)    = throwError $ ppStr $ show msg
 convNeut' _   (VNFlx _ _)     _             = throwError "flex"
@@ -275,10 +275,10 @@ etaLam s i f = vemb (vapp (SS s) i (sink f) (vemb (valZ s)))
 -- Rigid
 -------------------------------------------------------------------------------
 
-convNeutral :: ConvCtx pass ctx -> Lvl ctx -> Spine pass ctx -> Lvl ctx -> Spine pass ctx -> ConvM (VTerm pass ctx)
-convNeutral ctx x sp1 y sp2
+convRigidRigid :: ConvCtx pass ctx -> Lvl ctx -> Spine pass ctx -> Lvl ctx -> Spine pass ctx -> ConvM (VTerm pass ctx)
+convRigidRigid ctx x sp1 y sp2
     | x == y    = do
-        -- traceM "convNeutral"
+        -- traceM "convRigidRigid"
         -- traceM $ show $ prettyVTermCtx ctx (VRgd x sp1)
         -- traceM $ show $ prettyVTermCtx ctx (VRgd y sp2)
         -- traceM $ show $ prettyVTermCtx ctx headTy
