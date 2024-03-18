@@ -260,8 +260,18 @@ etaLam :: Size ctx -> Icit -> VElim pass ctx -> VTerm pass (S ctx)
 etaLam s i f = vemb (vapp (SS s) i (sink f) (vemb (valZ s)))
 
 -------------------------------------------------------------------------------
--- Rigid
+-- Rigid-Rigid
 -------------------------------------------------------------------------------
 
 unifyRigidRigid :: UnifyEnv ctx -> Lvl ctx -> Spine HasMetas ctx -> Lvl ctx -> Spine HasMetas ctx -> ElabM (Spine HasMetas ctx, VTerm HasMetas ctx)
-unifyRigidRigid = TODO
+unifyRigidRigid env x sp1 y sp2
+    | x == y    = do
+        -- traceM "convRigidRigid"
+        -- traceM $ show $ prettyVTermCtx ctx (VRgd x sp1)
+        -- traceM $ show $ prettyVTermCtx ctx (VRgd y sp2)
+        -- traceM $ show $ prettyVTermCtx ctx headTy
+        unifySpine env x sp1 sp2
+    | otherwise = mismatch "spine head" (prettyName (lookupLvl env x)) (prettyName (lookupLvl env y))
+
+unifySpine :: UnifyEnv ctx -> Lvl ctx -> Spine HasMetas ctx -> Spine HasMetas ctx -> ElabM (Spine HasMetas ctx, VTerm HasMetas ctx)
+unifySpine = TODO
