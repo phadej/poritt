@@ -331,3 +331,66 @@ unifySpine ctx headLvl sp1' sp2' = do
 
     go x y =
         throwError $ "last eliminator mismatch" <+> prettySpinePart ctx x <+> "/=" <+> prettySpinePart ctx y
+
+-------------------------------------------------------------------------------
+-- Flex-Rigid
+-------------------------------------------------------------------------------
+
+{-
+
+
+
+--  invert : (Γ : Cxt) → (spine : Sub Δ Γ) → PRen Γ Δ
+invert :: Lvl -> Spine -> IO PartialRenaming
+invert gamma sp = do
+
+  let go :: Spine -> IO (Lvl, IM.IntMap Lvl)
+      go []        = pure (0, mempty)
+      go (sp :> t) = do
+        (dom, ren) <- go sp
+        case force t of
+          VVar (Lvl x) | IM.notMember x ren -> pure (dom + 1, IM.insert x dom ren)
+          _                                 -> throwIO UnifyError
+
+  (dom, ren) <- go sp
+  pure $ PRen dom gamma ren
+
+-- perform the partial renaming on rhs, while also checking for "m" occurrences.
+rename :: MetaVar -> PartialRenaming -> Val -> IO Tm
+rename m pren v = go pren v where
+
+  goSp :: PartialRenaming -> Tm -> Spine -> IO Tm
+  goSp pren t []        = pure t
+  goSp pren t (sp :> u) = App <$> goSp pren t sp <*> go pren u
+
+  go :: PartialRenaming -> Val -> IO Tm
+  go pren t = case force t of
+    VFlex m' sp | m == m'   -> throwIO UnifyError -- occurs check
+                | otherwise -> goSp pren (Meta m') sp
+
+    VRigid (Lvl x) sp -> case IM.lookup x (ren pren) of
+      Nothing -> throwIO UnifyError  -- scope error ("escaping variable" error)
+      Just x' -> goSp pren (Var $ lvl2Ix (dom pren) x') sp
+
+    VLam x t  -> Lam x <$> go (lift pren) (t $$ VVar (cod pren))
+    VPi x a b -> Pi x <$> go pren a <*> go (lift pren) (b $$ VVar (cod pren))
+    VU        -> pure U
+
+
+{-
+Wrap a term in lambdas.
+-}
+lams :: Lvl -> Tm -> Tm
+lams l = go 0 where
+  go x t | x == l = t
+  go x t = Lam ("x"++show (x+1)) $ go (x + 1) t
+
+--       Γ      ?α         sp       rhs
+solve :: Lvl -> MetaVar -> Spine -> Val -> IO ()
+solve gamma m sp rhs = do
+  pren <- invert gamma sp
+  rhs  <- rename m pren rhs
+  let solution = eval [] $ lams (dom pren) rhs
+  modifyIORef' mcxt $ IM.insert (unMetaVar m) (Solved solution)
+
+-}
