@@ -61,6 +61,9 @@ newRigid ctx ty = do
     r <- newRigidVar
     return (ctx { rigids = insertRigidMap r ty ctx.rigids }, r)
 
+-------------------------------------------------------------------------------
+-- Pretty
+-------------------------------------------------------------------------------
 
 prettyVTermCtx :: ConvCtx pass ctx -> VTerm pass ctx -> Doc
 prettyVTermCtx ctx = prettyVTerm ctx.size ctx.nscope ctx.names
@@ -73,6 +76,10 @@ prettySElimCtx l ctx = prettySElim l ctx.size ctx.nscope ctx.names
 
 lookupLvl :: ConvCtx pass ctx -> Lvl ctx -> Name
 lookupLvl ctx l = lookupEnv (lvlToIdx ctx.size l) ctx.names
+
+-------------------------------------------------------------------------------
+-- Errors
+-------------------------------------------------------------------------------
 
 mismatch :: Doc -> Doc -> Doc -> ConvM a
 mismatch t x y = throwError $ t <+> "mismatch:" <+> x <+> "/=" <+> y
@@ -107,6 +114,10 @@ notType ctx ty = throwError $ ppSep
     [ "CONV PANIC: NOT A TYPE"
     , prettyVTermCtx ctx ty
     ]
+
+-------------------------------------------------------------------------------
+-- Entry functions
+-------------------------------------------------------------------------------
 
 -- | Beta-eta conversion checking of terms.
 --

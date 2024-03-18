@@ -16,3 +16,6 @@ data UnifyEnv ctx = UnifyEnv
     , nscope :: NameScope
     , rigids :: RigidMap ctx (VTerm HasMetas ctx)
     }
+
+bind :: Name -> VTerm HasMetas ctx -> UnifyEnv ctx -> UnifyEnv (S ctx)
+bind x t (UnifyEnv s xs ts gs rs) = UnifyEnv (SS s) (xs :> x) (mapSink ts :> sink t) gs (rigidMapSink (mapSink rs))
