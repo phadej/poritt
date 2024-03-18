@@ -13,7 +13,6 @@ module PoriTT.Elab (
 
 import PoriTT.Base
 import PoriTT.Builtins
-import PoriTT.Unify
 import PoriTT.Elab.Ctx
 import PoriTT.Elab.Monad
 import PoriTT.Enum

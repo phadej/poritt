@@ -4,6 +4,7 @@ module PoriTT.Value (
     VElim (..),
     VNeut (..),
     Spine (..),
+    spineLength,
     coeNoMetasVElim,
     coeNoMetasVTerm,
     -- ** Closure
@@ -32,6 +33,7 @@ import PoriTT.Enum
 import PoriTT.Icit
 import PoriTT.Meta
 import PoriTT.Name
+import PoriTT.PP
 import PoriTT.Rigid
 import PoriTT.Term
 
@@ -166,6 +168,16 @@ instance Sinkable (Spine pass) where
     mapLvl f (VDeI xs m x y z) = VDeI (mapLvl f xs) (mapLvl f m) (mapLvl f x) (mapLvl f y) (mapLvl f z)
     mapLvl f (VInd xs m t)     = VInd (mapLvl f xs) (mapLvl f m) (mapLvl f t)
     mapLvl f (VSpl xs)         = VSpl (mapLvl f xs)
+
+spineLength :: Spine pass ctx -> Int
+spineLength = go 0 where
+    go !n VNil              = n
+    go !n (VApp sp _ _)     = go (n + 1) sp
+    go !n (VSel sp _)       = go (n + 1) sp
+    go !n (VSwh sp _ _)     = go (n + 1) sp
+    go !n (VDeI sp _ _ _ _) = go (n + 1) sp
+    go !n (VInd sp _ _)     = go (n + 1) sp
+    go !n (VSpl sp)         = go (n + 1) sp
 
 -------------------------------------------------------------------------------
 -- Closure

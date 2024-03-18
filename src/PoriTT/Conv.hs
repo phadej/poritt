@@ -77,6 +77,16 @@ prettySElimCtx l ctx = prettySElim l ctx.size ctx.nscope ctx.names
 lookupLvl :: ConvCtx pass ctx -> Lvl ctx -> Name
 lookupLvl ctx l = lookupEnv (lvlToIdx ctx.size l) ctx.names
 
+prettySpinePart :: ConvCtx pass ctx -> Spine pass ctx -> Doc
+prettySpinePart ctx (VApp _sp Ecit v)  = "application" <+> prettyVTermCtx ctx v
+prettySpinePart ctx (VApp _sp Icit v)  = "application" <+> ppBraces (prettyVTermCtx ctx v)
+prettySpinePart _   (VSel _sp s)       = "selector" <+> prettySelector s
+prettySpinePart _   (VSwh _sp _ _)     = "switch"
+prettySpinePart _   (VDeI _sp _ _ _ _) = "indDesc"
+prettySpinePart _   (VInd _sp _ _)     = "ind"
+prettySpinePart _   (VSpl _sp)         = "splice"
+prettySpinePart _   VNil               = "none"
+
 -------------------------------------------------------------------------------
 -- Errors
 -------------------------------------------------------------------------------
@@ -267,10 +277,6 @@ convNeut' _   _              (VNErr msg)    = throwError $ ppStr $ show msg
 convNeut' _   (VNFlx _ _)     _             = throwError "flex"
 convNeut' _   _              (VNFlx _ _)    = throwError "flex"
 
--- Eta expand value of function type.
-etaLam :: Size ctx -> Icit -> VElim pass ctx -> VTerm pass (S ctx)
-etaLam s i f = vemb (vapp (SS s) i (sink f) (vemb (valZ s)))
-
 -------------------------------------------------------------------------------
 -- Rigid
 -------------------------------------------------------------------------------
@@ -381,26 +387,6 @@ convSpine ctx headLvl sp1' sp2' = do
 
     go x y =
         throwError $ "last eliminator mismatch" <+> prettySpinePart ctx x <+> "/=" <+> prettySpinePart ctx y
-
-spineLength :: Spine pass ctx -> Int
-spineLength = go 0 where
-    go !n VNil              = n
-    go !n (VApp sp _ _)     = go (n + 1) sp
-    go !n (VSel sp _)       = go (n + 1) sp
-    go !n (VSwh sp _ _)     = go (n + 1) sp
-    go !n (VDeI sp _ _ _ _) = go (n + 1) sp
-    go !n (VInd sp _ _)     = go (n + 1) sp
-    go !n (VSpl sp)         = go (n + 1) sp
-
-prettySpinePart :: ConvCtx pass ctx -> Spine pass ctx -> Doc
-prettySpinePart ctx (VApp _sp Ecit v)  = "application" <+> prettyVTermCtx ctx v
-prettySpinePart ctx (VApp _sp Icit v)  = "application" <+> ppBraces (prettyVTermCtx ctx v)
-prettySpinePart _   (VSel _sp s)       = "selector" <+> prettySelector s
-prettySpinePart _   (VSwh _sp _ _)     = "switch"
-prettySpinePart _   (VDeI _sp _ _ _ _) = "indDesc"
-prettySpinePart _   (VInd _sp _ _)     = "ind"
-prettySpinePart _   (VSpl _sp)         = "splice"
-prettySpinePart _   VNil               = "none"
 
 -------------------------------------------------------------------------------
 -- Syntactical

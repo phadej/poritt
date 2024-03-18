@@ -52,6 +52,15 @@ prettySElimCtx l ctx = prettySElim l ctx.size ctx.nscope ctx.names
 lookupLvl :: UnifyEnv ctx -> Lvl ctx -> Name
 lookupLvl ctx l = lookupEnv (lvlToIdx ctx.size l) ctx.names
 
+prettySpinePart :: UnifyEnv ctx -> Spine HasMetas ctx -> Doc
+prettySpinePart ctx (VApp _sp Ecit v)  = "application" <+> prettyVTermCtx ctx v
+prettySpinePart ctx (VApp _sp Icit v)  = "application" <+> ppBraces (prettyVTermCtx ctx v)
+prettySpinePart _   (VSel _sp s)       = "selector" <+> prettySelector s
+prettySpinePart _   (VSwh _sp _ _)     = "switch"
+prettySpinePart _   (VDeI _sp _ _ _ _) = "indDesc"
+prettySpinePart _   (VInd _sp _ _)     = "ind"
+prettySpinePart _   (VSpl _sp)         = "splice"
+prettySpinePart _   VNil               = "none"
 
 -------------------------------------------------------------------------------
 -- Errors
@@ -254,10 +263,6 @@ unifyTerm' ctx ty@VMul {} _ _ = notType ctx ty
 unifyTerm' ctx ty@VEIx {} _ _ = notType ctx ty
 unifyTerm' ctx ty@VQuo {} _ _ = notType ctx ty
 unifyTerm' ctx ty@VTht {} _ _ = notType ctx ty
-
--- Eta expand value of function type.
-etaLam :: Size ctx -> Icit -> VElim pass ctx -> VTerm pass (S ctx)
-etaLam s i f = vemb (vapp (SS s) i (sink f) (vemb (valZ s)))
 
 -------------------------------------------------------------------------------
 -- Rigid-Rigid

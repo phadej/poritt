@@ -30,6 +30,8 @@ module PoriTT.Eval (
     -- * Staging
     stageTerm,
     stageElim,
+    -- * Eta expansions
+    etaLam,
 ) where
 
 import PoriTT.Base
@@ -305,3 +307,11 @@ runSEZ q s (sink -> Closure env f) = stageElim q (SS s) (env :> evalZ s) f
 
 runSE :: Natural -> Size ctx -> ClosureE pass ctx -> EvalElim pass ctx -> SElim pass ctx
 runSE q s (Closure env f) e = stageElim q s (env :> e) f
+
+-------------------------------------------------------------------------------
+-- Eta expansions
+-------------------------------------------------------------------------------
+
+-- | Eta expand value of function type.
+etaLam :: Size ctx -> Icit -> VElim pass ctx -> VTerm pass (S ctx)
+etaLam s i f = vemb (vapp (SS s) i (sink f) (vemb (valZ s)))
