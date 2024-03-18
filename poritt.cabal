@@ -146,6 +146,7 @@ library
     PoriTT.Opts
     PoriTT.Parser
     PoriTT.PP
+    PoriTT.PRen
     PoriTT.Quote
     PoriTT.Raw
     PoriTT.Rename
