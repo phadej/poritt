@@ -147,8 +147,8 @@ unifyTerm' ctx VUni (VSgm x i a1 b1) (VSgm _ j a2 b2) = do
 unifyTerm' ctx VUni (VMuu x)         (VMuu y)       =
     VMuu <$> unifyTerm ctx VDsc x y
 unifyTerm' ctx VUni (VEmb (VRgd x sp1)) (VEmb (VRgd y sp2)) = do
-    (sp, _) <- unifyRigidRigid ctx x sp1 y sp2
-    return (VEmb (VRgd x sp))
+    (e, _) <- unifyRigidRigid ctx x sp1 y sp2
+    return (VEmb e)
 unifyTerm' _   VUni (VFin ls1)       (VFin ls2)     =
     if ls1 == ls2
         then pure (VFin ls1)
@@ -268,7 +268,7 @@ unifyTerm' ctx ty@VTht {} _ _ = notType ctx ty
 -- Rigid-Rigid
 -------------------------------------------------------------------------------
 
-unifyRigidRigid :: UnifyEnv ctx -> Lvl ctx -> Spine HasMetas ctx -> Lvl ctx -> Spine HasMetas ctx -> ElabM (Spine HasMetas ctx, VTerm HasMetas ctx)
+unifyRigidRigid :: UnifyEnv ctx -> Lvl ctx -> Spine HasMetas ctx -> Lvl ctx -> Spine HasMetas ctx -> ElabM (VElim HasMetas ctx, VTerm HasMetas ctx)
 unifyRigidRigid env x sp1 y sp2
     | x == y    = do
         -- traceM "convRigidRigid"
@@ -278,5 +278,23 @@ unifyRigidRigid env x sp1 y sp2
         unifySpine env x sp1 sp2
     | otherwise = mismatch "spine head" (prettyName (lookupLvl env x)) (prettyName (lookupLvl env y))
 
-unifySpine :: UnifyEnv ctx -> Lvl ctx -> Spine HasMetas ctx -> Spine HasMetas ctx -> ElabM (Spine HasMetas ctx, VTerm HasMetas ctx)
-unifySpine = TODO
+unifySpine :: forall ctx. UnifyEnv ctx -> Lvl ctx -> Spine HasMetas ctx -> Spine HasMetas ctx -> ElabM (VElim HasMetas ctx, VTerm HasMetas ctx)
+unifySpine ctx headLvl sp1' sp2' = do
+    let len1 = spineLength sp1'
+        len2 = spineLength sp2'
+
+    unless (len1 == len2) $
+        mismatch "spine length" (ppInt (spineLength sp1')) (ppInt (spineLength sp2'))
+
+    go sp1' sp2'
+  where
+    headTy :: VTerm HasMetas ctx
+    headTy = lookupEnv (lvlToIdx ctx.size headLvl) ctx.types
+
+    go :: Spine HasMetas ctx -> Spine HasMetas ctx -> ElabM (VElim HasMetas ctx, VTerm HasMetas ctx)
+    go VNil VNil = pure (VRgd headLvl VNil, headTy)
+
+    -- TODO
+
+    go x y =
+        throwError $ "last eliminator mismatch" <+> prettySpinePart ctx x <+> "/=" <+> prettySpinePart ctx y
