@@ -140,9 +140,9 @@ unifyTerm' ctx (VEmb (VAnn t _)) x y = unifyTerm' ctx t x y
 
 -- TBW comment: flex terms
 unifyTerm' ctx ty (VEmb (VFlx _ _)) t =
-    TODO
+    TODO ctx ty t
 unifyTerm' ctx ty t (VEmb (VFlx _ _)) =
-    TODO
+    TODO ctx ty t
 
 -- ⊢ U ∋ t ≡ s
 unifyTerm' _   VUni VUni             VUni =
@@ -197,7 +197,7 @@ unifyTerm' ctx (VSgm _ _ a b) (VMul i x1 y1) (VMul j x2 y2) = convIcit ctx i j >
 unifyTerm' ctx (VSgm _ _ a b) (VMul _ x y)   (VEmb q)       = unifyTerm ctx a x (vemb (vsel ctx.size q "fst")) >> unifyTerm ctx (run ctx.size b (vann x a)) y (vemb (vsel ctx.size q "snd"))
 unifyTerm' ctx (VSgm _ _ a b) (VEmb p)       (VMul _ x y)   = unifyTerm ctx a (vemb (vsel ctx.size p "fst")) x >> unifyTerm ctx (run ctx.size b (vann x a)) (vemb (vsel ctx.size p "snd")) y
 unifyTerm' ctx (VSgm _ _ a b) (VEmb p)       (VEmb q)       = do
-    TODO
+    TODO ctx a b p q
 {-
     let p1 = vsel ctx.size p "fst"
     unifyTerm ctx a                   (vemb p1)                      (vemb (vsel ctx.size q "fst"))
@@ -250,7 +250,7 @@ unifyTerm' ctx (VMuu d) x              y            =
 
 -- ⊢ Code a ∋ t ≡ s
 unifyTerm' ctx (VCod a) (VQuo x _)     (VQuo y _)   = do
-    TODO
+    TODO ctx a x y
     -- unifySTerm NZ ctx (vsplCodArg ctx.size a) x y
 unifyTerm' ctx (VCod _) (VEmb e1)      (VEmb e2)   = do
     unifyEmbTerm ctx e1 e2
