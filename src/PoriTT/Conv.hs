@@ -178,9 +178,9 @@ convTerm' _   VUni VOne             VOne           = pure ()
 convTerm' ctx VUni (VPie x i a1 b1) (VPie _ j a2 b2) = convIcit ctx i j >> convTerm ctx VUni a1 a2 >> convTerm (bind x a1 ctx) VUni (runZ ctx.size b1) (runZ ctx.size b2)
 convTerm' ctx VUni (VSgm x i a1 b1) (VSgm _ j a2 b2) = convIcit ctx i j >> convTerm ctx VUni a1 a2 >> convTerm (bind x a1 ctx) VUni (runZ ctx.size b1) (runZ ctx.size b2)
 convTerm' ctx VUni (VMuu x)         (VMuu y)       = convTerm ctx VDsc x y
-convTerm' ctx VUni (VEmb (VRgd x sp1)) (VEmb (VRgd y sp2))   = void $ convRigidRigid ctx x sp1 y sp2
 convTerm' _   VUni (VFin ls1)       (VFin ls2)     = if ls1 == ls2 then pure () else mismatch "finite set" (prettyLabels ls1) (prettyLabels ls2)
 convTerm' ctx VUni (VCod x)         (VCod y)       = convTerm ctx vcodUni x y
+convTerm' ctx VUni (VEmb e1)        (VEmb e2)      = void (convElim ctx e1 e2)
 convTerm' ctx VUni x                y              = notConvertible ctx VUni x y
 
 -- ⊢ Π (x : A) → B ∋ t ≡ s
@@ -188,7 +188,6 @@ convTerm' ctx (VPie _ _ a b) (VLam x i b1)  (VLam _ j b2) = convIcit ctx i j >> 
 convTerm' ctx (VPie _ _ a b) (VLam x i b1)  (VEmb u)      = convTerm (bind x a ctx) (runZ ctx.size b) (runZ ctx.size b1)  (etaLam ctx.size i u)
 convTerm' ctx (VPie _ _ a b) (VEmb t)       (VLam x i b2)   = convTerm (bind x a ctx) (runZ ctx.size b) (etaLam ctx.size i t) (runZ ctx.size b2)
 convTerm' ctx (VPie x i a b) (VEmb t)       (VEmb u)        = convTerm (bind x a ctx) (runZ ctx.size b) (etaLam ctx.size i t) (etaLam ctx.size i u)
--- convTerm' ctx (VPie _ _ _) (VRgd x sp1)   (VRgd y sp2)   = convRigidRigid ctx x sp1 y sp2
 convTerm' ctx (VPie z i a b) x              y               = notConvertible ctx (VPie z i a b) x y
 
 -- ⊢ Σ (z : A) × B ∋ t ≡ s
@@ -199,17 +198,16 @@ convTerm' ctx (VSgm _ _ a b) (VEmb p)       (VEmb q)       = do
     let p1 = vsel ctx.size p "fst"
     convTerm ctx a                   (vemb p1)                      (vemb (vsel ctx.size q "fst"))
     convTerm ctx (run ctx.size b p1) (vemb (vsel ctx.size p "snd")) (vemb (vsel ctx.size q "snd"))
--- convTerm' ctx (VSgm _ _ _) (VRgd x sp1)   (VRgd y sp2)   = convRigidRigid ctx x sp1 y sp2
 convTerm' ctx (VSgm z i a b) x              y              = notConvertible ctx (VSgm z i a b) x y
 
 -- ⊢ Unit ∋ t ≡ s
 convTerm' _   VOne      _            _            = pure ()
 
 -- ⊢ {:a ... :z} ∋ t ≡ s
-convTerm' _   (VFin _)  (VEIx i1)    (VEIx i2)    = if i1 == i2 then pure () else mismatch "enum idx" (prettyEnumIdx i1) (prettyEnumIdx i2)
 convTerm' _   (VFin ls) _            _
     -- eta expansion singletons: treat all elements equally
     | length ls == 1                              = pure ()
+convTerm' _   (VFin _)  (VEIx i1)    (VEIx i2)    = if i1 == i2 then pure () else mismatch "enum idx" (prettyEnumIdx i1) (prettyEnumIdx i2)
 convTerm' ctx (VFin _)  (VEmb x)     (VEmb y)     = void (convElim ctx x y)
 convTerm' ctx (VFin ls) x            y            = notConvertible ctx (VFin ls) x y
 

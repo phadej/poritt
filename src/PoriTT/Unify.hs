@@ -123,6 +123,11 @@ convIcit _ctx i j
     | i == j    = return ()
     | otherwise = mismatch "icity" (prettyIcit i) (prettyIcit j)
 
+unifyEmbTerm :: UnifyEnv ctx -> VElim HasMetas ctx -> VElim HasMetas ctx -> ElabM (VTerm HasMetas ctx)
+unifyEmbTerm env x y = do
+    (e, _ty) <- unifyElim env x y
+    return (VEmb e)
+
 unifyTerm' :: UnifyEnv ctx -> VTerm HasMetas ctx -> VTerm HasMetas ctx -> VTerm HasMetas ctx -> ElabM (VTerm HasMetas ctx)
 unifyTerm' ctx (VEmb (VGbl _ _ t)) x y  = unifyTerm ctx (vemb t) x y
 unifyTerm' ctx ty (VEmb (VGbl _ _ x)) y = unifyTerm ctx ty (vemb x) y
@@ -146,15 +151,14 @@ unifyTerm' ctx VUni (VSgm x i a1 b1) (VSgm _ j a2 b2) = do
     return (VSgm x i a b1)
 unifyTerm' ctx VUni (VMuu x)         (VMuu y)       =
     VMuu <$> unifyTerm ctx VDsc x y
-unifyTerm' ctx VUni (VEmb (VRgd x sp1)) (VEmb (VRgd y sp2)) = do
-    (e, _) <- unifyRigidRigid ctx x sp1 y sp2
-    return (VEmb e)
 unifyTerm' _   VUni (VFin ls1)       (VFin ls2)     =
     if ls1 == ls2
         then pure (VFin ls1)
     else mismatch "finite set" (prettyLabels ls1) (prettyLabels ls2)
 unifyTerm' ctx VUni (VCod x)         (VCod y)       =
     VCod <$> unifyTerm ctx vcodUni x y
+unifyTerm' ctx VUni (VEmb e1)        (VEmb e2) =
+    unifyEmbTerm ctx e1 e2
 unifyTerm' ctx VUni x                y              =
     notConvertible ctx VUni x y
 
@@ -202,9 +206,8 @@ unifyTerm' _   (VFin _)  (VEIx i1)    (VEIx i2)    =
     if i1 == i2
     then pure (VEIx i1)
     else mismatch "enum idx" (prettyEnumIdx i1) (prettyEnumIdx i2)
-unifyTerm' ctx (VFin _)  (VEmb x)     (VEmb y) = do
-    (e, _ty) <- unifyElim ctx x y
-    return (VEmb e)
+unifyTerm' ctx (VFin _)  (VEmb e1)    (VEmb e2) = do
+    unifyEmbTerm ctx e1 e2
 unifyTerm' ctx (VFin ls) x            y            =
     notConvertible ctx (VFin ls) x y
 
@@ -218,9 +221,8 @@ unifyTerm' ctx VDsc (VDeS t1 s1)   (VDeS t2 s2)   = do
 unifyTerm' ctx VDsc (VDeX t1)      (VDeX t2)      = do
     t <- unifyTerm ctx VDsc t1 t2
     return (VDeX t )
-unifyTerm' ctx VDsc (VEmb x)       (VEmb y)       = do
-    (e, _ty) <- unifyElim ctx x y
-    return (VEmb e)
+unifyTerm' ctx VDsc (VEmb e1)      (VEmb e2)      = do
+    unifyEmbTerm ctx e1 e2
 unifyTerm' ctx VDsc x              y              =
     notConvertible ctx VDsc x y
 
@@ -229,9 +231,8 @@ unifyTerm' ctx (VMuu d) (VCon x)       (VCon y)     = do
     let xty = vapps ctx.size (vgbl ctx.size evalDescGlobal) [d, VMuu d]
     t <- unifyTerm ctx (vemb xty) x y
     return (VCon t)
-unifyTerm' ctx (VMuu _) (VEmb x)       (VEmb y)     = do
-    (e, _ty) <- unifyElim ctx x y
-    return (VEmb e)
+unifyTerm' ctx (VMuu _) (VEmb e1)      (VEmb e2)    = do
+    unifyEmbTerm ctx e1 e2
 unifyTerm' ctx (VMuu d) x              y            =
     notConvertible ctx (VMuu d) x y
 
@@ -239,15 +240,13 @@ unifyTerm' ctx (VMuu d) x              y            =
 unifyTerm' ctx (VCod a) (VQuo x _)     (VQuo y _)   = do
     TODO
     -- unifySTerm NZ ctx (vsplCodArg ctx.size a) x y
-unifyTerm' ctx (VCod _) (VEmb x)       (VEmb y)     = do
-    (e, _ty) <- unifyElim ctx x y
-    return (VEmb e)
+unifyTerm' ctx (VCod _) (VEmb e1)      (VEmb e2)   = do
+    unifyEmbTerm ctx e1 e2
 unifyTerm' ctx (VCod a) x              y            = notConvertible ctx (VCod a) x y
 
 -- Only neutral terms can be convertible under neutral type
-unifyTerm' ctx (VEmb VRgd {})     (VEmb x) (VEmb y) = do
-    (e, _ty) <- unifyElim ctx x y
-    return (VEmb e)
+unifyTerm' ctx (VEmb VRgd {})     (VEmb e1) (VEmb e2) = do
+    unifyEmbTerm ctx e1 e2
 unifyTerm' ctx (VEmb (VRgd h sp)) x y = notConvertible ctx (VEmb (VRgd h sp)) x y
 
 unifyTerm' _   (VEmb (VErr msg)) _ _ = throwError $ ppStr $ show msg
