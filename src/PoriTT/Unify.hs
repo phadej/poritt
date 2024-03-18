@@ -288,10 +288,10 @@ unifyElim' ctx t              (VGbl _ _ u)  = unifyElim ctx t u
 unifyElim' ctx (VRgd h1 sp1)  (VRgd h2 sp2) = unifyRigidRigid ctx h1 sp1 h2 sp2
 unifyElim' ctx (VAnn t ty)    e             = do
     t' <- unifyTerm ctx ty t (vemb e)
-    return (VAnn t ty, ty)
+    return (VAnn t' ty, ty)
 unifyElim' ctx e              (VAnn t ty)   = do
     t' <- unifyTerm ctx ty (vemb e) t
-    return (VAnn t ty, ty)
+    return (VAnn t' ty, ty)
 unifyElim' _   (VErr msg)     _             = throwError $ ppStr $ show msg
 unifyElim' _   _              (VErr msg)    = throwError $ ppStr $ show msg
 unifyElim' _   (VFlx _ _)     _             = throwError "flex"
