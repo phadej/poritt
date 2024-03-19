@@ -170,10 +170,8 @@ convNeut ctx x y = do
 -------------------------------------------------------------------------------
 
 forceTermM :: ConvCtx pass ctx -> VTerm pass ctx -> VTerm pass ctx
-forceTermM ctx t@(VEmb (VFlx m VNil)) = case lookupMetaMap m ctx.metas of
-    Just (Solved _ _ _ t') -> sinkSize ctx.size t'
-    _                  -> t
-forceTermM _   t = t
+forceTermM ctx (VEmb e) = vemb (forceElimM ctx e)
+forceTermM _   t        = t
 
 forceElimM :: ConvCtx pass ctx -> VElim pass ctx -> VElim pass ctx
 forceElimM ctx e@(VFlx m VNil) = case lookupMetaMap m ctx.metas of
