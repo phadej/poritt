@@ -1,13 +1,14 @@
-options 
+options --elaborate
 
 id : ∀ {A : U} → A → A
 id = λ {_} x ↦ x
 
 eval id {Unit} tt = [] : Unit
 
-Error: examples/elab.ptt:7:10: Skipped term
-  • type: U
-  • When checking that _ has type U
-  • When infering type of id {_}
-  • When infering type of id {_} tt
+eval id {_} tt = [] : Unit
+
+Error: examples/elab.ptt:8:6: Icity mismatch
+  • expected: explicit
+  • actual: implicit
+  • When infering type of id tt
 ExitFailure

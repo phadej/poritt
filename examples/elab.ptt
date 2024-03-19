@@ -1,4 +1,4 @@
-options --elaborate
+options "--elaborate"
 
 id : forall {A : U} -> A -> A
 id {_} x = x
