@@ -26,7 +26,7 @@ zonkTerm s m (Mul i t r)   = Mul i <$> zonkTerm s m t <*> zonkTerm s m r
 zonkTerm s m (Lam x i t)   = Lam x i <$> zonkTerm (SS s) m t
 zonkTerm s m (Cod t)       = Cod <$> zonkTerm s m t
 zonkTerm s m (Quo t)       = Quo <$> zonkTerm s m t
-zonkTerm s m (WkT w t)     = TODO s m w t -- WkT w <$> zonkTerm (weakenSize w s) m t
+zonkTerm s m (WkT w t)     = WkT w <$> zonkTerm (contractSize w s) m t
 
 zonkElim :: Size ctx -> MetaMap MetaEntry -> Elim pass ctx -> Maybe (Elim NoMetas ctx)
 zonkElim s m (Met x)         = case lookupMetaMap x m of
@@ -43,4 +43,4 @@ zonkElim s m (DeI e p x y z) = DeI <$> zonkElim s m e <*> zonkTerm s m p <*> zon
 zonkElim s m (Spl e)         = Spl <$> zonkElim s m e
 zonkElim s m (Ann t a)       = Ann <$> zonkTerm s m t <*> zonkTerm s m a
 zonkElim s m (Let x t r)     = Let x <$> zonkElim s m t <*> zonkElim (SS s) m r
-zonkElim s m (WkE w e)       = TODO s m w e -- WkE w <$> zonkElim s m e
+zonkElim s m (WkE w e)       = WkE w <$> zonkElim (contractSize w s) m e

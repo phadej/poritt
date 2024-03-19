@@ -5,11 +5,11 @@ id {_} x = x
 
 eval id {Unit} tt
 eval id {_} tt
--- eval id tt
+eval id tt
 
 id' : forall {A : U} -> A -> A
 id' x = x
 
 eval id' {Unit} tt
 eval id' {_} tt
--- eval id' tt
+eval id' tt
