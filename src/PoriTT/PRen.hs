@@ -1,12 +1,14 @@
 -- | Partial renaming
 module PoriTT.PRen (
     PRen,
+    PRenEnv (..),
     prenTerm,
 ) where
 
 import PoriTT.Base
 import PoriTT.Eval
 import PoriTT.LvlMap
+import PoriTT.Meta
 import PoriTT.Name
 import PoriTT.PP
 import PoriTT.Term
@@ -24,12 +26,12 @@ data PRenEnv ctx ctx' = PRenEnv
     { size  :: Size ctx
     , size' :: Size ctx'
     , pren  :: PRen ctx ctx'
-    -- TODO: add metavar
+    , meta  :: MetaVar
     -- TODO: add names
     }
 
 bind :: Name -> PRenEnv ctx ctx' -> PRenEnv (S ctx) (S ctx')
-bind _ (PRenEnv s s' p) = PRenEnv (SS s) (SS s') (liftPRen s s' p)
+bind _ (PRenEnv s s' p m) = PRenEnv (SS s) (SS s') (liftPRen s s' p) m
 
 prenTerm :: PRenEnv ctx ctx' -> VTerm HasMetas ctx -> Either Doc (Term HasMetas ctx')
 prenTerm env (VLam x i clos) = Lam x i <$> prenTerm (bind x env) (runZ env.size clos)
