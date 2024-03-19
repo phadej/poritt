@@ -138,6 +138,7 @@ library
     PoriTT.Lexer
     PoriTT.Lint
     PoriTT.Loc
+    PoriTT.LvlMap
     PoriTT.Macro
     PoriTT.Main
     PoriTT.Meta

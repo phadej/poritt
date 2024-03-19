@@ -10,6 +10,7 @@ import PoriTT.Enum
 import PoriTT.Eval
 import PoriTT.Global
 import PoriTT.Icit
+import PoriTT.LvlMap
 import PoriTT.Meta
 import PoriTT.Name
 import PoriTT.PP
@@ -330,7 +331,7 @@ unifySpine ctx headLvl sp1' sp2' = do
     headTy = lookupEnv (lvlToIdx ctx.size headLvl) ctx.types
 
     go :: Spine HasMetas ctx -> Spine HasMetas ctx -> ElabM (VElim HasMetas ctx, VTerm HasMetas ctx)
-    go VNil VNil = pure (VRgd headLvl VNil, headTy)
+    go VNil VNil = pure (VVar headLvl, headTy)
 
     -- TODO
 
@@ -341,11 +342,25 @@ unifySpine ctx headLvl sp1' sp2' = do
 -- Flex-Rigid
 -------------------------------------------------------------------------------
 
-{-
-
-
+type PRen ctx ctx' = LvlMap ctx (Idx ctx')
 
 --  invert : (Γ : Cxt) → (spine : Sub Δ Γ) → PRen Γ Δ
+invert :: UnifyEnv ctx -> Spine HasMetas ctx -> ElabM (PRen ctx ctx')
+invert env VNil           = return (emptyLvlMap env.size)
+invert env (VApp sp _i t) = do
+    pren <- invert env sp
+    t' <- forceM t
+    case t' of
+        VEmb (VVar l) -> case lookupLvlMap l pren of
+            Nothing -> return (insertLvlMap l TODO pren)
+            Just _  -> throwError $ "non-linear spine" <+> prettyVTermCtx env t'
+
+        _ -> throwError $ "non-variable spine element" <+> prettyVTermCtx env t'
+
+invert env sp = throwError $ "cannot invert " <+> prettySpinePart env sp
+
+{-
+
 invert :: Lvl -> Spine -> IO PartialRenaming
 invert gamma sp = do
 
@@ -401,9 +416,12 @@ solve gamma m sp rhs = do
 -}
 
 solve :: UnifyEnv ctx -> MetaVar -> Spine HasMetas ctx -> VTerm HasMetas ctx -> ElabM ()
-solve ctx m sp rhs = throwError $ ppSep
-    [ "solve:"
-    , prettyVTermCtx ctx (VEmb (VFlx m sp))
-    , "=?="
-    , prettyVTermCtx ctx rhs
-    ]
+solve env m sp rhs = do
+    pren <- invert env sp
+    throwError $ ppSep
+        [ "solve:"
+        , prettyVTermCtx env (VEmb (VFlx m sp))
+        , "=?="
+        , prettyVTermCtx env rhs
+        , ppParens (ppStr (show pren))
+        ]

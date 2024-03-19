@@ -2,6 +2,7 @@ module PoriTT.Value (
     -- * Values
     VTerm (..),
     VElim (..),
+    pattern VVar,
     VNeut (..),
     Spine (..),
     spineLength,
@@ -91,6 +92,9 @@ data VElim pass ctx where
     VGbl :: !Global -> !(Spine pass ctx) -> VElim pass ctx -> VElim pass ctx
     VRgd :: Lvl ctx -> Spine pass ctx -> VElim pass ctx
     VFlx :: MetaVar -> Spine HasMetas ctx -> VElim HasMetas ctx
+
+pattern VVar :: Lvl ctx -> VElim pass ctx
+pattern VVar l = VRgd l VNil
 
 -- | Neutral term is elimination which is not annotation.
 type VNeut :: TermPass -> Ctx -> Type

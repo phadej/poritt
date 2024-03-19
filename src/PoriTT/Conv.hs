@@ -234,7 +234,7 @@ convTerm' ctx (VCod a) (VQuo x _)     (VQuo y _)   = do
 convTerm' ctx (VCod _) (VEmb x)       (VEmb y)     = void (convElim ctx x y)
 convTerm' ctx (VCod a) x              y            = notConvertible ctx (VCod a) x y
 
--- Only neutral terms can be convertible under neutral type
+-- Only neutral terms can be convertiblenve under neutral type
 convTerm' ctx (VEmb VRgd {})     (VEmb x) (VEmb y) = void (convElim ctx x y)
 convTerm' ctx (VEmb (VRgd h sp)) x y = notConvertible ctx (VEmb (VRgd h sp)) x y
 
@@ -304,7 +304,7 @@ convSpine ctx headLvl sp1' sp2' = do
     headTy = lookupEnv (lvlToIdx ctx.size headLvl) ctx.types
 
     go :: Spine pass ctx -> Spine pass ctx -> ConvM (VElim pass ctx, VTerm pass ctx)
-    go VNil VNil = pure (VRgd headLvl VNil, headTy)
+    go VNil VNil = pure (VVar headLvl, headTy)
     go (VApp sp1 i x) (VApp sp2 j y) = do
         (h, ty) <- go sp1 sp2
         case force ty of

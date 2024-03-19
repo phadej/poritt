@@ -31,8 +31,8 @@ import PoriTT.Elab
 import PoriTT.Eval
 import PoriTT.ExceptState
 import PoriTT.Global
-import PoriTT.Info
 import PoriTT.Icit
+import PoriTT.Info
 import PoriTT.Lexer
 import PoriTT.Lint
 import PoriTT.Macro
