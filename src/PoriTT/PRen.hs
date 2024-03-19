@@ -12,6 +12,9 @@ import PoriTT.PP
 import PoriTT.Term
 import PoriTT.Value
 
+-- | Partial renaming
+--
+-- Implemented with 'Lvl's, as these can be sunk for free.
 type PRen ctx ctx' = LvlMap ctx (Lvl ctx')
 
 liftPRen :: Size ctx -> Size ctx' -> PRen ctx ctx' -> PRen (S ctx) (S ctx')
