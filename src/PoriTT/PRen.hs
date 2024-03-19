@@ -5,11 +5,12 @@ module PoriTT.PRen (
 ) where
 
 import PoriTT.Base
+import PoriTT.Eval
+import PoriTT.LvlMap
+import PoriTT.Name
+import PoriTT.PP
 import PoriTT.Term
 import PoriTT.Value
-import PoriTT.LvlMap
-import PoriTT.PP
-import PoriTT.Eval
 
 type PRen ctx ctx' = LvlMap ctx (Lvl ctx')
 
@@ -20,17 +21,17 @@ data PRenEnv ctx ctx' = PRenEnv
     { size  :: Size ctx
     , size' :: Size ctx'
     , pren  :: PRen ctx ctx'
+    -- TODO: add metavar
+    -- TODO: add names
     }
 
-bind :: PRenEnv ctx ctx' -> PRenEnv (S ctx) (S ctx')
-bind (PRenEnv s s' p) = PRenEnv (SS s) (SS s') (liftPRen s s' p)
+bind :: Name -> PRenEnv ctx ctx' -> PRenEnv (S ctx) (S ctx')
+bind _ (PRenEnv s s' p) = PRenEnv (SS s) (SS s') (liftPRen s s' p)
 
--- TODO: add argument for metavar,
--- add argument for names in ctx: escaping variables
 prenTerm :: PRenEnv ctx ctx' -> VTerm HasMetas ctx -> Either Doc (Term HasMetas ctx')
-prenTerm env (VLam x i clos) = Lam x i <$> prenTerm (bind env) (runZ env.size clos)
-prenTerm env (VPie x i a b)  = Pie x i <$> prenTerm env a <*> prenTerm (bind env) (runZ env.size b)
-prenTerm env (VSgm x i a b)  = Sgm x i <$> prenTerm env a <*> prenTerm (bind env) (runZ env.size b)
+prenTerm env (VLam x i clos) = Lam x i <$> prenTerm (bind x env) (runZ env.size clos)
+prenTerm env (VPie x i a b)  = Pie x i <$> prenTerm env a <*> prenTerm (bind x env) (runZ env.size b)
+prenTerm env (VSgm x i a b)  = Sgm x i <$> prenTerm env a <*> prenTerm (bind x env) (runZ env.size b)
 prenTerm env (VMul i t r)    = Mul i <$> prenTerm env t <*> prenTerm env r
 prenTerm env (VDeS t r)      = DeS <$> prenTerm env t <*> prenTerm env r
 prenTerm env (VDeX t)        = DeX <$> prenTerm env t
