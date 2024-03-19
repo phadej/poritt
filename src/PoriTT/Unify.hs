@@ -342,8 +342,6 @@ unifySpine ctx headLvl sp1' sp2' = do
 -- Flex-Rigid
 -------------------------------------------------------------------------------
 
-type PRen ctx ctx' = LvlMap ctx (Idx ctx')
-
 --  invert : (Γ : Cxt) → (spine : Sub Δ Γ) → PRen Γ Δ
 invert :: UnifyEnv ctx -> Spine HasMetas ctx -> ElabM (PRen ctx ctx')
 invert env VNil           = return (emptyLvlMap env.size)
@@ -374,27 +372,6 @@ invert gamma sp = do
 
   (dom, ren) <- go sp
   pure $ PRen dom gamma ren
-
--- perform the partial renaming on rhs, while also checking for "m" occurrences.
-rename :: MetaVar -> PartialRenaming -> Val -> IO Tm
-rename m pren v = go pren v where
-
-  goSp :: PartialRenaming -> Tm -> Spine -> IO Tm
-  goSp pren t []        = pure t
-  goSp pren t (sp :> u) = App <$> goSp pren t sp <*> go pren u
-
-  go :: PartialRenaming -> Val -> IO Tm
-  go pren t = case force t of
-    VFlex m' sp | m == m'   -> throwIO UnifyError -- occurs check
-                | otherwise -> goSp pren (Meta m') sp
-
-    VRigid (Lvl x) sp -> case IM.lookup x (ren pren) of
-      Nothing -> throwIO UnifyError  -- scope error ("escaping variable" error)
-      Just x' -> goSp pren (Var $ lvl2Ix (dom pren) x') sp
-
-    VLam x t  -> Lam x <$> go (lift pren) (t $$ VVar (cod pren))
-    VPi x a b -> Pi x <$> go pren a <*> go (lift pren) (b $$ VVar (cod pren))
-    VU        -> pure U
 
 
 {-

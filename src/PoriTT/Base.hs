@@ -2,6 +2,7 @@ module PoriTT.Base (
     module X,
     type (:=),
     pattern (:=),
+    TODO,
     pattern TODO,
     pattern NZ, pattern NS,
     MonadThrowError (..),
@@ -47,6 +48,8 @@ pattern (:=) :: a -> b -> a := b
 pattern a := b = (a, b)
 
 infixr 0 :=
+
+type TODO = forall a. a
 
 pattern TODO :: HasCallStack => () => a
 pattern TODO <- _unused
