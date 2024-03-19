@@ -28,6 +28,7 @@ import PoriTT.Check
 import PoriTT.Conv
 import PoriTT.Distill
 import PoriTT.Elab
+import PoriTT.Meta
 import PoriTT.Eval
 import PoriTT.ExceptState
 import PoriTT.Global
@@ -163,12 +164,12 @@ batchFile fn = execStateT $ do
         when (isNothing p) $ printDoc ""
         stmt s
 
-    lintE :: Doc -> Elim pass EmptyCtx -> VTerm pass EmptyCtx -> MainM ()
-    lintE pass e et = do
+    lintE :: Doc -> MetaMap (VTerm pass EmptyCtx) -> Elim pass EmptyCtx -> VTerm pass EmptyCtx -> MainM ()
+    lintE pass metas e et = do
         env <- get
         let names = nameScopeFromEnv env
 
-        et' <- either printError return $ evalExceptState (lintElim (emptyLintCtx names) e) initialRigidGen
+        et' <- either printError return $ evalExceptState (lintElim (emptyLintCtx names) { metas = metas } e) initialRigidGen
         case evalExceptState (convTerm (emptyConvCtx names) VUni et et') initialRigidGen of
             Right _  -> pure ()
             Left msg -> printError $ ppVCat
@@ -200,12 +201,17 @@ batchFile fn = execStateT $ do
         w <- pipelineBegin e
 
         -- elaborate, i.e. type-check
-        (e0, et') <-
+        (metas, (e0, et')) <-
             if opts.elaborate
-            then either printError return $ evalElabM (elabElim (emptyElabCtx names) w)
-            else either printError return $ evalCheckM (checkElim (emptyCheckCtx names) w)
+            then either printError return $
+                evalElabM (elabElim (emptyElabCtx names) w)
+            else either printError return $ do
+                res <- evalCheckM (checkElim (emptyCheckCtx names) w)
+                return (emptyMetaMap, res)
+
+        when opts.dump.tc $ printDoc $ ppSoftHanging (ppAnnotate ACmd "tc") [ ppStr $ show metas ]
         when opts.dump.tc $ printDoc $ ppSoftHanging (ppAnnotate ACmd "tc") [ prettyElim names EmptyEnv 0 e0 ]
-        lintE "tc" e0 et'
+        lintE "tc" (fmap metaEntryType metas) e0 et'
 
         -- type pipeline
         ty' <- case quoteTerm UnfoldNone SZ et' of
@@ -229,10 +235,15 @@ batchFile fn = execStateT $ do
         w <- pipelineBegin t
 
         -- elaborate, i.e. type-check
-        t0 <-
+        (metas, t0) <-
             if opts.elaborate
-            then either printError return $ evalElabM (elabTerm (emptyElabCtx names) w (coeNoMetasVTerm et))
-            else either printError return $ evalCheckM (checkTerm (emptyCheckCtx names) w (coeNoMetasVTerm et))
+            then either printError return $ do
+                evalElabM (elabTerm (emptyElabCtx names) w (coeNoMetasVTerm et))
+            else either printError return $ do
+                res <- evalCheckM (checkTerm (emptyCheckCtx names) w (coeNoMetasVTerm et))
+                return (emptyMetaMap, res)
+
+        when opts.dump.tc $ printDoc $ ppSoftHanging (ppAnnotate ACmd "tc") [ ppStr $ show metas ]
         when opts.dump.tc $ printDoc $ ppSoftHanging (ppAnnotate ACmd "tc") [ prettyTerm names EmptyEnv 0 t0 ]
         lintT "tc" t0 et
 

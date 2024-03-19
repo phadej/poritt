@@ -14,6 +14,7 @@ import PoriTT.Eval
 import PoriTT.ExceptState
 import PoriTT.Global
 import PoriTT.Icit
+import PoriTT.Meta
 import PoriTT.Name
 import PoriTT.Nice
 import PoriTT.PP
@@ -38,6 +39,7 @@ data LintCtx pass ctx ctx' = LintCtx
     , names  :: Env ctx Name
     , names' :: Env ctx' Name
     , nscope :: NameScope
+    , metas  :: MetaMap (VTerm pass EmptyCtx) 
     , size   :: Size ctx'
     , doc    :: ![Doc]
     }
@@ -52,19 +54,19 @@ toConvCtx ctx = ConvCtx
     }
 
 sinkLintCtx :: Name -> VTerm pass ctx' -> LintCtx pass ctx ctx' -> LintCtx pass ctx (S ctx')
-sinkLintCtx x' t' (LintCtx vs ts ts' rs ss cs xs xs' ns s pp) = LintCtx (mapSink vs) (mapSink ts) (mapSink ts' :> sink t') (rigidMapSink (mapSink rs)) ss cs xs (xs' :> x') ns (SS s) pp
+sinkLintCtx x' t' (LintCtx vs ts ts' rs ss cs xs xs' ns ms s pp) = LintCtx (mapSink vs) (mapSink ts) (mapSink ts' :> sink t') (rigidMapSink (mapSink rs)) ss cs xs (xs' :> x') ns ms (SS s) pp
 
 emptyLintCtx :: NameScope -> LintCtx pass EmptyCtx EmptyCtx
-emptyLintCtx ns = LintCtx EmptyEnv EmptyEnv EmptyEnv emptyRigidMap EmptyEnv stage0 EmptyEnv EmptyEnv ns SZ []
+emptyLintCtx ns = LintCtx EmptyEnv EmptyEnv EmptyEnv emptyRigidMap EmptyEnv stage0 EmptyEnv EmptyEnv ns emptyMetaMap SZ []
 
 bind :: LintCtx pass ctx ctx' -> Name -> Name -> VTerm pass ctx' -> LintCtx pass (S ctx) (S ctx')
-bind ctx x x' a = bind' (sinkLintCtx x' a ctx) x (evalZ ctx.size) (sink a)
+bind ctx x x' a = define (sinkLintCtx x' a ctx) x (evalZ ctx.size) (sink a)
 
-bind' :: LintCtx pass ctx ctx' -> Name -> EvalElim pass ctx' -> VTerm pass ctx' -> LintCtx pass (S ctx) ctx'
-bind' (LintCtx vs ts ts' rs ss cs xs xs' ns s pp) x v t = LintCtx (vs :> v) (ts :> t) ts' rs (ss :> cs) cs (xs :> x) xs' ns s pp
+define :: LintCtx pass ctx ctx' -> Name -> EvalElim pass ctx' -> VTerm pass ctx' -> LintCtx pass (S ctx) ctx'
+define (LintCtx vs ts ts' rs ss cs xs xs' ns ms s pp) x v t = LintCtx (vs :> v) (ts :> t) ts' rs (ss :> cs) cs (xs :> x) xs' ns ms s pp
 
 weakenLintCtx :: Wk ctx ctx' -> LintCtx pass ctx' ctx'' -> LintCtx pass ctx ctx''
-weakenLintCtx w (LintCtx vs ts ts' rs ss cs xs xs' ns s pp) = LintCtx (weakenEnv w vs) (weakenEnv w ts) ts' rs (weakenEnv w ss) cs (weakenEnv w xs) xs' ns s pp
+weakenLintCtx w (LintCtx vs ts ts' rs ss cs xs xs' ns ms s pp) = LintCtx (weakenEnv w vs) (weakenEnv w ts) ts' rs (weakenEnv w ss) cs (weakenEnv w xs) xs' ns ms s pp
 
 -------------------------------------------------------------------------------
 -- Monad
@@ -400,8 +402,9 @@ lintElim' ctx (Gbl g) =
     -- Global is similar to variable.
     return (coeNoMetasVTerm (sinkSize ctx.size g.typ))
 
-lintElim' ctx (Met _) =
-    lintError ctx "TODO: LINT Meta variable" []
+lintElim' ctx (Met m) = case lookupMetaMap m ctx.metas of
+    Nothing -> lintError ctx "Unbounded meta variable" []
+    Just ty -> return (sinkSize ctx.size ty)
 
 lintElim' ctx (Rgd _) =
     lintError ctx "Rigid variable" []
@@ -568,7 +571,7 @@ lintElim' ctx (Let x e f) = do
     (ctx', r) <- newRigid ctx a
     let e' = evalElim ctx.size ctx.values e
         e'' = EvalElim e' (SRgd r)
-    lintElim (bind' ctx' x e'' a) f
+    lintElim (define ctx' x e'' a) f
 
 lintElim' ctx (Spl e) = do
     --

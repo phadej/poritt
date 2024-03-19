@@ -142,6 +142,8 @@ library
     PoriTT.Macro
     PoriTT.Main
     PoriTT.Meta
+    PoriTT.Meta.Var
+    PoriTT.Meta.Entry
     PoriTT.Name
     PoriTT.Nice
     PoriTT.Opts

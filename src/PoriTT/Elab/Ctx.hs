@@ -7,7 +7,6 @@ module PoriTT.Elab.Ctx (
 
 import PoriTT.Base
 import PoriTT.Loc
-import PoriTT.Meta
 import PoriTT.Name
 import PoriTT.PP
 import PoriTT.Rigid

@@ -15,7 +15,7 @@ import Unsafe.Coerce (unsafeCoerce)
 import PoriTT.Base
 import PoriTT.Enum
 import PoriTT.Icit
-import PoriTT.Meta
+import PoriTT.Meta.Var
 import PoriTT.Name
 import PoriTT.PP
 import PoriTT.Raw

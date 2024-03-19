@@ -34,6 +34,8 @@ import PoriTT.Value
 --
 -- * and a global 'NameScope' (for pretty-printing)
 --
+-- * TODO: add metas
+--
 data ConvCtx pass ctx = ConvCtx
     { size   :: !(Size ctx)
     , names  :: !(Env ctx Name)

@@ -1,8 +1,11 @@
 module PoriTT.Elab.Monad (
     ElabM,
+    MetaEntry (..),
+    metaEntryType,
     forceM,
     newRigid,
     newMeta,
+    solveMeta,
     evalElabM,
 ) where
 
@@ -21,7 +24,7 @@ type ElabM = ExceptState Doc ElabState
 data ElabState = ElabState
     { rigidGen :: !RigidGen
     , metaGen  :: !MetaGen -- for next  meta
-    , mvalues  :: !(MetaMap (VTerm HasMetas EmptyCtx))
+    , metas    :: !(MetaMap MetaEntry)
     -- , holes  :: !(Map Name Hole)
     }
   deriving Generic
@@ -48,7 +51,7 @@ initialElabState :: ElabState
 initialElabState = ElabState
     { rigidGen = initialRigidGen
     , metaGen  = initialMetaGen
-    , mvalues  = emptyMetaMap
+    , metas    = emptyMetaMap
     -- , holes  = mempty
     }
 
@@ -75,12 +78,27 @@ newMeta :: ElabCtx ctx ctx' -> VTerm HasMetas ctx' -> ElabM MetaVar
 newMeta ctx ty = do
     m <- newMetaVar
     case ctx.size of
-        SZ -> return m
+        SZ -> do
+            s <- get
+            put $! s { metas = insertMetaMap m (Unsolved ty) s.metas }
+            return m
         _  -> throwError "TODO: can create metas in empty contexts only"
+
+solveMeta :: MetaVar -> VTerm HasMetas EmptyCtx -> ElabM ()
+solveMeta m v = do
+    s <- get
+    case lookupMetaMap m s.metas of
+        Nothing              -> throwError $ "Unknown metavariable" <+> prettyMetaVar m
+        Just (Solved _ty _v) -> throwError $ "Meta variable" <+> prettyMetaVar m <+> "is already solved:" -- TODO
+        Just (Unsolved ty) -> put $! s
+            { metas = insertMetaMap m (Solved ty v) s.metas
+            }
 
 -------------------------------------------------------------------------------
 -- Running elaboration monad
 -------------------------------------------------------------------------------
 
-evalElabM :: ElabM a -> Either Doc a
-evalElabM m = evalExceptState m initialElabState
+evalElabM :: ElabM a -> Either Doc (MetaMap MetaEntry, a)
+evalElabM m = case runExceptState m initialElabState of
+    Left err     -> Left err
+    Right (s, x) -> Right (s.metas, x)
