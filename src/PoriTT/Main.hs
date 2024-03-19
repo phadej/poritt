@@ -164,13 +164,13 @@ batchFile fn = execStateT $ do
         when (isNothing p) $ printDoc ""
         stmt s
 
-    lintE :: Doc -> MetaMap (VTerm pass EmptyCtx) -> Elim pass EmptyCtx -> VTerm pass EmptyCtx -> MainM ()
+    lintE :: Doc -> MetaMap MetaEntry -> Elim pass EmptyCtx -> VTerm pass EmptyCtx -> MainM ()
     lintE pass metas e et = do
         env <- get
         let names = nameScopeFromEnv env
 
         et' <- either printError return $ evalExceptState (lintElim (emptyLintCtx names) { metas = metas } e) initialRigidGen
-        case evalExceptState (convTerm (emptyConvCtx names) VUni et et') initialRigidGen of
+        case evalExceptState (convTerm (emptyConvCtx names) { metas = metas } VUni et et') initialRigidGen of
             Right _  -> pure ()
             Left msg -> printError $ ppVCat
                 [ pass <+> "lint failed"
@@ -209,20 +209,25 @@ batchFile fn = execStateT $ do
                 res <- evalCheckM (checkElim (emptyCheckCtx names) w)
                 return (emptyMetaMap, res)
 
-        when opts.dump.tc $ printDoc $ ppSoftHanging (ppAnnotate ACmd "tc") [ ppStr $ show metas ]
-        when opts.dump.tc $ printDoc $ ppSoftHanging (ppAnnotate ACmd "tc") [ prettyElim names EmptyEnv 0 e0 ]
-        lintE "tc" (fmap metaEntryType metas) e0 et'
+        when (opts.dump.tc && opts.elaborate) $ printDoc $
+            ppHanging (ppAnnotate ACmd "tc metas")
+                [ prettyMetaVar m <+> "=" <+> ppStr (show entry)
+                | (m, entry) <- metaMapToList metas
+                ]
+        when opts.dump.tc $ printDoc $
+            ppSoftHanging (ppAnnotate ACmd "tc") [ prettyElim names EmptyEnv 0 e0 ]
+        lintE "tc" metas e0 et'
 
         -- type pipeline
         ty' <- case quoteTerm UnfoldNone SZ et' of
             Left err -> printError $ ppStr $ show err
             Right ty -> pure ty
 
-        ty <- fastPipelineEnd ty' VUni
+        ty <- fastPipelineEnd ty' VUni metas
         let et = evalTerm SZ emptyEvalEnv ty
 
         -- term pipeline
-        t <- pipelineEnd (emb_ e0) et
+        t <- pipelineEnd (emb_ e0) et metas
 
         return (ann_ t ty, et)
 
@@ -243,11 +248,15 @@ batchFile fn = execStateT $ do
                 res <- evalCheckM (checkTerm (emptyCheckCtx names) w (coeNoMetasVTerm et))
                 return (emptyMetaMap, res)
 
-        when opts.dump.tc $ printDoc $ ppSoftHanging (ppAnnotate ACmd "tc") [ ppStr $ show metas ]
+        when (opts.dump.tc && opts.elaborate) $ printDoc $
+            ppHanging (ppAnnotate ACmd "tc metas")
+                [ prettyMetaVar m <+> "=" <+> ppStr (show entry)
+                | (m, entry) <- metaMapToList metas
+                ]
         when opts.dump.tc $ printDoc $ ppSoftHanging (ppAnnotate ACmd "tc") [ prettyTerm names EmptyEnv 0 t0 ]
         lintT "tc" t0 et
 
-        pipelineEnd t0 et
+        pipelineEnd t0 et metas
 
     -- pipeline beginning, before typechecking: name resolution
     pipelineBegin :: Raw -> MainM (Well pass EmptyCtx)
@@ -266,14 +275,14 @@ batchFile fn = execStateT $ do
         return w
 
     -- pipeline end, after typechecking: zonk, stage, simplify
-    pipelineEnd :: Term HasMetas EmptyCtx -> VTerm NoMetas EmptyCtx -> MainM (Term NoMetas EmptyCtx)
-    pipelineEnd t0 et = do
+    pipelineEnd :: Term HasMetas EmptyCtx -> VTerm NoMetas EmptyCtx -> MetaMap MetaEntry -> MainM (Term NoMetas EmptyCtx)
+    pipelineEnd t0 et metas = do
         env <- get
         let opts  = env.opts
         let names = nameScopeFromEnv env
 
         -- zonk: substitute metavariable solutions
-        t1 <- maybe (printError $ "zonk failed") return $ zonkTerm t0
+        t1 <- maybe (printError $ "zonk failed") return $ zonkTerm SZ metas t0
         when opts.dump.zk $ printDoc $ ppSoftHanging (ppAnnotate ACmd "zk") [ prettyTermZ opts names t1 et ]
         lintT "zk" t1 et
 
@@ -298,14 +307,14 @@ batchFile fn = execStateT $ do
         return t'
 
     -- fast pipeline for just quoted terms.
-    fastPipelineEnd :: Term HasMetas EmptyCtx -> VTerm NoMetas EmptyCtx -> MainM (Term NoMetas EmptyCtx)
-    fastPipelineEnd t0 et = do
+    fastPipelineEnd :: Term HasMetas EmptyCtx -> VTerm NoMetas EmptyCtx -> MetaMap MetaEntry -> MainM (Term NoMetas EmptyCtx)
+    fastPipelineEnd t0 et metas = do
         env <- get
         let opts  = env.opts
         let names = nameScopeFromEnv env
 
         -- zonk: substitute metavariable solutions
-        t1 <- maybe (printError $ "zonk failed") return $ zonkTerm t0
+        t1 <- maybe (printError $ "zonk failed") return $ zonkTerm SZ metas t0
         when opts.dump.zk $ printDoc $ ppSoftHanging (ppAnnotate ACmd "zk") [ prettyTermZ opts names t1 et ]
         lintT "zk" t1 et
 

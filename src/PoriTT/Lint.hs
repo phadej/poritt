@@ -39,7 +39,7 @@ data LintCtx pass ctx ctx' = LintCtx
     , names  :: Env ctx Name
     , names' :: Env ctx' Name
     , nscope :: NameScope
-    , metas  :: MetaMap (VTerm pass EmptyCtx) 
+    , metas  :: MetaMap MetaEntry
     , size   :: Size ctx'
     , doc    :: ![Doc]
     }
@@ -51,6 +51,7 @@ toConvCtx ctx = ConvCtx
     , types  = ctx.types'
     , nscope = ctx.nscope
     , rigids = ctx.rigids
+    , metas  = ctx.metas
     }
 
 sinkLintCtx :: Name -> VTerm pass ctx' -> LintCtx pass ctx ctx' -> LintCtx pass ctx (S ctx')
@@ -404,7 +405,7 @@ lintElim' ctx (Gbl g) =
 
 lintElim' ctx (Met m) = case lookupMetaMap m ctx.metas of
     Nothing -> lintError ctx "Unbounded meta variable" []
-    Just ty -> return (sinkSize ctx.size ty)
+    Just e  -> return (sinkSize ctx.size (metaEntryType e))
 
 lintElim' ctx (Rgd _) =
     lintError ctx "Rigid variable" []

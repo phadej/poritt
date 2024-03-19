@@ -21,6 +21,7 @@ import PoriTT.Global
 import PoriTT.Icit
 import PoriTT.Loc
 import PoriTT.Name
+import PoriTT.Meta
 import PoriTT.Nice
 import PoriTT.PP
 import PoriTT.Quote
@@ -60,6 +61,7 @@ toConvCtx ctx = ConvCtx
     , types  = ctx.types'
     , nscope = ctx.nscope
     , rigids = ctx.rigids
+    , metas  = emptyMetaMap
     }
 
 -- | Empty elaboration context.

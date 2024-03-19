@@ -16,6 +16,7 @@ import PoriTT.ExceptState
 import PoriTT.Global
 import PoriTT.Icit
 import PoriTT.Name
+import PoriTT.Meta
 import PoriTT.Nice
 import PoriTT.PP
 import PoriTT.Quote
@@ -42,6 +43,7 @@ data ConvCtx pass ctx = ConvCtx
     , types  :: !(Env ctx (VTerm pass ctx))
     , nscope :: !(NameScope)
     , rigids :: !(RigidMap ctx (VTerm pass ctx)) -- We could add names here to have nicer rigid printing
+    , metas  :: !(MetaMap MetaEntry)
     }
 
 emptyConvCtx :: NameScope -> ConvCtx pass EmptyCtx
@@ -51,10 +53,11 @@ emptyConvCtx ns = ConvCtx
     , types  = EmptyEnv
     , nscope = ns
     , rigids = emptyRigidMap
+    , metas  = emptyMetaMap
     }
 
 bind :: Name -> VTerm pass ctx -> ConvCtx pass ctx -> ConvCtx pass (S ctx)
-bind x t (ConvCtx s xs ts gs rs) = ConvCtx (SS s) (xs :> x) (mapSink ts :> sink t) gs (rigidMapSink (mapSink rs))
+bind x t (ConvCtx s xs ts gs rs ms) = ConvCtx (SS s) (xs :> x) (mapSink ts :> sink t) gs (rigidMapSink (mapSink rs)) ms
 
 type ConvM = ExceptState Doc RigidGen
 
@@ -141,14 +144,19 @@ convTerm :: ConvCtx pass ctx -> VTerm pass ctx -> VTerm pass ctx -> VTerm pass c
 convTerm ctx ty x y = do
     -- we define a helper function, so we can trace when needed.
     -- traceM $ "CONV: " ++ show (ppSep [prettyVTermCtx ctx ty, " |-" <+> prettyVTermCtx ctx x, "=?=" <+> prettyVTermCtx ctx y])
-    convTerm' ctx ty x y
+    let ty' = forceTermM ctx ty
+    let x'  = forceTermM ctx x
+    let y'  = forceTermM ctx y
+    convTerm' ctx ty' x' y'
 
 -- | Beta-eta conversion checking of eliminations.
 convElim :: ConvCtx pass ctx -> VElim pass ctx -> VElim pass ctx -> ConvM (VTerm pass ctx)
 convElim ctx x y = do
     -- we define a helper function, so we can trace when needed.
     -- traceM $ "CONV: " ++ show (ppSep [prettyVTermCtx ctx ty, " |-" <+> prettyVTermCtx ctx x, "=?=" <+> prettyVTermCtx ctx y])
-    convElim' ctx x y
+    let x' = forceElimM ctx x
+    let y' = forceElimM ctx y
+    convElim' ctx x' y'
 
 -- | Beta-eta conversion checking of eliminations.
 convNeut :: ConvCtx pass ctx -> VNeut pass ctx -> VNeut pass ctx -> ConvM (VTerm pass ctx)
@@ -160,6 +168,18 @@ convNeut ctx x y = do
 -------------------------------------------------------------------------------
 -- Workers
 -------------------------------------------------------------------------------
+
+forceTermM :: ConvCtx pass ctx -> VTerm pass ctx -> VTerm pass ctx
+forceTermM ctx t@(VEmb (VFlx m VNil)) = case lookupMetaMap m ctx.metas of
+    Just (Solved _ _ _ t') -> sinkSize ctx.size t'
+    _                  -> t
+forceTermM _   t = t
+
+forceElimM :: ConvCtx pass ctx -> VElim pass ctx -> VElim pass ctx
+forceElimM ctx e@(VFlx m VNil) = case lookupMetaMap m ctx.metas of
+    Just (Solved _ ty _ t') -> sinkSize ctx.size (vann t' ty)
+    _                       -> e
+forceElimM _   e = e
 
 convIcit :: ConvCtx pass ctx -> Icit -> Icit -> ConvM ()
 convIcit _ctx i j
@@ -266,16 +286,16 @@ convElim' ctx (VAnn t ty)    e             = convTerm ctx ty t (vemb e) >> retur
 convElim' ctx e              (VAnn t ty)   = convTerm ctx ty (vemb e) t >> return ty
 convElim' _   (VErr msg)     _             = throwError $ ppStr $ show msg
 convElim' _   _              (VErr msg)    = throwError $ ppStr $ show msg
-convElim' _   (VFlx _ _)     _             = throwError "flex"
-convElim' _   _              (VFlx _ _)    = throwError "flex"
+convElim' _   x@(VFlx _ _)   _             = throwError $ "flex a" <+> ppStr (show x)
+convElim' _   _              (VFlx _ _)    = throwError "flex b"
 
 convNeut' :: ConvCtx pass ctx -> VNeut pass ctx -> VNeut pass ctx -> ConvM (VTerm pass ctx)
 -- Globals
 convNeut' ctx (VNRgd h1 sp1)  (VNRgd h2 sp2) = convRigidRigid ctx h1 sp1 h2 sp2
 convNeut' _   (VNErr msg)     _             = throwError $ ppStr $ show msg
 convNeut' _   _              (VNErr msg)    = throwError $ ppStr $ show msg
-convNeut' _   (VNFlx _ _)     _             = throwError "flex"
-convNeut' _   _              (VNFlx _ _)    = throwError "flex"
+convNeut' _   (VNFlx _ _)     _             = throwError "flex c"
+convNeut' _   _              (VNFlx _ _)    = throwError "flex d"
 
 -------------------------------------------------------------------------------
 -- Rigid

@@ -19,6 +19,7 @@ import PoriTT.Eval
 import PoriTT.ExceptState
 import PoriTT.Global
 import PoriTT.Icit
+import PoriTT.Meta
 import PoriTT.Name
 import PoriTT.Nice
 import PoriTT.PP
@@ -68,6 +69,7 @@ toConvCtx ctx = ConvCtx
     , types  = ctx.types'
     , nscope = ctx.nscope
     , rigids = emptyRigidMap
+    , metas  = emptyMetaMap
     }
 
 sinkDistillCtx :: Name -> VTerm NoMetas ctx' -> DistillCtx ctx ctx' -> DistillCtx ctx (S ctx')

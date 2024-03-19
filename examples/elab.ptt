@@ -8,8 +8,8 @@ eval id {_} tt
 -- eval id tt
 
 id' : forall {A : U} -> A -> A
-id' {_} x = x
+id' x = x
 
 eval id' {Unit} tt
--- eval id' {_} tt
+eval id' {_} tt
 -- eval id' tt

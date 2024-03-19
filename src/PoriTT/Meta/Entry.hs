@@ -8,10 +8,10 @@ import PoriTT.Term
 import PoriTT.Value
 
 data MetaEntry
-    = Solved (VTerm HasMetas EmptyCtx) (VTerm HasMetas EmptyCtx)
-    | Unsolved (VTerm HasMetas EmptyCtx)
+    = Solved (Term HasMetas EmptyCtx) (VTerm HasMetas EmptyCtx) (Term HasMetas EmptyCtx) (VTerm HasMetas EmptyCtx)
+    | Unsolved (Term HasMetas EmptyCtx) (VTerm HasMetas EmptyCtx)
   deriving Show
 
 metaEntryType :: MetaEntry -> VTerm HasMetas EmptyCtx
-metaEntryType (Solved ty _) = ty
-metaEntryType (Unsolved ty) = ty
+metaEntryType (Solved _ ty _ _) = ty
+metaEntryType (Unsolved _ ty)   = ty

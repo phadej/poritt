@@ -8,6 +8,7 @@ module PoriTT.Term (
     emb,
     ann,
     coeNoMetasElim,
+    coeSizeElim,
 ) where
 
 import Unsafe.Coerce (unsafeCoerce)
@@ -78,6 +79,9 @@ deriving instance Show (Elim pass ctx)
 -- | 'Elim' with no metas can be coerced to 'Elim' with metas.
 coeNoMetasElim :: Elim NoMetas ctx -> Elim pass ctx
 coeNoMetasElim = unsafeCoerce
+
+coeSizeElim :: Elim pass EmptyCtx -> Elim pass ctx
+coeSizeElim = unsafeCoerce
 
 -------------------------------------------------------------------------------
 -- Smart constructors

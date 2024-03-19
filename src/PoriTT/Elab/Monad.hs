@@ -17,6 +17,7 @@ import PoriTT.Meta
 import PoriTT.PP
 import PoriTT.Rigid
 import PoriTT.Term
+import PoriTT.Quote
 import PoriTT.Value
 
 type ElabM = ExceptState Doc ElabState
@@ -76,22 +77,23 @@ instance HasMetaGen ElabState where
 
 newMeta :: ElabCtx ctx ctx' -> VTerm HasMetas ctx' -> ElabM MetaVar
 newMeta ctx ty = do
+    let Right ty' = quoteTerm UnfoldNone ctx.size ty
     m <- newMetaVar
     case ctx.size of
         SZ -> do
             s <- get
-            put $! s { metas = insertMetaMap m (Unsolved ty) s.metas }
+            put $! s { metas = insertMetaMap m (Unsolved ty' ty) s.metas }
             return m
         _  -> throwError "TODO: can create metas in empty contexts only"
 
-solveMeta :: MetaVar -> VTerm HasMetas EmptyCtx -> ElabM ()
-solveMeta m v = do
+solveMeta :: MetaVar -> Term HasMetas EmptyCtx -> VTerm HasMetas EmptyCtx -> ElabM ()
+solveMeta m t v = do
     s <- get
     case lookupMetaMap m s.metas of
-        Nothing              -> throwError $ "Unknown metavariable" <+> prettyMetaVar m
-        Just (Solved _ty _v) -> throwError $ "Meta variable" <+> prettyMetaVar m <+> "is already solved:" -- TODO
-        Just (Unsolved ty) -> put $! s
-            { metas = insertMetaMap m (Solved ty v) s.metas
+        Nothing                  -> throwError $ "Unknown metavariable" <+> prettyMetaVar m
+        Just (Solved _ _ty _ _v) -> throwError $ "Meta variable" <+> prettyMetaVar m <+> "is already solved:" -- TODO
+        Just (Unsolved ty ty') -> put $! s
+            { metas = insertMetaMap m (Solved ty ty' t v) s.metas
             }
 
 -------------------------------------------------------------------------------

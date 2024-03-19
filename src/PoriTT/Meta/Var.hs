@@ -7,6 +7,7 @@ module PoriTT.Meta.Var (
     emptyMetaMap,
     lookupMetaMap,
     insertMetaMap,
+    metaMapToList,
     -- * Meta state
     MetaGen,
     HasMetaGen (..),
@@ -61,6 +62,9 @@ insertMetaMap (MetaVar k) v (MetaMap m) = MetaMap (IM.insert k v m)
 
 lookupMetaMap :: MetaVar -> MetaMap a -> Maybe a
 lookupMetaMap (MetaVar k) (MetaMap m) = IM.lookup k m
+
+metaMapToList :: MetaMap a -> [(MetaVar, a)]
+metaMapToList (MetaMap m) = [ (MetaVar i, x) | (i, x) <- IM.toList m ]
 
 -------------------------------------------------------------------------------
 -- MetaGen

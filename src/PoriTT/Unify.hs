@@ -410,4 +410,4 @@ solve env m sp rhs = do
     Invert s' pren <- invert env sp
     rhs' <- either throwError return $ prenTerm (PRenEnv env.size s' pren m) rhs
     let rhs'' = sizeLams s' rhs'
-    solveMeta m (evalTerm SZ EmptyEnv rhs'')
+    solveMeta m rhs'' (evalTerm SZ EmptyEnv rhs'')
