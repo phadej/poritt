@@ -59,12 +59,14 @@ prenSTerm = prenSTerm
 prenElim :: PRenEnv ctx ctx' -> VElim HasMetas ctx -> Either Doc (Elim HasMetas ctx')
 prenElim env (VRgd l sp) = case lookupLvlMap l env.pren of
     Nothing -> throwError "scope error, escaping variable"
-    Just l'  -> prenSpine env (Var (lvlToIdx env.size' l')) sp
+    Just l' -> prenSpine env (Var (lvlToIdx env.size' l')) sp
 
 prenElim _ e = error (show e)
 
 prenSpine :: PRenEnv ctx ctx' -> Elim HasMetas ctx' -> Spine HasMetas ctx -> Either Doc (Elim HasMetas ctx')
-prenSpine _env h VNil = return h
+prenSpine _   h VNil         = pure h
+prenSpine env h (VApp sp i t) = App i <$> prenSpine env h sp <*> prenTerm env t
+
 prenSpine _env _ _ = TODO
 
 {-
