@@ -287,13 +287,6 @@ elabTerm'' ctx ty@VUni t = do
     invalidTerm ctx "U" ty t
 
 -- functions
-{-
-TODO
-
-checkTerm'' ctx ty@(VPie y Icit _ _) t@(WLam _ Ecit _) = do
-    checkTerm ctx (WLam y Icit (weaken wk1 t)) ty
--}
-
 elabTerm'' ctx ty@(VPie y i a b) t0 = case insertIcitLam y i t0 of
     WLam x j t -> do
         elabIcit ctx i j
