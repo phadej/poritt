@@ -63,6 +63,7 @@ common common
     GADTs
     GeneralizedNewtypeDeriving
     KindSignatures
+    LambdaCase
     MultiWayIf
     NoFieldSelectors
     OverloadedLabels
@@ -142,8 +143,8 @@ library
     PoriTT.Macro
     PoriTT.Main
     PoriTT.Meta
-    PoriTT.Meta.Var
     PoriTT.Meta.Entry
+    PoriTT.Meta.Var
     PoriTT.Name
     PoriTT.Nice
     PoriTT.Opts

@@ -124,8 +124,8 @@ unifySTerm _ _ty a _b = return a
 -- Workers
 -------------------------------------------------------------------------------
 
-convIcit :: UnifyEnv ctx -> Icit -> Icit -> ElabM ()
-convIcit _ctx i j
+unifyIcit :: UnifyEnv ctx -> Icit -> Icit -> ElabM ()
+unifyIcit _ctx i j
     | i == j    = return ()
     | otherwise = mismatch "icity" (prettyIcit i) (prettyIcit j)
 
@@ -150,12 +150,12 @@ unifyTerm' _   VUni VDsc             VDsc =
 unifyTerm' _   VUni VOne             VOne =
     pure VOne
 unifyTerm' ctx VUni (VPie x i a1 b1) (VPie _ j a2 b2) = do
-    convIcit ctx i j
+    unifyIcit ctx i j
     a <- unifyTerm ctx VUni a1 a2
     _ <- unifyTerm (bind x a1 ctx) VUni (runZ ctx.size b1) (runZ ctx.size b2)
     return (VPie x i a b1)
 unifyTerm' ctx VUni (VSgm x i a1 b1) (VSgm _ j a2 b2) = do
-    convIcit ctx i j
+    unifyIcit ctx i j
     a <- unifyTerm ctx VUni a1 a2
     _ <- unifyTerm (bind x a1 ctx) VUni (runZ ctx.size b1) (runZ ctx.size b2)
     return (VSgm x i a b1)
@@ -181,7 +181,7 @@ unifyTerm' ctx VUni x                y              =
 
 -- ⊢ Π (x : A) → B ∋ t ≡ s
 unifyTerm' ctx (VPie _ _ a b) (VLam x i b1)  (VLam _ j b2) = do
-    convIcit ctx i j
+    unifyIcit ctx i j
     _b <- unifyTerm (bind x a ctx) (runZ ctx.size b) (runZ ctx.size b1)  (runZ ctx.size b2)
     return (VLam x i b1)
 unifyTerm' ctx (VPie _ _ a b) (VLam x i b1)  (VEmb u) = do
@@ -198,7 +198,7 @@ unifyTerm' ctx (VPie z i a b) x              y               =
     notConvertible ctx (VPie z i a b) x y
 
 -- ⊢ Σ (z : A) × B ∋ t ≡ s
-unifyTerm' ctx (VSgm _ _ a b) (VMul i x1 y1) (VMul j x2 y2) = convIcit ctx i j >> unifyTerm ctx a x1 x2 >> unifyTerm ctx (run ctx.size b (vann x1 a)) y1 y2
+unifyTerm' ctx (VSgm _ _ a b) (VMul i x1 y1) (VMul j x2 y2) = unifyIcit ctx i j >> unifyTerm ctx a x1 x2 >> unifyTerm ctx (run ctx.size b (vann x1 a)) y1 y2
 unifyTerm' ctx (VSgm _ _ a b) (VMul _ x y)   (VEmb q)       = unifyTerm ctx a x (vemb (vsel ctx.size q "fst")) >> unifyTerm ctx (run ctx.size b (vann x a)) y (vemb (vsel ctx.size q "snd"))
 unifyTerm' ctx (VSgm _ _ a b) (VEmb p)       (VMul _ x y)   = unifyTerm ctx a (vemb (vsel ctx.size p "fst")) x >> unifyTerm ctx (run ctx.size b (vann x a)) (vemb (vsel ctx.size p "snd")) y
 unifyTerm' ctx (VSgm _ _ a b) (VEmb p)       (VEmb q)       = do
@@ -331,7 +331,17 @@ unifySpine ctx headLvl sp1' sp2' = do
     headTy = lookupEnv (lvlToIdx ctx.size headLvl) ctx.types
 
     go :: Spine HasMetas ctx -> Spine HasMetas ctx -> ElabM (VElim HasMetas ctx, VTerm HasMetas ctx)
-    go VNil VNil = pure (VVar headLvl, headTy)
+    go VNil           VNil           =
+        pure (VVar headLvl, headTy)
+    go (VApp sp1 i t1) (VApp sp2 j t2) = do
+        (h, ty) <- go sp1 sp2
+        forceM ty >>= \case
+            VPie _ _ a b -> do
+                unifyIcit ctx i j
+                t <- unifyTerm ctx a t1 t2
+                return (vapp ctx.size i h t, run ctx.size b (vann t a))
+
+            _ -> TODO
 
     -- TODO
 
