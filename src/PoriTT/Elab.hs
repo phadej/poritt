@@ -213,10 +213,20 @@ insertIcitLam _ Icit t@(WLam _ Icit _) = t
 insertIcitLam x Icit t                 = WLam x Icit (weaken wk1 t)
 
 -- | Insert implicit arguments for as long as there are in type.
-insertIcitApp :: ElabCtx ctx ctx'
+insertIcitApp
+    :: ElabCtx ctx ctx'
+    -> Icit
     -> (Elim HasMetas ctx, VTerm HasMetas ctx')
     -> ElabM (Elim HasMetas ctx, VTerm HasMetas ctx')
-insertIcitApp _ x = return x
+insertIcitApp _   Icit x       = return x
+insertIcitApp env Ecit (f, ty) = do
+    ty' <- forceM ty
+    case ty' of
+        VPie _y Icit a b -> do
+            m <- newMeta env a
+            insertIcitApp env Ecit (App Icit f (Emb (Met m)), run env.size b (VMet m))
+
+        _ -> return (f, ty')
 
 -------------------------------------------------------------------------------
 -- Check term
@@ -532,7 +542,7 @@ elabElim' ctx (WCod a) = do
     a' <- elabTerm ctx a vcodUni
     return (Ann (Cod a') Uni, VUni)
 elabElim' ctx (WApp i f t) = do
-    (f', ft) <- elabElim ctx f
+    (f', ft) <- elabElim ctx f >>= insertIcitApp ctx i
     case force ft of
         VPie _ j a b -> do
             elabIcit ctx j i

@@ -3,6 +3,7 @@ module PoriTT.Value (
     VTerm (..),
     VElim (..),
     pattern VVar,
+    pattern VMet,
     VNeut (..),
     Spine (..),
     spineLength,
@@ -34,7 +35,6 @@ import PoriTT.Enum
 import PoriTT.Icit
 import PoriTT.Meta.Var
 import PoriTT.Name
-import PoriTT.PP
 import PoriTT.Rigid
 import PoriTT.Term
 
@@ -95,6 +95,9 @@ data VElim pass ctx where
 
 pattern VVar :: Lvl ctx -> VElim pass ctx
 pattern VVar l = VRgd l VNil
+
+pattern VMet :: MetaVar -> VElim HasMetas ctx
+pattern VMet m = VFlx m VNil
 
 -- | Neutral term is elimination which is not annotation.
 type VNeut :: TermPass -> Ctx -> Type

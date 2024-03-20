@@ -75,6 +75,7 @@ newRigid ctx ty = do
 instance HasMetaGen ElabState where
     metaGen = #metaGen
 
+-- return (Term HasMetas ctx)
 newMeta :: ElabCtx ctx ctx' -> VTerm HasMetas ctx' -> ElabM MetaVar
 newMeta ctx ty = do
     let Right ty' = quoteTerm UnfoldNone ctx.size ty
