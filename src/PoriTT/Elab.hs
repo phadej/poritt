@@ -220,7 +220,7 @@ insertIcitApp
     -> ElabM (Elim HasMetas ctx, VTerm HasMetas ctx')
 insertIcitApp _   Icit x       = return x
 insertIcitApp env Ecit (f, ty) = do
-    ty' <- forceM ty
+    ty' <- forceM env.size ty
     case ty' of
         VPie _y Icit a b -> do
             m <- newMeta env a
@@ -251,7 +251,7 @@ elabTerm' ctx e@WInd {}  ty = elabInfer ctx e ty
 elabTerm' ctx e@WSpl {}  ty = elabInfer ctx e ty
 elabTerm' ctx e@WAnn {}  ty = elabInfer ctx e ty
 elabTerm' ctx e@WLet {}  ty = elabInfer ctx e ty
-elabTerm' ctx t          ty = forceM ty >>= \ty' -> elabTerm'' ctx ty' t
+elabTerm' ctx t          ty = forceM ctx.size ty >>= \ty' -> elabTerm'' ctx ty' t
 
 elabTerm''
     :: ElabCtx ctx ctx'               -- ^ Type checking context

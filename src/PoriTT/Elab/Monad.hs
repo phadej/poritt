@@ -33,8 +33,10 @@ data ElabState = ElabState
 
 -- | During elaboration we don't only need to force globals,
 -- but also metavariables.
-forceM :: VTerm HasMetas ctx -> ElabM (VTerm HasMetas ctx)
-forceM t = return (force t) -- TODO
+forceM :: Size ctx -> VTerm HasMetas ctx -> ElabM (VTerm HasMetas ctx)
+forceM size e = do
+    s <- get
+    return (force (forceTerm size s.metas e))
 
 {-
 data Hole where

@@ -110,7 +110,9 @@ notType ctx ty = throwError $ ppSep
 
 unifyTerm :: UnifyEnv ctx -> VTerm HasMetas ctx -> VTerm HasMetas ctx -> VTerm HasMetas ctx -> ElabM (VTerm HasMetas ctx)
 unifyTerm env ty a b = do
-    unifyTerm' env ty a b
+    a' <- forceM env.size a
+    b' <- forceM env.size b
+    unifyTerm' env ty a' b'
 
 unifyElim :: UnifyEnv ctx -> VElim HasMetas ctx -> VElim HasMetas ctx -> ElabM (VElim HasMetas ctx, VTerm HasMetas ctx)
 unifyElim env a b = do
@@ -335,7 +337,7 @@ unifySpine ctx headLvl sp1' sp2' = do
         pure (VVar headLvl, headTy)
     go (VApp sp1 i t1) (VApp sp2 j t2) = do
         (h, ty) <- go sp1 sp2
-        forceM ty >>= \case
+        forceM ctx.size ty >>= \case
             VPie _ _ a b -> do
                 unifyIcit ctx i j
                 t <- unifyTerm ctx a t1 t2
@@ -363,7 +365,7 @@ invert :: UnifyEnv ctx -> Spine HasMetas ctx -> ElabM (Invert ctx)
 invert env VNil             = return (Invert SZ (emptyLvlMap env.size))
 invert env (VApp sp Ecit t) = do
     Invert s' pren <- invert env sp
-    t' <- forceM t
+    t' <- forceM env.size t
     case t' of
         VEmb (VVar l) -> case lookupLvlMap l pren of
             -- TODO: i'm not sure if we want lvlZ or lvlTop?
