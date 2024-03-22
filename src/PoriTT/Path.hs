@@ -19,7 +19,6 @@ data Path ctx ctx' where
     PDefine :: !(Path ctx ctx') -> !Name -> Path ctx ctx'
     PBind   :: !(Path ctx ctx') -> !Name -> (VTerm HasMetas ctx')-> Path ctx (S ctx')
 
--- TODO: Either EvalError
 closeType :: Size ctx' -> VTerm HasMetas ctx' -> Path ctx ctx' -> Either EvalError (VTerm HasMetas ctx)
 closeType _      b PEnd           = pure b
 closeType s      b (PDefine p _x) = closeType s b p
