@@ -150,7 +150,7 @@ elabHole ctx n ty = elabError ctx ("Checking a hole" <+> prettyHole n) $
 elabSkipped :: ElabCtx ctx ctx' -> VTerm HasMetas ctx' -> ElabM (Term HasMetas ctx)
 elabSkipped ctx ty = do
     m <- newMeta ctx ty
-    return (Emb (Met m))
+    return (Emb m)
 
 elabInfer :: ElabCtx ctx ctx' -> Well (HasTerms HasMetas) ctx -> VTerm HasMetas ctx' -> ElabM (Term HasMetas ctx)
 elabInfer ctx e            a = do
@@ -224,7 +224,8 @@ insertIcitApp env Ecit (f, ty) = do
     case ty' of
         VPie _y Icit a b -> do
             m <- newMeta env a
-            insertIcitApp env Ecit (App Icit f (Emb (Met m)), run env.size b (VMet m))
+            let m' = evalElim env.size env.values m 
+            insertIcitApp env Ecit (App Icit f (Emb m), run env.size b m')
 
         _ -> return (f, ty')
 

@@ -192,7 +192,7 @@ unifyTerm' ctx (VPie _ _ a b) (VEmb t)       (VLam x i b2) = do
     return (VLam x i b2)
 unifyTerm' ctx (VPie x i a b) (VEmb t)       (VEmb u) = do
     -- we need to eta expand, so we can unify singletons
-    _ <- unifyTerm (bind x a ctx) (runZ ctx.size b) (etaLam ctx.size i t) (etaLam ctx.size i u)
+    t' <- unifyTerm (bind x a ctx) (runZ ctx.size b) (etaLam ctx.size i t) (etaLam ctx.size i u)
     return (VEmb t)
 unifyTerm' ctx (VPie z i a b) x              y               =
     notConvertible ctx (VPie z i a b) x y

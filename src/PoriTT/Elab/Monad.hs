@@ -19,6 +19,7 @@ import PoriTT.Rigid
 import PoriTT.Term
 import PoriTT.Quote
 import PoriTT.Value
+import PoriTT.Path
 
 type ElabM = ExceptState Doc ElabState
 
@@ -75,17 +76,15 @@ newRigid ctx ty = do
 instance HasMetaGen ElabState where
     metaGen = #metaGen
 
--- return (Term HasMetas ctx)
-newMeta :: ElabCtx ctx ctx' -> VTerm HasMetas ctx' -> ElabM MetaVar
-newMeta ctx ty = do
-    let Right ty' = quoteTerm UnfoldNone ctx.size ty
+newMeta :: ElabCtx ctx ctx' -> VTerm HasMetas ctx' -> ElabM (Elim HasMetas ctx)
+newMeta ctx ty0 = do
+    let Right ty = closeType ctx.size ty0 ctx.path
+    let Right ty' = quoteTerm UnfoldNone SZ ty
     m <- newMetaVar
-    case ctx.size of
-        SZ -> do
-            s <- get
-            put $! s { metas = insertMetaMap m (Unsolved ty' ty) s.metas }
-            return m
-        _  -> throwError "TODO: can create metas in empty contexts only"
+    s <- get
+    put $! s { metas = insertMetaMap m (Unsolved ty' ty) s.metas }
+    -- TODO: apply arguments
+    return (Met m)
 
 solveMeta :: MetaVar -> Term HasMetas EmptyCtx -> VTerm HasMetas EmptyCtx -> ElabM ()
 solveMeta m t v = do
