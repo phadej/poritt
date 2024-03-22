@@ -12,7 +12,7 @@ import PoriTT.Icit
 import PoriTT.Value
 import PoriTT.Quote
 
--- | A "context zipper", used for efficiently creating types for fresh metas.
+-- | A "context zipper", used for creating types for fresh metas.
 type Path :: Ctx -> Ctx -> Type
 data Path ctx ctx' where
     PEnd    :: Path ctx ctx
