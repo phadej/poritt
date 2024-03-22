@@ -109,13 +109,13 @@ bind (CheckCtx xs xs' ns v ts ts' rs ss cs s wk l pp) x x' a = CheckCtx
   where
     t = evalZ s
 
-bind'
+define
     :: CheckCtx ctx ctx'
     -> Name                 -- ^ variable name
     -> EvalElim HasMetas ctx'   -- ^ value
     -> VTerm HasMetas ctx'   -- ^ type
     -> CheckCtx (S ctx) ctx'
-bind' (CheckCtx xs xs' ns v ts ts' rs ss cs s wk l pp) x t a = CheckCtx
+define (CheckCtx xs xs' ns v ts ts' rs ss cs s wk l pp) x t a = CheckCtx
     { names   = xs :> x
     , names'  = xs'
     , nscope  = ns
@@ -743,5 +743,5 @@ checkElim' ctx (WLet x t s) = do
     (ctx', r) <- newRigid ctx tt
     let tv = evalElim ctx.size ctx.values t'
         tv' = EvalElim tv (SRgd r)
-    (s', st) <- checkElim (bind' ctx' x tv' tt) s
+    (s', st) <- checkElim (define ctx' x tv' tt) s
     return (Let x t' s', st)

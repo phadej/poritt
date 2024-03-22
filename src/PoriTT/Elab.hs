@@ -668,5 +668,5 @@ elabElim' ctx (WLet x t s) = do
     (ctx', r) <- newRigid ctx tt
     let tv = evalElim ctx.size ctx.values t'
         tv' = EvalElim tv (SRgd r)
-    (s', st) <- elabElim (bind' ctx' x tv' tt) s
+    (s', st) <- elabElim (define ctx' x tv' tt) s
     return (Let x t' s', st)

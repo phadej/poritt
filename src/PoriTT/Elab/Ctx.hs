@@ -1,7 +1,7 @@
 module PoriTT.Elab.Ctx (
     ElabCtx (..),
     bind,
-    bind',
+    define,
     emptyElabCtx,
 ) where
 
@@ -10,6 +10,7 @@ import PoriTT.Loc
 import PoriTT.Name
 import PoriTT.PP
 import PoriTT.Rigid
+import PoriTT.Path
 import PoriTT.Stage
 import PoriTT.Term
 import PoriTT.Value
@@ -28,6 +29,7 @@ data ElabCtx ctx ctx' = ElabCtx
     , types  :: !(Env ctx (VTerm HasMetas ctx'))
     , types' :: !(Env ctx' (VTerm HasMetas ctx'))
     , rigids :: !(RigidMap ctx' (VTerm HasMetas ctx'))
+    , path   :: !(Path EmptyCtx ctx')
     , stages :: !(Env ctx Stage)
     , cstage :: !Stage
     , size   :: !(Size ctx')
@@ -49,6 +51,7 @@ emptyElabCtx ns = ElabCtx
     , types  = EmptyEnv
     , types' = EmptyEnv
     , rigids = emptyRigidMap
+    , path   = PEnd
     , stages = EmptyEnv
     , cstage = stage0
     , size   = SZ
@@ -63,7 +66,7 @@ bind
     -> Name                     -- ^ name in types
     -> VTerm HasMetas ctx'      -- ^ type
     -> ElabCtx (S ctx) (S ctx')
-bind (ElabCtx xs xs' ns v ts ts' rs ss cs s wk l pp) x x' a = ElabCtx
+bind (ElabCtx xs xs' ns v ts ts' rs p ss cs s wk l pp) x x' a = ElabCtx
     { names   = xs :> x
     , names'  = xs' :> x'
     , nscope  = ns
@@ -71,6 +74,7 @@ bind (ElabCtx xs xs' ns v ts ts' rs ss cs s wk l pp) x x' a = ElabCtx
     , types   = mapSink ts :> sink a
     , types'  = mapSink ts' :> sink a
     , rigids  = rigidMapSink (mapSink rs)
+    , path    = PBind p x a
     , stages  = ss :> cs
     , cstage  = cs
     , size    = SS s
@@ -81,13 +85,13 @@ bind (ElabCtx xs xs' ns v ts ts' rs ss cs s wk l pp) x x' a = ElabCtx
   where
     t = evalZ s
 
-bind'
+define
     :: ElabCtx ctx ctx'
     -> Name                     -- ^ variable name
     -> EvalElim HasMetas ctx'   -- ^ value
     -> VTerm HasMetas ctx'      -- ^ type
     -> ElabCtx (S ctx) ctx'
-bind' (ElabCtx xs xs' ns v ts ts' rs ss cs s wk l pp) x t a = ElabCtx
+define (ElabCtx xs xs' ns v ts ts' rs p ss cs s wk l pp) x t a = ElabCtx
     { names   = xs :> x
     , names'  = xs'
     , nscope  = ns
@@ -95,6 +99,7 @@ bind' (ElabCtx xs xs' ns v ts ts' rs ss cs s wk l pp) x t a = ElabCtx
     , types   = ts :> a
     , types'  = ts'
     , rigids  = rs
+    , path    = PDefine p x a t 
     , stages  = ss :> cs
     , cstage  = cs
     , size    = s
