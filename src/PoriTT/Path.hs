@@ -28,7 +28,7 @@ closeType (SS s) b (PBind p x a)  = do
     closeType s (VPie x Ecit a (Closure (tabulateEnv s (evalVar s)) b')) p
   where
     evalVar :: Size n -> Idx n -> EvalElim 'HasMetas n
-    evalVar s i = EvalElim (VVar l) (SVar l) where !l = idxToLvl s i
+    evalVar s' i = EvalElim (VVar l) (SVar l) where !l = idxToLvl s' i
 
 closeElim :: Elim HasMetas ctx' -> Path ctx ctx' -> Elim HasMetas ctx'
 closeElim = TODO
