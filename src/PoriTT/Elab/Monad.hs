@@ -87,6 +87,7 @@ newMeta ctx ty0 = do
 
 solveMeta :: MetaVar -> Term HasMetas EmptyCtx -> VTerm HasMetas EmptyCtx -> ElabM ()
 solveMeta m t v = do
+    traceM $ "SOLVE " ++ show m ++ " " ++ show v
     s <- get
     case lookupMetaMap m s.metas of
         Nothing                  -> throwError $ "Unknown metavariable" <+> prettyMetaVar m

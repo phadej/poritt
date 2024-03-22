@@ -17,3 +17,14 @@ eval id' {Unit} tt = [] : Unit
 eval id' {_} tt = [] : Unit
 
 eval id' tt = [] : Unit
+
+eval let unused = tt in id' tt = [] : Unit
+
+Error: examples/elab.ptt:18:13: Couldn't unify terms
+  • expected: ?0 _
+  • actual: Unit
+  • Meta variable ?0 is already solved:
+  • When checking that id' tt has type Unit
+  • When checking that λ _ ↦ id' tt has type Unit → Unit
+  • When infering type of (λ _ ↦ id' tt) : Unit → Unit
+ExitFailure
