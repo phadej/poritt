@@ -282,7 +282,7 @@ batchFile fn = execStateT $ do
         let names = nameScopeFromEnv env
 
         -- zonk: substitute metavariable solutions
-        t1 <- maybe (printError $ "zonk failed") return $ zonkTerm SZ metas t0
+        t1 <- maybe (printError $ "zonk failed") return $ zonkTerm (emptyZonkEnv metas) t0
         when opts.dump.zk $ printDoc $ ppSoftHanging (ppAnnotate ACmd "zk") [ prettyTermZ opts names t1 et ]
         lintT "zk" t1 et
 
@@ -314,7 +314,7 @@ batchFile fn = execStateT $ do
         let names = nameScopeFromEnv env
 
         -- zonk: substitute metavariable solutions
-        t1 <- maybe (printError $ "zonk failed") return $ zonkTerm SZ metas t0
+        t1 <- maybe (printError $ "zonk failed") return $ zonkTerm (emptyZonkEnv metas) t0
         when opts.dump.zk $ printDoc $ ppSoftHanging (ppAnnotate ACmd "zk") [ prettyTermZ opts names t1 et ]
         lintT "zk" t1 et
 

@@ -1,46 +1,62 @@
 module PoriTT.Zonk (
     zonkTerm,
     zonkElim,
+    ZonkEnv (..),
+    emptyZonkEnv,
 ) where
 
 import PoriTT.Base
 import PoriTT.Term
 import PoriTT.Meta
 
-zonkTerm :: Size ctx -> MetaMap MetaEntry -> Term pass ctx -> Maybe (Term NoMetas ctx)
-zonkTerm s m (Emb e)       = Emb <$> zonkElim s m e
-zonkTerm s m Uni           = pure Uni
-zonkTerm s m One           = pure One
-zonkTerm s m Dsc           = pure Dsc
-zonkTerm s m De1           = pure De1
-zonkTerm s m Tht           = pure Tht
-zonkTerm s m (DeX t)       = DeX <$> zonkTerm s m t
-zonkTerm s m (DeS t r)     = DeS <$> zonkTerm s m t <*> zonkTerm s m r
-zonkTerm s m (Con t)       = Con <$> zonkTerm s m t
-zonkTerm s m (Muu t)       = Muu <$> zonkTerm s m t
-zonkTerm s m (EIx i)       = pure (EIx i)
-zonkTerm s m (Pie x i a b) = Pie x i <$> zonkTerm s m a <*> zonkTerm (SS s) m b
-zonkTerm s m (Sgm x i a b) = Sgm x i <$> zonkTerm s m a <*> zonkTerm (SS s) m b
-zonkTerm s m (Fin ls)      = pure (Fin ls)
-zonkTerm s m (Mul i t r)   = Mul i <$> zonkTerm s m t <*> zonkTerm s m r
-zonkTerm s m (Lam x i t)   = Lam x i <$> zonkTerm (SS s) m t
-zonkTerm s m (Cod t)       = Cod <$> zonkTerm s m t
-zonkTerm s m (Quo t)       = Quo <$> zonkTerm s m t
-zonkTerm s m (WkT w t)     = WkT w <$> zonkTerm (contractSize w s) m t
+data ZonkEnv ctx = ZonkEnv
+    { size  :: !(Size ctx)
+    , metas :: !(MetaMap MetaEntry)
+    }
 
-zonkElim :: Size ctx -> MetaMap MetaEntry -> Elim pass ctx -> Maybe (Elim NoMetas ctx)
-zonkElim s m (Met x)         = case lookupMetaMap x m of
-    Just (Solved ty _ t _) -> coeSizeElim <$> zonkElim SZ m (ann t ty)
+emptyZonkEnv :: MetaMap MetaEntry -> ZonkEnv EmptyCtx
+emptyZonkEnv ms = ZonkEnv SZ ms
+
+bind :: ZonkEnv ctx -> ZonkEnv (S ctx)
+bind (ZonkEnv s ms) = ZonkEnv (SS s) ms
+
+contract :: Wk ctx ctx' -> ZonkEnv ctx' -> ZonkEnv ctx
+contract w (ZonkEnv s ms) = ZonkEnv (contractSize w s) ms
+
+zonkTerm :: ZonkEnv ctx -> Term pass ctx -> Maybe (Term NoMetas ctx)
+zonkTerm env (Emb e)       = Emb <$> zonkElim env e
+zonkTerm _   Uni           = pure Uni
+zonkTerm _   One           = pure One
+zonkTerm _   Dsc           = pure Dsc
+zonkTerm _   De1           = pure De1
+zonkTerm _   Tht           = pure Tht
+zonkTerm env (DeX t)       = DeX <$> zonkTerm env t
+zonkTerm env (DeS t r)     = DeS <$> zonkTerm env t <*> zonkTerm env r
+zonkTerm env (Con t)       = Con <$> zonkTerm env t
+zonkTerm env (Muu t)       = Muu <$> zonkTerm env t
+zonkTerm _   (EIx i)       = pure (EIx i)
+zonkTerm env (Pie x i a b) = Pie x i <$> zonkTerm env a <*> zonkTerm (bind env) b
+zonkTerm env (Sgm x i a b) = Sgm x i <$> zonkTerm env a <*> zonkTerm (bind env) b
+zonkTerm _   (Fin ls)      = pure (Fin ls)
+zonkTerm env (Mul i t r)   = Mul i <$> zonkTerm env t <*> zonkTerm env r
+zonkTerm env (Lam x i t)   = Lam x i <$> zonkTerm (bind env) t
+zonkTerm env (Cod t)       = Cod <$> zonkTerm env t
+zonkTerm env (Quo t)       = Quo <$> zonkTerm env t
+zonkTerm env (WkT w t)     = WkT w <$> zonkTerm (contract w env) t
+
+zonkElim :: ZonkEnv ctx -> Elim pass ctx -> Maybe (Elim NoMetas ctx)
+zonkElim env (Met x)         = case lookupMetaMap x env.metas of
+    Just (Solved ty _ t _) -> coeSizeElim <$> zonkElim (ZonkEnv SZ env.metas) (ann t ty)
     _ -> Nothing
-zonkElim s m (Rgd _)         = Nothing
-zonkElim s m (Var x)         = pure (Var x)
-zonkElim s m (Gbl g)         = pure (Gbl g)
-zonkElim s m (App i f t)     = App i <$> zonkElim s m f <*> zonkTerm s m t
-zonkElim s m (Sel e f)       = Sel <$> zonkElim s m e <*> pure f
-zonkElim s m (Swh e p ts)    = Swh <$> zonkElim s m e <*> zonkTerm s m p <*> traverse (zonkTerm s m) ts
-zonkElim s m (Ind e x y)     = Ind <$> zonkElim s m e <*> zonkTerm s m x <*> zonkTerm s m y
-zonkElim s m (DeI e p x y z) = DeI <$> zonkElim s m e <*> zonkTerm s m p <*> zonkTerm s m x <*> zonkTerm s m y <*> zonkTerm s m z
-zonkElim s m (Spl e)         = Spl <$> zonkElim s m e
-zonkElim s m (Ann t a)       = Ann <$> zonkTerm s m t <*> zonkTerm s m a
-zonkElim s m (Let x t r)     = Let x <$> zonkElim s m t <*> zonkElim (SS s) m r
-zonkElim s m (WkE w e)       = WkE w <$> zonkElim (contractSize w s) m e
+zonkElim _   (Rgd _)         = Nothing
+zonkElim _   (Var x)         = pure (Var x)
+zonkElim _   (Gbl g)         = pure (Gbl g)
+zonkElim env (App i f t)     = App i <$> zonkElim env f <*> zonkTerm env t
+zonkElim env (Sel e f)       = Sel <$> zonkElim env e <*> pure f
+zonkElim env (Swh e p ts)    = Swh <$> zonkElim env e <*> zonkTerm env p <*> traverse (zonkTerm env) ts
+zonkElim env (Ind e x y)     = Ind <$> zonkElim env e <*> zonkTerm env x <*> zonkTerm env y
+zonkElim env (DeI e p x y z) = DeI <$> zonkElim env e <*> zonkTerm env p <*> zonkTerm env x <*> zonkTerm env y <*> zonkTerm env z
+zonkElim env (Spl e)         = Spl <$> zonkElim env e
+zonkElim env (Ann t a)       = Ann <$> zonkTerm env t <*> zonkTerm env a
+zonkElim env (Let x t r)     = Let x <$> zonkElim env t <*> zonkElim (bind env) r
+zonkElim env (WkE w e)       = WkE w <$> zonkElim (contract w env) e

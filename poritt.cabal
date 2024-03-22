@@ -149,6 +149,7 @@ library
     PoriTT.Nice
     PoriTT.Opts
     PoriTT.Parser
+    PoriTT.Path
     PoriTT.PP
     PoriTT.PRen
     PoriTT.Quote
