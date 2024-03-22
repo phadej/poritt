@@ -83,7 +83,7 @@ newMeta ctx ty0 = do
     m <- newMetaVar
     s <- get
     put $! s { metas = insertMetaMap m (Unsolved ty' ty) s.metas }
-    return (weaken ctx.wk (closeElim (Met m) ctx.path))
+    return (closeElim (Met m) ctx.path)
 
 solveMeta :: MetaVar -> Term HasMetas EmptyCtx -> VTerm HasMetas EmptyCtx -> ElabM ()
 solveMeta m t v = do

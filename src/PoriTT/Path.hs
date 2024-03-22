@@ -12,13 +12,13 @@ import PoriTT.Value
 import PoriTT.Quote
 
 -- | A "context zipper", used for creating types for fresh metas.
-type Path :: Ctx -> Ctx -> Type
-data Path ctx ctx' where
-    PEnd    :: Path ctx ctx
-    PDefine :: !(Path ctx ctx') -> !Name -> Path ctx ctx'
-    PBind   :: !(Path ctx ctx') -> !Name -> (VTerm HasMetas ctx')-> Path ctx (S ctx')
+type Path :: Ctx -> Ctx -> Ctx -> Type
+data Path ctx ctx' ctx'' where
+    PEnd    :: Path ctx ctx ctx
+    PDefine :: !(Path ctx ctx' ctx'') -> !Name -> Path ctx (S ctx') ctx''
+    PBind   :: !(Path ctx ctx' ctx'') -> !Name -> (VTerm HasMetas ctx'')-> Path ctx (S ctx') (S ctx'')
 
-closeType :: Size ctx' -> VTerm HasMetas ctx' -> Path ctx ctx' -> Either EvalError (VTerm HasMetas ctx)
+closeType :: Size ctx'' -> VTerm HasMetas ctx'' -> Path ctx ctx' ctx'' -> Either EvalError (VTerm HasMetas ctx)
 closeType _      b PEnd           = pure b
 closeType s      b (PDefine p _x) = closeType s b p
 closeType (SS s) b (PBind p x a)  = do
@@ -28,7 +28,7 @@ closeType (SS s) b (PBind p x a)  = do
     evalVar :: Size n -> Idx n -> EvalElim 'HasMetas n
     evalVar s' i = EvalElim (VVar l) (SVar l) where !l = idxToLvl s' i
 
-closeElim :: Elim HasMetas ctx -> Path ctx ctx' -> Elim HasMetas ctx'
+closeElim :: Elim HasMetas ctx -> Path ctx ctx' ctx'' -> Elim HasMetas ctx'
 closeElim f PEnd          = f
-closeElim f (PDefine p _) = closeElim f p
+closeElim f (PDefine p _) = weaken wk1 (closeElim f p)
 closeElim f (PBind p _ _) = App Ecit (weaken wk1 (closeElim f p)) (Emb (Var IZ))
