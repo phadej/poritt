@@ -179,12 +179,12 @@ batchFile fn = execStateT $ do
                 -- , ppBullet <+> prettyVTermZ opts UnfoldNone names et' VUni
                 ]
 
-    lintT :: Doc -> Term pass EmptyCtx -> VTerm NoMetas EmptyCtx -> MainM ()
-    lintT pass t et = do
+    lintT :: Doc -> MetaMap MetaEntry -> Term pass EmptyCtx -> VTerm NoMetas EmptyCtx -> MainM ()
+    lintT pass metas t et = do
         env <- get
         let names = nameScopeFromEnv env
 
-        case evalExceptState (lintTerm (emptyLintCtx names) t (coeNoMetasVTerm et)) initialRigidGen of
+        case evalExceptState (lintTerm (emptyLintCtx names) { metas = metas } t (coeNoMetasVTerm et)) initialRigidGen of
             Right _  -> pure ()
             Left msg -> printError $ ppVCat
                 [ pass <+> "lint failed"
@@ -250,11 +250,15 @@ batchFile fn = execStateT $ do
 
         when (opts.dump.tc && opts.elaborate) $ printDoc $
             ppHanging (ppAnnotate ACmd "tc metas")
-                [ prettyMetaVar m <+> "=" <+> ppStr (show entry)
+                [ prettyMetaVar m <+> "=" <+> case entry of
+                    Solved _ mty _ mt -> case quoteElim UnfoldNone SZ (vann mt mty) of
+                        Right me -> prettyElim names EmptyEnv 0 me
+                        Left err -> ppStr (show err)
+                    t -> ppStr (show t)
                 | (m, entry) <- metaMapToList metas
                 ]
         when opts.dump.tc $ printDoc $ ppSoftHanging (ppAnnotate ACmd "tc") [ prettyTerm names EmptyEnv 0 t0 ]
-        lintT "tc" t0 et
+        lintT "tc" metas t0 et
 
         pipelineEnd t0 et metas
 
@@ -284,12 +288,12 @@ batchFile fn = execStateT $ do
         -- zonk: substitute metavariable solutions
         t1 <- maybe (printError $ "zonk failed") return $ zonkTerm (emptyZonkEnv metas) t0
         when opts.dump.zk $ printDoc $ ppSoftHanging (ppAnnotate ACmd "zk") [ prettyTermZ opts names t1 et ]
-        lintT "zk" t1 et
+        lintT "zk" emptyMetaMap t1 et
 
         -- stage: normalise top-level splices
         t2 <- either (printError . ppStr . show) return $ preTerm SZ EmptyEnv t1
         when opts.dump.st $ printDoc $ ppSoftHanging (ppAnnotate ACmd "st") [ prettyTermZ opts names t2 et ]
-        lintT "st" t2 et
+        lintT "st" emptyMetaMap t2 et
 
         -- simplify
         t' <- if opts.simplify
@@ -316,7 +320,7 @@ batchFile fn = execStateT $ do
         -- zonk: substitute metavariable solutions
         t1 <- maybe (printError $ "zonk failed") return $ zonkTerm (emptyZonkEnv metas) t0
         when opts.dump.zk $ printDoc $ ppSoftHanging (ppAnnotate ACmd "zk") [ prettyTermZ opts names t1 et ]
-        lintT "zk" t1 et
+        lintT "zk" emptyMetaMap t1 et
 
         return t1
 
@@ -329,7 +333,7 @@ batchFile fn = execStateT $ do
         let e' = simplTerm (emptySimplCtx opts.simplOpts) e
 
         -- check that we simplified correctly
-        lintT ("si" <> iter) e' et
+        lintT ("si" <> iter) emptyMetaMap e' et
 
         when opts.dump.si $ printDoc $ ppSoftHanging (ppAnnotate ACmd iter) [ prettyTermZ opts names e' et ]
 

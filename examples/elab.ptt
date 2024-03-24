@@ -16,3 +16,6 @@ eval id' tt
 
 eval let unused = tt in id' tt
 eval (\ _ -> id' tt) : Unit -> Unit
+
+id'' : forall {A : U} -> A -> A
+id'' x = id' x

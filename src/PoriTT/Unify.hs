@@ -173,10 +173,10 @@ unifyTerm' ctx VUni (VEmb e1)        (VEmb e2) =
     unifyEmbTerm ctx e1 e2
 -- TBW comment: flex terms
 unifyTerm' ctx VUni (VEmb (VFlx x sp)) t = do
-    solve ctx x sp t
+    _ <- solve ctx x sp t
     pure t
 unifyTerm' ctx VUni t (VEmb (VFlx x sp)) = do
-    solve ctx x sp t
+    _ <- solve ctx x sp t
     pure t
 unifyTerm' ctx VUni x                y              =
     notConvertible ctx VUni x y
@@ -302,8 +302,9 @@ unifyElim' ctx e              (VAnn t ty)   = do
     return (VAnn t' ty, ty)
 unifyElim' _   (VErr msg)     _             = throwError $ ppStr $ show msg
 unifyElim' _   _              (VErr msg)    = throwError $ ppStr $ show msg
-unifyElim' _   (VFlx _ _)     _             = throwError "flex"
-unifyElim' _   _              (VFlx _ _)    = throwError "flex"
+unifyElim' _   (VFlx _ _)     (VFlx _ _)    = throwError "flex-flex TODO"
+unifyElim' env (VFlx m sp)    e             = solve env m sp (vemb e)
+unifyElim' env e              (VFlx m sp)   = solve env m sp (vemb e)
 
 -------------------------------------------------------------------------------
 -- Rigid-Rigid
@@ -417,9 +418,23 @@ sizeLams :: Size ctx -> Term HasMetas ctx -> Term HasMetas EmptyCtx
 sizeLams SZ t     = t
 sizeLams (SS s) t = sizeLams s (Lam "ds" Ecit t)
 
-solve :: UnifyEnv ctx -> MetaVar -> Spine HasMetas ctx -> VTerm HasMetas ctx -> ElabM ()
+solve :: UnifyEnv ctx -> MetaVar -> Spine HasMetas ctx -> VTerm HasMetas ctx -> ElabM (VElim HasMetas ctx, VTerm HasMetas ctx)
 solve env m sp rhs = do
     Invert s' pren <- invert env sp
     rhs' <- either throwError return $ prenTerm (PRenEnv env.size s' pren m) rhs
     let rhs'' = sizeLams s' rhs'
-    solveMeta m rhs'' (evalTerm SZ EmptyEnv rhs'')
+    let rhs''' = evalTerm SZ EmptyEnv rhs''
+    mty <- solveMeta m rhs'' rhs'''
+    vappType env (sinkSize env.size (vann rhs''' mty)) (sinkSize env.size mty) sp
+
+-- TODO: take size, don't use monad, move to eval
+vappType :: UnifyEnv ctx -> VElim HasMetas ctx -> VTerm HasMetas ctx -> Spine HasMetas ctx -> ElabM (VElim HasMetas ctx, VTerm HasMetas ctx)
+vappType _   h ty VNil = pure (h, ty)
+vappType env h ty (VApp sp i t) = do
+    (h', ty') <- vappType env h ty sp
+    case ty' of
+        VPie _y j a b -> 
+            return (vapp env.size i h t, run env.size b (vann t a))
+
+        _ -> TODO 
+vappType env h ty sp = error (show sp) env h ty

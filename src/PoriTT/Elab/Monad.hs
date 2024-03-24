@@ -1,5 +1,6 @@
 module PoriTT.Elab.Monad (
     ElabM,
+    ElabState (..),
     MetaEntry (..),
     metaEntryType,
     forceM,
@@ -87,16 +88,18 @@ newMeta ctx ty0 = do
     put $! s { metas = insertMetaMap m (Unsolved ty' ty) s.metas }
     return (closeElim (Met m) ctx.path)
 
-solveMeta :: MetaVar -> Term HasMetas EmptyCtx -> VTerm HasMetas EmptyCtx -> ElabM ()
+solveMeta :: MetaVar -> Term HasMetas EmptyCtx -> VTerm HasMetas EmptyCtx -> ElabM (VTerm HasMetas EmptyCtx)
 solveMeta m t v = do
     traceM $ "SOLVE " ++ show m ++ " " ++ show v
     s <- get
     case lookupMetaMap m s.metas of
         Nothing                  -> throwError $ "Unknown metavariable" <+> prettyMetaVar m
         Just (Solved _ _ty _ _v) -> throwError $ "Meta variable" <+> prettyMetaVar m <+> "is already solved:" -- TODO
-        Just (Unsolved ty ty') -> put $! s
-            { metas = insertMetaMap m (Solved ty ty' t v) s.metas
-            }
+        Just (Unsolved ty ty') -> do
+            put $! s
+                { metas = insertMetaMap m (Solved ty ty' t v) s.metas
+                }
+            return ty'
 
 -------------------------------------------------------------------------------
 -- Running elaboration monad

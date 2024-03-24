@@ -404,7 +404,7 @@ lintElim' ctx (Gbl g) =
     return (coeNoMetasVTerm (sinkSize ctx.size g.typ))
 
 lintElim' ctx (Met m) = case lookupMetaMap m ctx.metas of
-    Nothing -> lintError ctx "Unbounded meta variable" []
+    Nothing -> lintError ctx "Unbound meta variable" [prettyMetaVar m]
     Just e  -> return (sinkSize ctx.size (metaEntryType e))
 
 lintElim' ctx (Rgd _) =
