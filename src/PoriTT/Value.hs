@@ -20,6 +20,7 @@ module PoriTT.Value (
     evalZ,
     velim,
     emptyEvalEnv,
+    idEvalEnv,
     -- ** Evaluation error
     EvalError (..),
     -- * Staging values
@@ -207,6 +208,10 @@ type EvalEnv pass ctx ctx' = Env ctx (EvalElim pass ctx')
 
 emptyEvalEnv :: EvalEnv pass EmptyCtx EmptyCtx
 emptyEvalEnv = EmptyEnv
+
+idEvalEnv :: Size ctx -> EvalEnv pass ctx ctx
+idEvalEnv SZ = EmptyEnv
+idEvalEnv (SS s) = mapSink (idEvalEnv s) :> evalZ s
 
 type Closure :: (TermPass -> Ctx -> Type) -> TermPass -> Ctx -> Type
 data Closure term pass ctx' where

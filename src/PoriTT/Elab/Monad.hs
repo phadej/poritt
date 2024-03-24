@@ -18,6 +18,7 @@ import PoriTT.Meta
 import PoriTT.PP
 import PoriTT.Rigid
 import PoriTT.Term
+import PoriTT.Pruning
 import PoriTT.Quote
 import PoriTT.Value
 import PoriTT.Path
@@ -86,7 +87,7 @@ newMeta ctx ty0 = do
     m <- newMetaVar
     s <- get
     put $! s { metas = insertMetaMap m (Unsolved ty' ty) s.metas }
-    return (closeElim (Met m) ctx.path)
+    return (Met m (Pruning ctx.wk))
 
 solveMeta :: MetaVar -> Term HasMetas EmptyCtx -> VTerm HasMetas EmptyCtx -> ElabM (VTerm HasMetas EmptyCtx)
 solveMeta m t v = do

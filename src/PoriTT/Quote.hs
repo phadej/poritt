@@ -20,6 +20,7 @@ import PoriTT.Base
 import PoriTT.Eval
 import PoriTT.Name
 import PoriTT.PP
+import PoriTT.Pruning
 import PoriTT.Term
 import PoriTT.Value
 
@@ -62,7 +63,7 @@ quoteTerm u s (VEmb e)        = emb <$> quoteElim u s e
 
 quoteElim :: Unfold -> Size ctx -> VElim pass ctx -> Either EvalError (Elim pass ctx)
 quoteElim u s (VRgd l sp)   = quoteSpine (unfoldSp u) s (pure (Var (lvlToIdx s l))) sp
-quoteElim u s (VFlx m sp)   = quoteSpine (unfoldSp u) s (pure (Met m)) sp
+quoteElim u s (VFlx m sp)   = quoteSpine (unfoldSp u) s (pure (Met m (emptyPruning s))) sp
 quoteElim u s (VGbl g sp t) = case u of
     UnfoldAll  -> quoteElim u s t
     UnfoldElim -> quoteElim u s t
@@ -72,7 +73,7 @@ quoteElim _ _ (VErr msg)    = Left msg
 
 quoteNeut :: Unfold -> Size ctx -> VNeut pass ctx -> Either EvalError (Elim pass ctx)
 quoteNeut u s (VNRgd l sp)   = quoteSpine (unfoldSp u) s (pure (Var (lvlToIdx s l))) sp
-quoteNeut u s (VNFlx m sp)   = quoteSpine (unfoldSp u) s (pure (Met m)) sp
+quoteNeut u s (VNFlx m sp)   = quoteSpine (unfoldSp u) s (pure (Met m (emptyPruning s))) sp
 quoteNeut _ _ (VNErr msg)    = Left msg
 
 unfoldSp :: Unfold -> Unfold

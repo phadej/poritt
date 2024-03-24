@@ -15,6 +15,7 @@ module PoriTT.Eval (
     vapp,
     vapps,
     vappSpine,
+    vappPruning,
     vsel,
     vswh,
     vdei,
@@ -38,9 +39,11 @@ import PoriTT.Base
 import PoriTT.Enum
 import PoriTT.Global
 import PoriTT.Icit
+import PoriTT.Pruning
 import PoriTT.Name
 import PoriTT.Nice
 import PoriTT.Term
+import PoriTT.Pruning
 import PoriTT.Used
 import PoriTT.Value
 
@@ -99,7 +102,7 @@ evalTerm' s env (WkT w t)     = evalTerm' s (weakenEnv w env) t
 
 evalElim' :: Size ctx' -> EvalEnv pass ctx ctx' -> Elim pass ctx -> VElim pass ctx'
 evalElim' _ env (Var x)         = case lookupEnv x env of EvalElim v _ -> v
-evalElim' _ _   (Met m)         = VFlx m VNil
+evalElim' s env (Met m xs)      = VFlx m (evalPruning s env xs)
 evalElim' _ _   (Rgd _)         = TODO -- error?
 evalElim' s _   (Gbl g)         = vgbl s g
 evalElim' s env (Ann t a)       = vann (evalTerm' s env t) (evalTerm' s env a)
@@ -111,6 +114,12 @@ evalElim' s env (Ind e m t)     = vind s (evalElim' s env e) (evalTerm' s env m)
 evalElim' s env (Spl e)         = vspl s (evalElim' s env e)
 evalElim' s env (Let _ t r)     = evalElim' s (env :> velim (evalElim' s env t)) r
 evalElim' s env (WkE w e)       = evalElim' s (weakenEnv w env) e
+
+evalPruning :: Size ctx' -> EvalEnv pass ctx ctx' -> Pruning ctx -> Spine pass ctx'
+evalPruning s env (Pruning xs) = go (weakenEnv xs env) where
+    go :: Env ctx1 (EvalElim pass ctx') -> Spine pass ctx'
+    go EmptyEnv = VNil
+    go (env :> EvalElim e _) = VApp (go env) Ecit (vemb e)
 
 -------------------------------------------------------------------------------
 -- Eliminations
@@ -155,6 +164,11 @@ vappSpine s e (VSwh sp m ts)    = vswh s (vappSpine s e sp) m ts
 vappSpine s e (VDeI sp m x y z) = vdei s (vappSpine s e sp) m x y z
 vappSpine s e (VInd sp m t)     = vind s (vappSpine s e sp) m t
 vappSpine s e (VSpl sp)         = vspl s (vappSpine s e sp)
+
+vappPruning :: Size ctx -> VElim pass ctx -> Pruning ctx -> VElim pass ctx
+vappPruning s e xs = vappSpine s e (evalPruning s (idEvalEnv s) xs)
+
+-- vappPruning :: Size ctx -> VElim pass EmptyCtx -> Elim pass0 EmptyCtx
 
 vsel :: Size ctx -> VElim pass ctx -> Selector -> VElim pass ctx
 vsel s (VAnn (VMul _ t r) (force -> VSgm _ _ a b)) z
@@ -284,7 +298,7 @@ sspl _ _ (VErr err)                                     = SErr err
 stageElim :: Natural -> Size ctx' -> EvalEnv pass ctx ctx' -> Elim pass ctx -> SElim pass ctx'
 stageElim _ _ env (Var x)   = case lookupEnv x env of
     EvalElim _ e -> e
-stageElim _ _ _   (Met _m)        = TODO -- not sure what to do here yet.
+stageElim _ _ _   (Met _m _)      = TODO -- not sure what to do here yet. should be an error
 stageElim _ _ _   (Rgd _)         = TODO
 stageElim _ _ _   (Gbl g)         = SGbl g
 stageElim q s env (Swh e m ts)    = SSwh (stageElim q s env e) (stageTerm q s env m) (stageTerm q s env <$> ts)

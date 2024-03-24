@@ -152,6 +152,7 @@ library
     PoriTT.Path
     PoriTT.PP
     PoriTT.PRen
+    PoriTT.Pruning
     PoriTT.Quote
     PoriTT.Raw
     PoriTT.Rename

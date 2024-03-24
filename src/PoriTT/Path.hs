@@ -1,7 +1,6 @@
 module PoriTT.Path (
     Path (..),
     closeType,
-    closeElim,
 ) where
 
 import PoriTT.Base
@@ -27,8 +26,3 @@ closeType (SS s) b (PBind p x a)  = do
   where
     evalVar :: Size n -> Idx n -> EvalElim 'HasMetas n
     evalVar s' i = EvalElim (VVar l) (SVar l) where !l = idxToLvl s' i
-
-closeElim :: Elim HasMetas ctx -> Path ctx ctx' ctx'' -> Elim HasMetas ctx'
-closeElim f PEnd          = f
-closeElim f (PDefine p _) = weaken wk1 (closeElim f p)
-closeElim f (PBind p _ _) = App Ecit (weaken wk1 (closeElim f p)) (Emb (Var IZ))

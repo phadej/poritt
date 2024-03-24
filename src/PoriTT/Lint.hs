@@ -17,6 +17,7 @@ import PoriTT.Icit
 import PoriTT.Meta
 import PoriTT.Name
 import PoriTT.Nice
+import PoriTT.Pruning
 import PoriTT.PP
 import PoriTT.Quote
 import PoriTT.Rigid
@@ -403,9 +404,9 @@ lintElim' ctx (Gbl g) =
     -- Global is similar to variable.
     return (coeNoMetasVTerm (sinkSize ctx.size g.typ))
 
-lintElim' ctx (Met m) = case lookupMetaMap m ctx.metas of
+lintElim' ctx (Met m xs) = case lookupMetaMap m ctx.metas of
     Nothing -> lintError ctx "Unbound meta variable" [prettyMetaVar m]
-    Just e  -> return (sinkSize ctx.size (metaEntryType e))
+    Just e  -> lintPruning ctx (sinkSize ctx.size (metaEntryType e)) xs
 
 lintElim' ctx (Rgd _) =
     lintError ctx "Rigid variable" []

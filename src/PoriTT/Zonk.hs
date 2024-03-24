@@ -8,6 +8,8 @@ module PoriTT.Zonk (
 import PoriTT.Base
 import PoriTT.Term
 import PoriTT.Meta
+import PoriTT.Eval
+import PoriTT.Quote
 
 data ZonkEnv ctx = ZonkEnv
     { size  :: !(Size ctx)
@@ -45,8 +47,10 @@ zonkTerm env (Quo t)       = Quo <$> zonkTerm env t
 zonkTerm env (WkT w t)     = WkT w <$> zonkTerm (contract w env) t
 
 zonkElim :: ZonkEnv ctx -> Elim pass ctx -> Maybe (Elim NoMetas ctx)
-zonkElim env (Met x)         = case lookupMetaMap x env.metas of
-    Just (Solved ty _ t _) -> coeSizeElim <$> zonkElim (ZonkEnv SZ env.metas) (ann t ty)
+zonkElim env (Met x xs)      = case lookupMetaMap x env.metas of
+    Just (Solved _ ty _ t) -> case quoteElim UnfoldNone env.size (vappPruning env.size (sinkSize env.size (vann t ty)) xs) of
+        Right e -> zonkElim env e
+        Left err -> Nothing -- TODO
     _ -> Nothing
 zonkElim _   (Rgd _)         = Nothing
 zonkElim _   (Var x)         = pure (Var x)

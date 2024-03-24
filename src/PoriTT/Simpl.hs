@@ -81,8 +81,8 @@ simplElim ctx (WkE w e) = simplElim ctx (defaultWeaken w e)
 simplElim ctx (Var i)
     = substIdx ctx.sub i -- TODO: this is broken
 
-simplElim _ (Met m)
-    = Met m
+simplElim _ (Met m xs)
+    = Met m xs
 
 simplElim _ (Rgd r)
     = Rgd r

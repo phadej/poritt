@@ -15,6 +15,7 @@ import Unsafe.Coerce (unsafeCoerce)
 
 import PoriTT.Base
 import PoriTT.Enum
+import PoriTT.Pruning
 import PoriTT.Icit
 import PoriTT.Meta.Var
 import PoriTT.Name
@@ -56,7 +57,7 @@ data Term pass ctx where
 type Elim :: TermPass -> Ctx -> Type
 data Elim pass ctx where
     Var :: Idx ctx -> Elim pass ctx
-    Met :: MetaVar -> Elim HasMetas ctx
+    Met :: MetaVar -> Pruning ctx -> Elim HasMetas ctx
     Rgd :: RigidVar ctx -> Elim pass ctx
     Gbl :: Global -> Elim pass ctx
     App :: Icit -> Elim pass ctx -> Term pass ctx -> Elim pass ctx
@@ -116,7 +117,7 @@ instance Renamable (Elim pass) where
     rename = defaultRename
     weaken w (WkE w' e) = WkE (compWk w' w) e
     weaken w (Var i)    = Var (weakenIdx w i)
-    weaken _ (Met m)    = Met m
+    weaken w (Met m ts) = Met m (weakenPruning w ts)
     weaken _ (Gbl g)    = Gbl g
     weaken w e          = WkE w e
 
@@ -143,7 +144,7 @@ instance RenamableA (Term pass) where
 
 instance RenamableA (Elim pass) where
     grename r (Var i)         = Var <$> grename r i
-    grename _ (Met m)         = pure (Met m)
+    grename r (Met m xs)      = TODO
     grename r (Rgd x)         = Rgd <$> grename r x
     grename _ (Gbl g)         = pure (Gbl g)
     grename r (App i f t)     = App i <$> grename r f <*> grename r t
@@ -226,7 +227,7 @@ instance ToRaw (Elim pass) where
 
     toRaw ns env (Swh e m ts)    = RSwh (toRaw ns env e) (toRaw ns env m) (ifoldr (\i t acc -> (Right i := toRaw ns env t) : acc) [] ts)
     toRaw _  env (Var i)         = RVar (lookupEnv i env)
-    toRaw _  _   (Met m)         = RMet m
+    toRaw _  env (Met m xs)      = rappPruning env (RMet m) xs
     toRaw _  _   (Rgd r)         = RRgd r
     toRaw _  _   (Gbl g)         = RGbl g
     toRaw ns env (App i f t)     = rapp i (toRaw ns env f) (toRaw ns env t)
@@ -236,3 +237,9 @@ instance ToRaw (Elim pass) where
     toRaw ns env (Spl e)         = RSpl (toRaw ns env e)
     toRaw ns env (Ann t s)       = RAnn (toRaw ns env t) (toRaw ns env s)
     toRaw ns env (WkE w e)       = toRaw ns (weakenEnv w env) e
+
+rappPruning :: Env ctx Name -> Raw -> Pruning ctx -> Raw
+rappPruning ns0 h0 (Pruning wk) = go (weakenEnv wk ns0) h0 where
+    go :: Env ctx Name -> Raw -> Raw
+    go EmptyEnv  h = h
+    go (ts :> t) h = rapp Ecit (go ts h) (RVar t)
