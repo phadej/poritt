@@ -590,3 +590,23 @@ lintElim' ctx (Spl e) = do
 
 lintElim' ctx (WkE w e) =
     lintElim' (weakenLintCtx w ctx) e
+
+lintPruning :: forall ctx ctx' pass. LintCtx pass ctx ctx'
+           -> VTerm pass ctx'
+           -> Pruning ctx
+           -> LintM (VTerm pass ctx')
+lintPruning env ty0 (Pruning wk) =
+    go (weakenEnv wk (tabulateEnv (sizeEnv env.names) id)) ty0
+  where
+    go :: Env ctx'' (Idx ctx) -> VTerm pass ctx' -> LintM (VTerm pass ctx')
+    go EmptyEnv ty = pure ty
+    go (xs :> x) ty = do
+        fty <- go xs ty
+        case force fty of
+            VPie _ j _a b -> do
+                lintIcit env j Ecit
+                let e' = evalElim env.size env.values (Var x)
+                return (run env.size b e')
+            _ -> lintError env "Function application head is not pi-type"
+                [ "actual:" <+> prettyVTermCtx env fty
+                ]
