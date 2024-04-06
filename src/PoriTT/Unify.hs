@@ -9,6 +9,8 @@ import PoriTT.Elab.Monad
 import PoriTT.Enum
 import PoriTT.Eval
 import PoriTT.Global
+import PoriTT.Nice
+import PoriTT.Used
 import PoriTT.Icit
 import PoriTT.LvlMap
 import PoriTT.Meta
@@ -358,10 +360,39 @@ unifySpine ctx headLvl sp1' sp2' = do
             _ -> TODO
 
     go (VSwh sp1 m1 xs) (VSwh sp2 m2 ys) = do
-        TODO sp1 m1 xs sp2 m2 ys
+        (h, ty) <- go sp1 sp2
+        unless (length xs == length ys) $ mismatch "switch case arity" (ppInt (length xs)) (ppInt (length ys))
+        forceM ctx.size ty >>= \case
+            VFin ls -> do
+                m' <- unifyTerm ctx (VPie "_" Ecit (VFin ls) (Closure EmptyEnv Uni)) m1 m2
+                let m :: VElim HasMetas ctx
+                    m = vann m' $ varr (VFin ls) Uni
+
+                zs <- ifor ls $ \i' l -> do
+                    let i = EnumIdx i'
+                    x <- maybe (throwError $ "missing case in throwError"  <+> prettyLabel l) return $ lookupEnumList i xs
+                    y <- maybe (throwError $ "missing case in right" <+> prettyLabel l) return $ lookupEnumList i ys
+                    unifyTerm ctx (evalTerm ctx.size (EmptyEnv :> velim m) (var IZ @@ EIx i)) x y
+
+                return (vswh ctx.size h m' (makeEnumList zs), vemb (vapp ctx.size Ecit m (vemb h)))
+
+            _ -> TODO
 
     go (VDeI sp1 m1 t1 s1 r1) (VDeI sp2 m2 t2 s2 r2) = do
-        TODO sp1 m1 t1 s1 r1 sp2 m2 t2 s2 r2
+        (h, ty) <- go sp1 sp2
+        case force ty of
+            VDsc -> do
+                m' <- unifyTerm ctx (evalTerm ctx.size EmptyEnv         descIndMotive)  m1 m2
+                let m :: VElim HasMetas ctx
+                    m = vann m' $ varr VDsc Uni
+
+                t <- unifyTerm ctx (evalTerm ctx.size (EmptyEnv :> velim m) descIndMotive1) t1 t2
+                s <- unifyTerm ctx (evalTerm ctx.size (EmptyEnv :> velim m) descIndMotiveS) s1 s2
+                r <- unifyTerm ctx (evalTerm ctx.size (EmptyEnv :> velim m) descIndMotiveX) r1 r2
+
+                return (vdei ctx.size h m' t s r, vemb (vapp ctx.size Ecit m (vemb h)))
+
+            _ -> TODO
 
     go (VInd sp1 m1 c1) (VInd sp2 m2 c2) = do
         TODO sp1 m1 c1 sp2 m2 c2
