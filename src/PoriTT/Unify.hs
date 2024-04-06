@@ -569,7 +569,12 @@ unifySpine ctx headLvl sp1' sp2' = do
             _ -> TODO
 
     go (VSpl sp1) (VSpl sp2) = do
-        TODO sp1 sp2
+        (h, ty) <- go sp1 sp2
+        forceM ctx.size ty >>= \case
+            VCod a ->
+                return (vspl ctx.size h, vsplCodArg ctx.size a)
+
+            _ -> TODO
 
     go x y =
         throwError $ "last eliminator mismatch" <+> prettySpinePart ctx x <+> "/=" <+> prettySpinePart ctx y
