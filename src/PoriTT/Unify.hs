@@ -42,6 +42,11 @@ makeClosure s vt = case quoteTerm UnfoldNone (SS s) vt of
     Right t ->  Closure (tabulateEnv s $ \i -> let l = idxToLvl s i in EvalElim (VVar l) (SVar l)) t
     Left err -> error (show err)
 
+newUnifyRigid :: UnifyEnv ctx -> VTerm HasMetas ctx -> ElabM (UnifyEnv ctx, RigidVar ctx)
+newUnifyRigid ctx ty = do
+    r <- newRigidVar
+    return (ctx { rigids = insertRigidMap r ty ctx.rigids }, r)
+
 -------------------------------------------------------------------------------
 -- Pretty
 -------------------------------------------------------------------------------
@@ -259,22 +264,21 @@ unifySElim' l      env a@SInd {} b = notConvertibleSE l env a b
 -- TODO
 unifySElim' l      env a@SSwh {} b = notConvertibleSE l env a b
 
-{-
-unifySElim' l      env (SLet _ t u) (SLet _ s v) = do
-    ty <- unifySElim' l env t s
-    (env', r) <- newRigid env ty
-    let x = EvalElim (VErr TODO) (SRgd r)
-    unifySElim l env' (runSE l env.size u x) (runSE l env.size v x)
--}
+unifySElim' l      env (SLet x t1 s1) (SLet _ t2 s2) = do
+    (ty, t) <- unifySElim' l env t1 t2
+    (env', r) <- newUnifyRigid env ty
+    let v = EvalElim (VErr TODO) (SRgd r)
+    (ty', s) <- unifySElim l env' (runSE l env.size s1 v) (runSE l env.size s2 v)
+    return (ty', SLet x t TODO)
+
 unifySElim' l      env a@SLet {} b = notConvertibleSE l env a b
 
-{-
 unifySElim' _ env (SRgd x) (SRgd y)
     | x == y
     = case lookupRigidMap x env.rigids of
-            Just ty -> return ty
+            Just ty -> return (ty, SRgd x)
             Nothing -> throwError ("rigid variable without a type")
--}
+
 unifySElim' l      env a@SRgd {} b = notConvertibleSE l env a b
 
 unifySElim' l      env (SAnn t1 a1 v) (SAnn t2 a2 _) = do
