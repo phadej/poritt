@@ -42,6 +42,9 @@ newRigid ctx ty = do
     r <- newRigidVar
     return (ctx { rigids = insertRigidMap r ty ctx.rigids }, r)
 
+makeClosure :: Size ctx -> VTerm 'HasMetas (S ctx) -> ClosureT HasMetas ctx
+makeClosure = makeClosure
+
 -------------------------------------------------------------------------------
 -- Pretty
 -------------------------------------------------------------------------------
@@ -213,7 +216,7 @@ unifyTerm' ctx (VSgm _ _ a b) (VMul i t1 s1) (VEmb q)       = do
     t <- unifyTerm ctx a                           t1 (vemb (vsel ctx.size q "fst"))
     s <- unifyTerm ctx (run ctx.size b (vann t a)) s1 (vemb (vsel ctx.size q "snd"))
     return (VMul i t s)
-unifyTerm' ctx (VSgm _ _ a b) (VEmb p)       (VMul i t2 s2)   = do
+unifyTerm' ctx (VSgm _ _ a b) (VEmb p)       (VMul i t2 s2) = do
     t <- unifyTerm ctx a                           (vemb (vsel ctx.size p "fst")) t2
     s <- unifyTerm ctx (run ctx.size b (vann t a)) (vemb (vsel ctx.size p "snd")) s2
     return (VMul i t s)
