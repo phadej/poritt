@@ -13,12 +13,12 @@ import PoriTT.Meta.Var
 
 data MetaEntry
     = Solved (VTerm HasMetas EmptyCtx) (VTerm HasMetas EmptyCtx)
-    | Unsolved (Term HasMetas EmptyCtx) (VTerm HasMetas EmptyCtx)
+    | Unsolved (VTerm HasMetas EmptyCtx)
   deriving Show
 
 metaEntryType :: MetaEntry -> VTerm HasMetas EmptyCtx
 metaEntryType (Solved ty _) = ty
-metaEntryType (Unsolved _ ty)   = ty
+metaEntryType (Unsolved ty) = ty
 
 forceElim :: Size ctx -> MetaMap MetaEntry -> VElim pass ctx -> VElim pass ctx
 forceElim s xs e = case e of

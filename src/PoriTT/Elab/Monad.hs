@@ -19,7 +19,6 @@ import PoriTT.PP
 import PoriTT.Rigid
 import PoriTT.Term
 import PoriTT.Pruning
-import PoriTT.Quote
 import PoriTT.Value
 import PoriTT.Path
 
@@ -83,20 +82,19 @@ instance HasMetaGen ElabState where
 newMeta :: ElabCtx ctx ctx' -> VTerm HasMetas ctx' -> ElabM (Elim HasMetas ctx)
 newMeta ctx ty0 = do
     let Right ty = closeType ctx.size ty0 ctx.path
-    let Right ty' = quoteTerm UnfoldNone SZ ty
     m <- newMetaVar
     s <- get
-    put $! s { metas = insertMetaMap m (Unsolved ty' ty) s.metas }
+    put $! s { metas = insertMetaMap m (Unsolved ty) s.metas }
     return (Met m (Pruning ctx.wk))
 
-solveMeta :: MetaVar -> Term HasMetas EmptyCtx -> VTerm HasMetas EmptyCtx -> ElabM (VTerm HasMetas EmptyCtx)
-solveMeta m t v = do
+solveMeta :: MetaVar -> VTerm HasMetas EmptyCtx -> ElabM (VTerm HasMetas EmptyCtx)
+solveMeta m v = do
     traceM $ "SOLVE " ++ show m ++ " " ++ show v
     s <- get
     case lookupMetaMap m s.metas of
         Nothing              -> throwError $ "Unknown metavariable" <+> prettyMetaVar m
         Just (Solved _ty _v) -> throwError $ "Meta variable" <+> prettyMetaVar m <+> "is already solved:" -- TODO
-        Just (Unsolved _ ty) -> do
+        Just (Unsolved ty)   -> do
             put $! s
                 { metas = insertMetaMap m (Solved ty v) s.metas
                 }

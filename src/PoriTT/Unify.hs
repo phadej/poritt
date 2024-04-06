@@ -477,7 +477,7 @@ solve env m sp rhs = do
     rhs' <- either throwError return $ prenTerm (PRenEnv env.size s' pren m) rhs
     let rhs'' = sizeLams s' rhs'
     let rhs''' = evalTerm SZ EmptyEnv rhs''
-    mty <- solveMeta m rhs'' rhs'''
+    mty <- solveMeta m rhs'''
     vappType env (sinkSize env.size (vann rhs''' mty)) (sinkSize env.size mty) sp
 
 -- TODO: take size, don't use monad, move to eval
