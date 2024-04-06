@@ -123,11 +123,18 @@ unifyElim env a b = do
     -- traceM $ "unifyElim " ++ show [a, b]
     unifyElim' env a b
 
+-- | Beta-eta conversion checking of eliminations.
+unifyNeut :: UnifyEnv ctx -> VNeut HasMetas ctx -> VNeut HasMetas ctx -> ElabM (VElim HasMetas ctx, VTerm HasMetas ctx)
+unifyNeut ctx x y = do
+    -- we define a helper function, so we can trace when needed.
+    -- traceM $ "CONV: " ++ show (ppSep [prettyVTermCtx ctx ty, " |-" <+> prettyVTermCtx ctx x, "=?=" <+> prettyVTermCtx ctx y])
+    unifyNeut' ctx x y
+
 unifySTerm :: Natural -> UnifyEnv ctx -> VTerm HasMetas ctx -> STerm HasMetas ctx -> STerm HasMetas ctx -> ElabM (STerm HasMetas ctx)
 unifySTerm l env ty a b = do
     ty' <- forceM env.size ty
-    traceM $ "unifySTerm: " ++ show (ty', a, b)
-    unifySTerm' l env ty a b
+    -- traceM $ "unifySTerm: " ++ show (ty', a, b)
+    unifySTerm' l env ty' a b
 
 unifySElim :: Natural -> UnifyEnv ctx -> SElim HasMetas ctx -> SElim HasMetas ctx -> ElabM (VTerm HasMetas ctx, SElim HasMetas ctx)
 unifySElim l env a b = do
@@ -210,16 +217,14 @@ unifySElim' _ env (SVar x) (SVar y)
     = mismatch "variable" (prettyName (lookupLvl env x)) (prettyName (lookupLvl env y))
 unifySElim' l env a@SVar {} b = notConvertibleSE l env a b
 
-unifySElim' _      env (SSpN t)   (SSpN s) = do
-    TODO env t s
-{-
-    ty <- convNeut env t s
-    case force ty of
-        VCod a -> return (vsplCodArg env.size a)
+unifySElim' _      env (SSpN e1)   (SSpN e2) = do
+    (e, ty) <- unifyNeut env e1 e2
+    forceM env.size ty >>= \case
+        VCod a -> return (vsplCodArg env.size a, SSpN TODO)
         _ -> throwError ("splice argument does not have Code-type" <+> ppSep
             [ "actual:" <+> prettyVTermCtx env ty
             ])
--}
+
 unifySElim' l env a@SSpN {} b = notConvertibleSE l env a b
 
 unifySElim' NZ     _env (SSpl _ _x) (SSpl _ _y) = do
@@ -473,6 +478,14 @@ unifyElim' _   _              (VErr msg)    = throwError $ ppStr $ show msg
 unifyElim' _   (VFlx _ _)     (VFlx _ _)    = throwError "flex-flex TODO"
 unifyElim' env (VFlx m sp)    e             = solve env m sp (vemb e)
 unifyElim' env e              (VFlx m sp)   = solve env m sp (vemb e)
+
+unifyNeut' :: UnifyEnv ctx -> VNeut HasMetas ctx -> VNeut HasMetas ctx -> ElabM (VElim HasMetas ctx, VTerm HasMetas ctx)
+-- Globals
+unifyNeut' ctx (VNRgd h1 sp1)  (VNRgd h2 sp2) = unifyRigidRigid ctx h1 sp1 h2 sp2
+unifyNeut' _   (VNErr msg)     _             = throwError $ ppStr $ show msg
+unifyNeut' _   _              (VNErr msg)    = throwError $ ppStr $ show msg
+unifyNeut' _   (VNFlx _ _)     _             = throwError "flex c"
+unifyNeut' _   _              (VNFlx _ _)    = throwError "flex d"
 
 -------------------------------------------------------------------------------
 -- Rigid-Rigid

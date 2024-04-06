@@ -55,8 +55,8 @@ unify
 unify ctx ty t s = mapError f (unifyTerm (toUnifyEnv ctx) ty t s)
   where
     f err = elabError' ctx "Couldn't unify terms"
-        [ "expected:" <+> prettyVTermCtx ctx s
-        , "actual:" <+> prettyVTermCtx ctx t
+        [ "expected:" <+> prettyVTermCtx ctx t
+        , "actual:" <+> prettyVTermCtx ctx s
         , err
         ]
 
