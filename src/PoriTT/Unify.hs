@@ -119,7 +119,7 @@ unifyTerm env ty a b = do
 
 unifyElim :: UnifyEnv ctx -> VElim HasMetas ctx -> VElim HasMetas ctx -> ElabM (VElim HasMetas ctx, VTerm HasMetas ctx)
 unifyElim env a b = do
-    traceM $ "unifyElim " ++ show [a, b]
+    -- traceM $ "unifyElim " ++ show [a, b]
     unifyElim' env a b
 
 unifySTerm :: UnifyEnv ctx -> VTerm HasMetas ctx -> STerm HasMetas ctx -> STerm HasMetas ctx -> ElabM (STerm HasMetas ctx)
@@ -487,7 +487,7 @@ vappType env h ty (VApp sp i t) = do
     (h', ty') <- vappType env h ty sp
     case ty' of
         VPie _y j a b -> 
-            return (vapp env.size i h t, run env.size b (vann t a))
+            return (vapp env.size i h' t, run env.size b (vann t a))
 
         _ -> TODO 
 vappType env h ty sp = error (show sp) env h ty
