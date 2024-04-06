@@ -112,9 +112,10 @@ notType ctx ty = throwError $ ppSep
 
 unifyTerm :: UnifyEnv ctx -> VTerm HasMetas ctx -> VTerm HasMetas ctx -> VTerm HasMetas ctx -> ElabM (VTerm HasMetas ctx)
 unifyTerm env ty a b = do
+    ty' <- forceM env.size ty
     a' <- forceM env.size a
     b' <- forceM env.size b
-    unifyTerm' env ty a' b'
+    unifyTerm' env ty' a' b'
 
 unifyElim :: UnifyEnv ctx -> VElim HasMetas ctx -> VElim HasMetas ctx -> ElabM (VElim HasMetas ctx, VTerm HasMetas ctx)
 unifyElim env a b = do
