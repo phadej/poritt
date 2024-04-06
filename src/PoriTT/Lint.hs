@@ -71,11 +71,8 @@ weakenLintCtx :: Wk ctx ctx' -> LintCtx pass ctx' ctx'' -> LintCtx pass ctx ctx'
 weakenLintCtx w (LintCtx vs ts ts' rs ss cs xs xs' ns ms s pp) = LintCtx (weakenEnv w vs) (weakenEnv w ts) ts' rs (weakenEnv w ss) cs (weakenEnv w xs) xs' ns ms s pp
 
 lintForce :: LintCtx pass ctx ctx' -> VTerm pass ctx' -> VTerm pass ctx'
-lintForce ctx t@(VEmb (VFlx m sp)) = case lookupMetaMap m ctx.metas of
-    Nothing -> t
-    Just (Unsolved {}) -> t
-    Just (Solved _ ty _ v) -> vemb (vappSpine ctx.size (sinkSize ctx.size (vann ty v)) sp)
-lintForce _   t                    = t
+lintForce ctx t@(VEmb (VFlx _ _)) = lintForce ctx $ forceTerm ctx.size ctx.metas t
+lintForce _   t                   = force t
 
 -------------------------------------------------------------------------------
 -- Monad
