@@ -380,7 +380,7 @@ unifySpine ctx headLvl sp1' sp2' = do
 
     go (VDeI sp1 m1 t1 s1 r1) (VDeI sp2 m2 t2 s2 r2) = do
         (h, ty) <- go sp1 sp2
-        case force ty of
+        forceM ctx.size ty >>= \case
             VDsc -> do
                 m' <- unifyTerm ctx (evalTerm ctx.size EmptyEnv         descIndMotive)  m1 m2
                 let m :: VElim HasMetas ctx
