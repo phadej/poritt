@@ -396,7 +396,20 @@ unifySpine ctx headLvl sp1' sp2' = do
             _ -> TODO
 
     go (VInd sp1 m1 c1) (VInd sp2 m2 c2) = do
-        TODO sp1 m1 c1 sp2 m2 c2
+        (h, ty) <- go sp1 sp2
+        forceM ctx.size ty >>= \case
+            VMuu d -> do
+                m' <- unifyTerm ctx (VPie "_" Ecit (VMuu d) (Closure EmptyEnv Uni))  m1 m2
+                let m :: VElim HasMetas ctx
+                    m = vann m' $ varr (VMuu d) Uni
+
+                    d' :: VElim HasMetas ctx
+                    d' = vann d VDsc
+
+                c <- unifyTerm ctx (evalTerm ctx.size (EmptyEnv :> velim d' :> velim m) muMotiveT) c1 c2
+                return (vind ctx.size h m' c, vemb (vapp ctx.size Ecit m (vemb h)))
+
+            _ -> TODO
 
     go (VSpl sp1) (VSpl sp2) = do
         TODO sp1 sp2
