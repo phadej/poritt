@@ -346,7 +346,28 @@ unifySpine ctx headLvl sp1' sp2' = do
 
             _ -> TODO
 
-    -- TODO
+    go (VSel sp1 s1) (VSel sp2 s2) = do
+        (h, ty) <- go sp1 sp2
+        unless (s1 == s2) $ mismatch "selector" (prettySelector s1) (prettySelector s2)
+        forceM ctx.size ty >>= \case
+            VSgm _ _ a b -> case s1 of
+                "fst" -> return (vsel ctx.size h s1, a)
+                "snd" -> return (vsel ctx.size h s1, run ctx.size b (vsel ctx.size h "fst"))
+                _     -> throwError $ "conv panic: sigma with" <+> prettySelector s1
+
+            _ -> TODO
+
+    go (VSwh sp1 m1 xs) (VSwh sp2 m2 ys) = do
+        TODO sp1 m1 xs sp2 m2 ys
+
+    go (VDeI sp1 m1 t1 s1 r1) (VDeI sp2 m2 t2 s2 r2) = do
+        TODO sp1 m1 t1 s1 r1 sp2 m2 t2 s2 r2
+
+    go (VInd sp1 m1 c1) (VInd sp2 m2 c2) = do
+        TODO sp1 m1 c1 sp2 m2 c2
+
+    go (VSpl sp1) (VSpl sp2) = do
+        TODO sp1 sp2
 
     go x y =
         throwError $ "last eliminator mismatch" <+> prettySpinePart ctx x <+> "/=" <+> prettySpinePart ctx y
