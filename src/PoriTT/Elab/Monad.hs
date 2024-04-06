@@ -94,13 +94,13 @@ solveMeta m t v = do
     traceM $ "SOLVE " ++ show m ++ " " ++ show v
     s <- get
     case lookupMetaMap m s.metas of
-        Nothing                  -> throwError $ "Unknown metavariable" <+> prettyMetaVar m
-        Just (Solved _ _ty _ _v) -> throwError $ "Meta variable" <+> prettyMetaVar m <+> "is already solved:" -- TODO
-        Just (Unsolved ty ty') -> do
+        Nothing              -> throwError $ "Unknown metavariable" <+> prettyMetaVar m
+        Just (Solved _ty _v) -> throwError $ "Meta variable" <+> prettyMetaVar m <+> "is already solved:" -- TODO
+        Just (Unsolved _ ty) -> do
             put $! s
-                { metas = insertMetaMap m (Solved ty ty' t v) s.metas
+                { metas = insertMetaMap m (Solved ty v) s.metas
                 }
-            return ty'
+            return ty
 
 -------------------------------------------------------------------------------
 -- Running elaboration monad

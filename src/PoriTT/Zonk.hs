@@ -26,6 +26,12 @@ contract :: Wk ctx ctx' -> ZonkEnv ctx' -> ZonkEnv ctx
 contract w (ZonkEnv s ms) = ZonkEnv (contractSize w s) ms
 
 zonkTerm :: ZonkEnv ctx -> Term pass ctx -> Maybe (Term NoMetas ctx)
+zonkTerm env (Emb (Met x pr)) = case lookupMetaMap x env.metas of
+    Just (Solved ty t) -> case quoteElim UnfoldNone env.size (vappPruning env.size (sinkSize env.size (vann t ty)) pr) of
+        Right e -> zonkTerm env (emb e)
+        Left err -> Nothing -- TODO
+    _ -> Nothing
+
 zonkTerm env (Emb e)       = Emb <$> zonkElim env e
 zonkTerm _   Uni           = pure Uni
 zonkTerm _   One           = pure One
@@ -47,8 +53,8 @@ zonkTerm env (Quo t)       = Quo <$> zonkTerm env t
 zonkTerm env (WkT w t)     = WkT w <$> zonkTerm (contract w env) t
 
 zonkElim :: ZonkEnv ctx -> Elim pass ctx -> Maybe (Elim NoMetas ctx)
-zonkElim env (Met x xs)      = case lookupMetaMap x env.metas of
-    Just (Solved _ ty _ t) -> case quoteElim UnfoldNone env.size (vappPruning env.size (sinkSize env.size (vann t ty)) xs) of
+zonkElim env (Met x pr)      = case lookupMetaMap x env.metas of
+    Just (Solved ty t) -> case quoteElim UnfoldNone env.size (vappPruning env.size (sinkSize env.size (vann t ty)) pr) of
         Right e -> zonkElim env e
         Left err -> Nothing -- TODO
     _ -> Nothing

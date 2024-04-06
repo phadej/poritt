@@ -251,7 +251,7 @@ batchFile fn = execStateT $ do
         when (opts.dump.tc && opts.elaborate) $ printDoc $
             ppHanging (ppAnnotate ACmd "tc metas")
                 [ prettyMetaVar m <+> "=" <+> case entry of
-                    Solved _ mty _ mt -> case quoteElim UnfoldNone SZ (vann mt mty) of
+                    Solved mty mt -> case quoteElim UnfoldNone SZ (vann mt mty) of
                         Right me -> prettyElim names EmptyEnv 0 me
                         Left err -> ppStr (show err)
                     t -> ppStr (show t)
