@@ -46,7 +46,7 @@ import PoriTT.Term
 import PoriTT.Used
 import PoriTT.Value
 
-import {-# SOURCE #-} PoriTT.Builtins (allTermGlobal)
+import {-# SOURCE #-} PoriTT.Builtins (allTermGlobal, evalDescGlobal)
 
 -------------------------------------------------------------------------------
 -- VTerm and VElim
@@ -231,7 +231,7 @@ vind :: Size ctx -> VElim pass ctx -> VTerm pass ctx -> VTerm pass ctx -> VElim 
 vind s (VAnn (VCon d) (force -> VMuu dd)) m c = do
     let m'  = vann m  $ varr (VMuu d) Uni
     let dd' = vann dd VDsc
-    let d'  = vann d TODO
+    let d'  = vann d (vemb (vapps s (vgbl s evalDescGlobal) [d, dd]))
     let c'  = vann c $ evalTerm' s (fmap velim (EmptyEnv :> dd' :> m')) muMotiveT
     evalElim' s (fmap velim (EmptyEnv :> dd' :> m' :> d' :> c')) $
         var IZ @@ var I1 @@ (Gbl allTermGlobal @@ var I3 @@ Muu (var I3) @@ var I2 @@ Lam "x" Ecit (Emb (Ind (var IZ) (var I3) (var I1))) @@ var I1)

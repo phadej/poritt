@@ -115,6 +115,7 @@ unifyTerm env ty a b = do
     ty' <- forceM env.size ty
     a' <- forceM env.size a
     b' <- forceM env.size b
+    -- traceM $ "unifyTerm " ++ show (ty', a', b')
     unifyTerm' env ty' a' b'
 
 unifyElim :: UnifyEnv ctx -> VElim HasMetas ctx -> VElim HasMetas ctx -> ElabM (VElim HasMetas ctx, VTerm HasMetas ctx)
@@ -125,12 +126,13 @@ unifyElim env a b = do
 unifySTerm :: Natural -> UnifyEnv ctx -> VTerm HasMetas ctx -> STerm HasMetas ctx -> STerm HasMetas ctx -> ElabM (STerm HasMetas ctx)
 unifySTerm l env ty a b = do
     ty' <- forceM env.size ty
+    traceM $ "unifySTerm: " ++ show (ty', a, b)
     unifySTerm' l env ty a b
 
 unifySElim :: Natural -> UnifyEnv ctx -> SElim HasMetas ctx -> SElim HasMetas ctx -> ElabM (VTerm HasMetas ctx, SElim HasMetas ctx)
 unifySElim l env a b = do
+    -- traceM $ "unifySElim: " ++ show (a, b)
     unifySElim' l env a b
-
 
 unifySTerm' :: Natural -> UnifyEnv ctx -> VTerm HasMetas ctx -> STerm HasMetas ctx -> STerm HasMetas ctx -> ElabM (STerm HasMetas ctx)
 unifySTerm' l env    _       (SEmb x)           (SEmb y) =
@@ -138,6 +140,13 @@ unifySTerm' l env    _       (SEmb x)           (SEmb y) =
 
 unifySTerm' _ _      VUni    SUni               SUni =
     return SUni
+unifySTerm' _ _      VUni    SOne               SOne =
+    return SOne
+unifySTerm' l ctx    VUni    (SPie x i a1 av b1) (SPie _ j a2 _ b2) = do
+    unifyIcit ctx i j
+    a <- unifySTerm' l ctx VUni a1 a2
+    b <- unifySTerm' l (bind x av ctx) VUni (runSTZ l ctx.size b1) (runSTZ l ctx.size b2)
+    return (SPie x i a av b1) -- (makeClosureS ctx.size b))
 unifySTerm' l env ty@VUni    a                  b =
     notConvertibleST l env ty a b
 
@@ -215,11 +224,10 @@ unifySElim' l env a@SSpN {} b = notConvertibleSE l env a b
 
 unifySElim' NZ     _env (SSpl _ _x) (SSpl _ _y) = do
     throwError "nope"
-{-
-unifySElim' (NS l) env (SSpl x _) (SSpl y _) = do
-    ty <- unifySElim l env x y
-    return (vsplCodArg env.size ty, _)
--}
+unifySElim' (NS l) env (SSpl e1 v) (SSpl e2 _) = do
+    (ty, e)  <- unifySElim l env e1 e2
+    return (vsplCodArg env.size ty, SSpl e v)
+
 unifySElim' l env a@SSpl {} b = notConvertibleSE l env a b
 
 unifySElim' l      ctx (SApp i f1 t1 v1) (SApp j f2 t2 _) = do
