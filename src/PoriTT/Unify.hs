@@ -43,7 +43,9 @@ newRigid ctx ty = do
     return (ctx { rigids = insertRigidMap r ty ctx.rigids }, r)
 
 makeClosure :: Size ctx -> VTerm 'HasMetas (S ctx) -> ClosureT HasMetas ctx
-makeClosure = makeClosure
+makeClosure s vt = case quoteTerm UnfoldNone (SS s) vt of
+    Right t ->  Closure (tabulateEnv s $ \i -> let l = idxToLvl s i in EvalElim (VVar l) (SVar l)) t
+    Left err -> error (show err)
 
 -------------------------------------------------------------------------------
 -- Pretty
@@ -160,13 +162,13 @@ unifyTerm' _   VUni VOne             VOne =
 unifyTerm' ctx VUni (VPie x i a1 b1) (VPie _ j a2 b2) = do
     unifyIcit ctx i j
     a <- unifyTerm ctx VUni a1 a2
-    _ <- unifyTerm (bind x a1 ctx) VUni (runZ ctx.size b1) (runZ ctx.size b2)
-    return (VPie x i a b1)
+    b <- unifyTerm (bind x a1 ctx) VUni (runZ ctx.size b1) (runZ ctx.size b2)
+    return (VPie x i a (makeClosure ctx.size b))
 unifyTerm' ctx VUni (VSgm x i a1 b1) (VSgm _ j a2 b2) = do
     unifyIcit ctx i j
     a <- unifyTerm ctx VUni a1 a2
-    _ <- unifyTerm (bind x a1 ctx) VUni (runZ ctx.size b1) (runZ ctx.size b2)
-    return (VSgm x i a b1)
+    b <- unifyTerm (bind x a1 ctx) VUni (runZ ctx.size b1) (runZ ctx.size b2)
+    return (VSgm x i a (makeClosure ctx.size b))
 unifyTerm' ctx VUni (VMuu x)         (VMuu y) =
     VMuu <$> unifyTerm ctx VDsc x y
 unifyTerm' _   VUni (VFin ls1)       (VFin ls2) =
@@ -188,20 +190,20 @@ unifyTerm' ctx VUni x                y              =
     notConvertible ctx VUni x y
 
 -- ⊢ Π (x : A) → B ∋ t ≡ s
-unifyTerm' ctx (VPie _ _ a b) (VLam x i b1)  (VLam _ j b2) = do
+unifyTerm' ctx (VPie _ _ a b) (VLam x i t1)  (VLam _ j t2) = do
     unifyIcit ctx i j
-    _b <- unifyTerm (bind x a ctx) (runZ ctx.size b) (runZ ctx.size b1)  (runZ ctx.size b2)
-    return (VLam x i b1)
-unifyTerm' ctx (VPie _ _ a b) (VLam x i b1)  (VEmb u) = do
-    _b <- unifyTerm (bind x a ctx) (runZ ctx.size b) (runZ ctx.size b1)  (etaLam ctx.size i u)
-    return (VLam x i b1)
-unifyTerm' ctx (VPie _ _ a b) (VEmb t)       (VLam x i b2) = do
-    _b <- unifyTerm (bind x a ctx) (runZ ctx.size b) (etaLam ctx.size i t) (runZ ctx.size b2)
-    return (VLam x i b2)
-unifyTerm' ctx (VPie x i a b) (VEmb t)       (VEmb u) = do
+    t <- unifyTerm (bind x a ctx) (runZ ctx.size b) (runZ ctx.size t1)  (runZ ctx.size t2)
+    return (VLam x i (makeClosure ctx.size t))
+unifyTerm' ctx (VPie _ _ a b) (VLam x i t1)  (VEmb v) = do
+    t <- unifyTerm (bind x a ctx) (runZ ctx.size b) (runZ ctx.size t1)  (etaLam ctx.size i v)
+    return (VLam x i (makeClosure ctx.size t))
+unifyTerm' ctx (VPie _ _ a b) (VEmb u)       (VLam x i t2) = do
+    t <- unifyTerm (bind x a ctx) (runZ ctx.size b) (etaLam ctx.size i u) (runZ ctx.size t2)
+    return (VLam x i (makeClosure ctx.size t))
+unifyTerm' ctx (VPie x i a b) (VEmb u)       (VEmb v) = do
     -- we need to eta expand, so we can unify singletons
-    t' <- unifyTerm (bind x a ctx) (runZ ctx.size b) (etaLam ctx.size i t) (etaLam ctx.size i u)
-    return (VEmb t)
+    t <- unifyTerm (bind x a ctx) (runZ ctx.size b) (etaLam ctx.size i u) (etaLam ctx.size i v)
+    return (VLam x i (makeClosure ctx.size t))
 unifyTerm' ctx (VPie z i a b) x              y               =
     notConvertible ctx (VPie z i a b) x y
 
