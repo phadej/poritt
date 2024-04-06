@@ -37,11 +37,6 @@ data UnifyEnv ctx = UnifyEnv
 bind :: Name -> VTerm HasMetas ctx -> UnifyEnv ctx -> UnifyEnv (S ctx)
 bind x t (UnifyEnv s xs ts gs rs) = UnifyEnv (SS s) (xs :> x) (mapSink ts :> sink t) gs (rigidMapSink (mapSink rs))
 
-newRigid :: UnifyEnv ctx -> VTerm HasMetas ctx -> ElabM (UnifyEnv ctx, RigidVar ctx)
-newRigid ctx ty = do
-    r <- newRigidVar
-    return (ctx { rigids = insertRigidMap r ty ctx.rigids }, r)
-
 makeClosure :: Size ctx -> VTerm 'HasMetas (S ctx) -> ClosureT HasMetas ctx
 makeClosure s vt = case quoteTerm UnfoldNone (SS s) vt of
     Right t ->  Closure (tabulateEnv s $ \i -> let l = idxToLvl s i in EvalElim (VVar l) (SVar l)) t
@@ -132,7 +127,15 @@ unifySTerm l env ty a b = do
     ty' <- forceM env.size ty
     unifySTerm' l env ty a b
 
+unifySElim :: Natural -> UnifyEnv ctx -> SElim HasMetas ctx -> SElim HasMetas ctx -> ElabM (VTerm HasMetas ctx, SElim HasMetas ctx)
+unifySElim l env a b = do
+    unifySElim' l env a b
+
+
 unifySTerm' :: Natural -> UnifyEnv ctx -> VTerm HasMetas ctx -> STerm HasMetas ctx -> STerm HasMetas ctx -> ElabM (STerm HasMetas ctx)
+unifySTerm' l env    _       (SEmb x)           (SEmb y) =
+    SEmb . snd <$> unifySElim l env x y
+
 unifySTerm' _ _      VUni    SUni               SUni =
     return SUni
 unifySTerm' l env ty@VUni    a                  b =
@@ -180,6 +183,93 @@ unifySTerm' _ ctx ty@VMul {} _ _ = notType ctx ty
 unifySTerm' _ ctx ty@VEIx {} _ _ = notType ctx ty
 unifySTerm' _ ctx ty@VQuo {} _ _ = notType ctx ty
 unifySTerm' _ ctx ty@VTht {} _ _ = notType ctx ty
+
+unifySElim' :: Natural -> UnifyEnv ctx -> SElim HasMetas ctx -> SElim HasMetas ctx -> ElabM (VTerm HasMetas ctx, SElim HasMetas ctx)
+unifySElim' _ _ (SErr err) _ = throwError $ ppStr $ show err
+unifySElim' _ _ _ (SErr err) = throwError $ ppStr $ show err
+
+unifySElim' _ env (SGbl x) (SGbl y)
+    | x.name == y.name
+    = return (sinkSize env.size (coeNoMetasVTerm x.typ), SGbl x)
+unifySElim' l env a@SGbl {} b = notConvertibleSE l env a b
+
+unifySElim' _ env (SVar x) (SVar y)
+    | x == y
+    = return (lookupEnv (lvlToIdx env.size x) env.types, SVar x)
+
+    | otherwise
+    = mismatch "variable" (prettyName (lookupLvl env x)) (prettyName (lookupLvl env y))
+unifySElim' l env a@SVar {} b = notConvertibleSE l env a b
+
+unifySElim' _      env (SSpN t)   (SSpN s) = do
+    TODO env t s
+{-
+    ty <- convNeut env t s
+    case force ty of
+        VCod a -> return (vsplCodArg env.size a)
+        _ -> throwError ("splice argument does not have Code-type" <+> ppSep
+            [ "actual:" <+> prettyVTermCtx env ty
+            ])
+-}
+unifySElim' l env a@SSpN {} b = notConvertibleSE l env a b
+
+unifySElim' NZ     _env (SSpl _ _x) (SSpl _ _y) = do
+    throwError "nope"
+{-
+unifySElim' (NS l) env (SSpl x _) (SSpl y _) = do
+    ty <- unifySElim l env x y
+    return (vsplCodArg env.size ty, _)
+-}
+unifySElim' l env a@SSpl {} b = notConvertibleSE l env a b
+
+unifySElim' l      ctx (SApp i f1 t1 v1) (SApp j f2 t2 _) = do
+    unifyIcit ctx i j
+    (ty, f) <- unifySElim l ctx f1 f2
+    forceM ctx.size ty >>= \case
+        VPie _ _i a b -> do
+            t <- unifySTerm l ctx a t1 t2
+            return (run ctx.size b (vann v1 ty), SApp i f t v1)
+        _ -> throwError ("Function application head does not have a pi-type" <+> ppSep
+            [ "actual:" <+> prettyVTermCtx ctx ty
+            ])
+unifySElim' l      env a@SApp {} b = notConvertibleSE l env a b
+
+-- TODO
+unifySElim' l      env a@SSel {} b = notConvertibleSE l env a b
+
+-- TODO
+unifySElim' l      env a@SDeI {} b = notConvertibleSE l env a b
+
+-- TODO
+unifySElim' l      env a@SInd {} b = notConvertibleSE l env a b
+
+-- TODO
+unifySElim' l      env a@SSwh {} b = notConvertibleSE l env a b
+
+{-
+unifySElim' l      env (SLet _ t u) (SLet _ s v) = do
+    ty <- unifySElim' l env t s
+    (env', r) <- newRigid env ty
+    let x = EvalElim (VErr TODO) (SRgd r)
+    unifySElim l env' (runSE l env.size u x) (runSE l env.size v x)
+-}
+unifySElim' l      env a@SLet {} b = notConvertibleSE l env a b
+
+{-
+unifySElim' _ env (SRgd x) (SRgd y)
+    | x == y
+    = case lookupRigidMap x env.rigids of
+            Just ty -> return ty
+            Nothing -> throwError ("rigid variable without a type")
+-}
+unifySElim' l      env a@SRgd {} b = notConvertibleSE l env a b
+
+unifySElim' l      env (SAnn t1 a1 v) (SAnn t2 a2 _) = do
+    a <- unifySTerm l env VUni a2 a2
+    t <- unifySTerm l env v    t1 t2
+    return (v, SAnn t1 a1 v)
+unifySElim' l      env a@SAnn {} b = notConvertibleSE l env a b
+
 
 
 -------------------------------------------------------------------------------
