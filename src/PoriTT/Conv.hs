@@ -407,7 +407,8 @@ convSpine ctx headLvl sp1' sp2' = do
 -------------------------------------------------------------------------------
 
 convSTerm :: Natural -> ConvCtx pass ctx -> VTerm pass ctx -> STerm pass ctx -> STerm pass ctx -> ConvM ()
-convSTerm l env ty x y = convSTerm' l env ty x y
+convSTerm l env ty x y = do
+    convSTerm' l env ty x y
 
 convSTerm' :: Natural -> ConvCtx pass ctx -> VTerm pass ctx -> STerm pass ctx -> STerm pass ctx -> ConvM ()
 convSTerm' l env    _       (SEmb x)           (SEmb y) =
@@ -437,7 +438,6 @@ convSTerm' _ _      VOne    STht               STht =
 convSTerm' l env ty@VOne    a                  b =
     notConvertibleST l env ty a b
 
--- TODO
 convSTerm' _ _      (VFin _) (SEIx x)          (SEIx y)
     | x == y = return ()
 convSTerm' l env ty@VFin {}  a                 b =

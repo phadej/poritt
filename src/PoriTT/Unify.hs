@@ -128,7 +128,59 @@ unifyElim env a b = do
     unifyElim' env a b
 
 unifySTerm :: Natural -> UnifyEnv ctx -> VTerm HasMetas ctx -> STerm HasMetas ctx -> STerm HasMetas ctx -> ElabM (STerm HasMetas ctx)
-unifySTerm _ _ _ty a _b = return a
+unifySTerm l env ty a b = do
+    ty' <- forceM env.size ty
+    unifySTerm' l env ty a b
+
+unifySTerm' :: Natural -> UnifyEnv ctx -> VTerm HasMetas ctx -> STerm HasMetas ctx -> STerm HasMetas ctx -> ElabM (STerm HasMetas ctx)
+unifySTerm' _ _      VUni    SUni               SUni =
+    return SUni
+unifySTerm' l env ty@VUni    a                  b =
+    notConvertibleST l env ty a b
+
+-- TODO
+unifySTerm' l env ty@VPie {} a                  b =
+    notConvertibleST l env ty a b
+
+-- TODO
+unifySTerm' l env ty@VSgm {} a                  b =
+    notConvertibleST l env ty a b
+
+unifySTerm' _ _      VOne    STht               STht =
+    return STht
+unifySTerm' l env ty@VOne    a                  b =
+    notConvertibleST l env ty a b
+
+unifySTerm' _ _      (VFin _) (SEIx x)          (SEIx y)
+    | x == y = return (SEIx x)
+unifySTerm' l env ty@VFin {}  a                 b =
+    notConvertibleST l env ty a b
+
+-- TODO
+unifySTerm' l env ty@VDsc {} a                  b =
+    notConvertibleST l env ty a b
+
+-- TODO
+unifySTerm' l env ty@VMuu {} a                  b =
+    notConvertibleST l env ty a b
+
+-- TODO
+unifySTerm' l env ty@VCod {} a                  b =
+    notConvertibleST l env ty a b
+
+unifySTerm' l env ty@VEmb {} a                  b =
+    notConvertibleST l env ty a b
+
+unifySTerm' _ ctx ty@VLam {} _ _ = notType ctx ty
+unifySTerm' _ ctx ty@VDe1 {} _ _ = notType ctx ty
+unifySTerm' _ ctx ty@VDeS {} _ _ = notType ctx ty
+unifySTerm' _ ctx ty@VDeX {} _ _ = notType ctx ty
+unifySTerm' _ ctx ty@VCon {} _ _ = notType ctx ty
+unifySTerm' _ ctx ty@VMul {} _ _ = notType ctx ty
+unifySTerm' _ ctx ty@VEIx {} _ _ = notType ctx ty
+unifySTerm' _ ctx ty@VQuo {} _ _ = notType ctx ty
+unifySTerm' _ ctx ty@VTht {} _ _ = notType ctx ty
+
 
 -------------------------------------------------------------------------------
 -- Workers
