@@ -39,11 +39,10 @@ import PoriTT.Base
 import PoriTT.Enum
 import PoriTT.Global
 import PoriTT.Icit
-import PoriTT.Pruning
 import PoriTT.Name
 import PoriTT.Nice
-import PoriTT.Term
 import PoriTT.Pruning
+import PoriTT.Term
 import PoriTT.Used
 import PoriTT.Value
 

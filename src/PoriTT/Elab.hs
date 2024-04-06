@@ -224,7 +224,7 @@ insertIcitApp env Ecit (f, ty) = do
     case ty' of
         VPie _y Icit a b -> do
             m <- newMeta env a
-            let m' = evalElim env.size env.values m 
+            let m' = evalElim env.size env.values m
             insertIcitApp env Ecit (App Icit f (Emb m), run env.size b m')
 
         _ -> return (f, ty')

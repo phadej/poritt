@@ -6,10 +6,10 @@ module PoriTT.Zonk (
 ) where
 
 import PoriTT.Base
-import PoriTT.Term
-import PoriTT.Meta
 import PoriTT.Eval
+import PoriTT.Meta
 import PoriTT.Quote
+import PoriTT.Term
 
 data ZonkEnv ctx = ZonkEnv
     { size  :: !(Size ctx)

@@ -28,7 +28,6 @@ import PoriTT.Check
 import PoriTT.Conv
 import PoriTT.Distill
 import PoriTT.Elab
-import PoriTT.Meta
 import PoriTT.Eval
 import PoriTT.ExceptState
 import PoriTT.Global
@@ -37,6 +36,7 @@ import PoriTT.Info
 import PoriTT.Lexer
 import PoriTT.Lint
 import PoriTT.Macro
+import PoriTT.Meta
 import PoriTT.Name
 import PoriTT.Nice
 import PoriTT.Opts

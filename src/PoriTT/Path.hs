@@ -4,11 +4,11 @@ module PoriTT.Path (
 ) where
 
 import PoriTT.Base
-import PoriTT.Name
-import PoriTT.Term
 import PoriTT.Icit
-import PoriTT.Value
+import PoriTT.Name
 import PoriTT.Quote
+import PoriTT.Term
+import PoriTT.Value
 
 -- | A "context zipper", used for creating types for fresh metas.
 type Path :: Ctx -> Ctx -> Ctx -> Type

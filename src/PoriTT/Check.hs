@@ -20,8 +20,8 @@ import PoriTT.ExceptState
 import PoriTT.Global
 import PoriTT.Icit
 import PoriTT.Loc
-import PoriTT.Name
 import PoriTT.Meta
+import PoriTT.Name
 import PoriTT.Nice
 import PoriTT.PP
 import PoriTT.Quote

@@ -15,11 +15,11 @@ import Unsafe.Coerce (unsafeCoerce)
 
 import PoriTT.Base
 import PoriTT.Enum
-import PoriTT.Pruning
 import PoriTT.Icit
 import PoriTT.Meta.Var
 import PoriTT.Name
 import PoriTT.PP
+import PoriTT.Pruning
 import PoriTT.Raw
 import PoriTT.Rigid
 

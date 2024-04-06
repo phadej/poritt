@@ -9,17 +9,17 @@ import PoriTT.Elab.Monad
 import PoriTT.Enum
 import PoriTT.Eval
 import PoriTT.Global
-import PoriTT.Nice
-import PoriTT.Used
 import PoriTT.Icit
 import PoriTT.LvlMap
 import PoriTT.Meta
 import PoriTT.Name
+import PoriTT.Nice
 import PoriTT.PP
 import PoriTT.PRen
 import PoriTT.Quote
 import PoriTT.Rigid
 import PoriTT.Term
+import PoriTT.Used
 import PoriTT.Value
 
 -------------------------------------------------------------------------------
@@ -127,8 +127,8 @@ unifyElim env a b = do
     -- traceM $ "unifyElim " ++ show [a, b]
     unifyElim' env a b
 
-unifySTerm :: UnifyEnv ctx -> VTerm HasMetas ctx -> STerm HasMetas ctx -> STerm HasMetas ctx -> ElabM (STerm HasMetas ctx)
-unifySTerm _ _ty a _b = return a
+unifySTerm :: Natural -> UnifyEnv ctx -> VTerm HasMetas ctx -> STerm HasMetas ctx -> STerm HasMetas ctx -> ElabM (STerm HasMetas ctx)
+unifySTerm _ _ _ty a _b = return a
 
 -------------------------------------------------------------------------------
 -- Workers
@@ -272,9 +272,12 @@ unifyTerm' ctx (VMuu d) x              y            =
     notConvertible ctx (VMuu d) x y
 
 -- ⊢ Code a ∋ t ≡ s
-unifyTerm' ctx (VCod a) (VQuo x _)     (VQuo y _)   = do
-    TODO ctx a x y
-    -- unifySTerm NZ ctx (vsplCodArg ctx.size a) x y
+unifyTerm' ctx (VCod a) (VQuo t1 v1)     (VQuo t2 v2) = do
+    let a' = vsplCodArg ctx.size a
+    v <- unifyTerm ctx a' v1 v2
+    t <- unifySTerm NZ ctx a' t1 t2
+    return (VQuo t v)
+
 unifyTerm' ctx (VCod _) (VEmb e1)      (VEmb e2)   = do
     unifyEmbTerm ctx e1 e2
 unifyTerm' ctx (VCod a) x              y            = notConvertible ctx (VCod a) x y
@@ -511,8 +514,8 @@ vappType _   h ty VNil = pure (h, ty)
 vappType env h ty (VApp sp i t) = do
     (h', ty') <- vappType env h ty sp
     case ty' of
-        VPie _y j a b -> 
+        VPie _y j a b ->
             return (vapp env.size i h' t, run env.size b (vann t a))
 
-        _ -> TODO 
+        _ -> TODO
 vappType env h ty sp = error (show sp) env h ty

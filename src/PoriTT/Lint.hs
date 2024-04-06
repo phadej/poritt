@@ -17,8 +17,8 @@ import PoriTT.Icit
 import PoriTT.Meta
 import PoriTT.Name
 import PoriTT.Nice
-import PoriTT.Pruning
 import PoriTT.PP
+import PoriTT.Pruning
 import PoriTT.Quote
 import PoriTT.Rigid
 import PoriTT.Stage
