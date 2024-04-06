@@ -209,11 +209,7 @@ batchFile fn = execStateT $ do
                 res <- evalCheckM (checkElim (emptyCheckCtx names) w)
                 return (emptyMetaMap, res)
 
-        when (opts.dump.tc && opts.elaborate) $ printDoc $
-            ppHanging (ppAnnotate ACmd "tc metas")
-                [ prettyMetaVar m <+> "=" <+> ppStr (show entry)
-                | (m, entry) <- metaMapToList metas
-                ]
+        when (opts.dump.tc && opts.elaborate) $ printMetas names metas
         when opts.dump.tc $ printDoc $
             ppSoftHanging (ppAnnotate ACmd "tc") [ prettyElim names EmptyEnv 0 e0 ]
         lintE "tc" metas e0 et'
@@ -248,15 +244,7 @@ batchFile fn = execStateT $ do
                 res <- evalCheckM (checkTerm (emptyCheckCtx names) w (coeNoMetasVTerm et))
                 return (emptyMetaMap, res)
 
-        when (opts.dump.tc && opts.elaborate) $ printDoc $
-            ppHanging (ppAnnotate ACmd "tc metas")
-                [ prettyMetaVar m <+> "=" <+> case entry of
-                    Solved mty mt -> case quoteElim UnfoldNone SZ (vann mt mty) of
-                        Right me -> prettyElim names EmptyEnv 0 me
-                        Left err -> ppStr (show err)
-                    t -> ppStr (show t)
-                | (m, entry) <- metaMapToList metas
-                ]
+        when (opts.dump.tc && opts.elaborate) $ printMetas names metas
         when opts.dump.tc $ printDoc $ ppSoftHanging (ppAnnotate ACmd "tc") [ prettyTerm names EmptyEnv 0 t0 ]
         lintT "tc" metas t0 et
 
@@ -621,3 +609,15 @@ printError :: Doc -> MainM a
 printError msg = do
     printDoc' $ ppAnnotate AErr "Error:" <+> msg
     lift exitFailure
+
+printMetas :: NameScope -> MetaMap MetaEntry -> MainM ()
+printMetas names metas = printDoc $ ppHanging (ppAnnotate ACmd "tc metas")
+    [ case entry of
+        Solved mty mt -> prettyMetaVar m <+> ":" <+> pt mty <+> "=" <+> pt mt
+        Unsolved mty -> prettyMetaVar m <+> ":" <+> pt mty
+    | (m, entry) <- metaMapToList metas
+    ]
+  where
+    pt t = case quoteTerm UnfoldNone SZ t of
+        Right t' -> prettyTerm names EmptyEnv 0 t'
+        Left err -> ppStr (show err)
