@@ -26,6 +26,7 @@ contract :: Wk ctx ctx' -> ZonkEnv ctx' -> ZonkEnv ctx
 contract w (ZonkEnv s ms) = ZonkEnv (contractSize w s) ms
 
 zonkTerm :: ZonkEnv ctx -> Term pass ctx -> Maybe (Term NoMetas ctx)
+-- we handle zonk of embedded meta specially, to avoid extra type annotations
 zonkTerm env (Emb (Met x pr)) = case lookupMetaMap x env.metas of
     Just (Solved ty t) -> case quoteElim UnfoldNone env.size (vappPruning env.size (sinkSize env.size (vann t ty)) pr) of
         Right e -> zonkTerm env (emb e)
