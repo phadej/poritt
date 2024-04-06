@@ -203,17 +203,24 @@ unifyTerm' ctx (VPie z i a b) x              y               =
     notConvertible ctx (VPie z i a b) x y
 
 -- ⊢ Σ (z : A) × B ∋ t ≡ s
-unifyTerm' ctx (VSgm _ _ a b) (VMul i x1 y1) (VMul j x2 y2) = unifyIcit ctx i j >> unifyTerm ctx a x1 x2 >> unifyTerm ctx (run ctx.size b (vann x1 a)) y1 y2
-unifyTerm' ctx (VSgm _ _ a b) (VMul _ x y)   (VEmb q)       = unifyTerm ctx a x (vemb (vsel ctx.size q "fst")) >> unifyTerm ctx (run ctx.size b (vann x a)) y (vemb (vsel ctx.size q "snd"))
-unifyTerm' ctx (VSgm _ _ a b) (VEmb p)       (VMul _ x y)   = unifyTerm ctx a (vemb (vsel ctx.size p "fst")) x >> unifyTerm ctx (run ctx.size b (vann x a)) (vemb (vsel ctx.size p "snd")) y
-unifyTerm' ctx (VSgm _ _ a b) (VEmb p)       (VEmb q)       = do
-    TODO ctx a b p q
-{-
-    let p1 = vsel ctx.size p "fst"
-    unifyTerm ctx a                   (vemb p1)                      (vemb (vsel ctx.size q "fst"))
-    unifyTerm ctx (run ctx.size b p1) (vemb (vsel ctx.size p "snd")) (vemb (vsel ctx.size q "snd"))
--}
--- unifyTerm' ctx (VSgm _ _ _) (VRgd x sp1)   (VRgd y sp2)   = unifyRigidRigid ctx x sp1 y sp2
+unifyTerm' ctx (VSgm _ _ a b) (VMul i t1 s1) (VMul j t2 s2) = do
+    -- TODO: assert icity
+    unifyIcit ctx i j
+    t <- unifyTerm ctx a                           t1 t2
+    s <- unifyTerm ctx (run ctx.size b (vann t a)) s1 s2
+    return (VMul i t s)
+unifyTerm' ctx (VSgm _ _ a b) (VMul i t1 s1) (VEmb q)       = do
+    t <- unifyTerm ctx a                           t1 (vemb (vsel ctx.size q "fst"))
+    s <- unifyTerm ctx (run ctx.size b (vann t a)) s1 (vemb (vsel ctx.size q "snd"))
+    return (VMul i t s)
+unifyTerm' ctx (VSgm _ _ a b) (VEmb p)       (VMul i t2 s2)   = do
+    t <- unifyTerm ctx a                           (vemb (vsel ctx.size p "fst")) t2
+    s <- unifyTerm ctx (run ctx.size b (vann t a)) (vemb (vsel ctx.size p "snd")) s2
+    return (VMul i t s)
+unifyTerm' ctx (VSgm _ i a b) (VEmb p)       (VEmb q)       = do
+    t <- unifyTerm ctx a                           (vemb (vsel ctx.size p "fst")) (vemb (vsel ctx.size q "fst"))
+    s <- unifyTerm ctx (run ctx.size b (vann t a)) (vemb (vsel ctx.size p "snd")) (vemb (vsel ctx.size q "snd"))
+    return (VMul i t s)
 unifyTerm' ctx (VSgm z i a b) x              y              = notConvertible ctx (VSgm z i a b) x y
 
 -- ⊢ Unit ∋ t ≡ s
