@@ -3,13 +3,19 @@ module Main (main) where
 import Control.Exception (handle)
 import Control.Monad     (forM, void)
 import Data.List         (sort)
+import Data.Either (partitionEithers)
 import System.Directory  (doesDirectoryExist, doesFileExist, listDirectory, setCurrentDirectory)
 import System.Exit       (ExitCode (..))
 import System.FilePath   (dropExtension, takeExtension, takeFileName, (-<.>), (</>))
 import System.IO         (Handle, IOMode (WriteMode), hPutStrLn, withFile)
 import System.IO.Temp    (withSystemTempDirectory)
-import Test.Tasty        (TestTree, defaultMain, testGroup)
+import Test.Tasty        (TestTree, TestName, defaultMain, testGroup)
 import Test.Tasty.Golden (goldenVsFileDiff)
+import Data.Map (Map)
+
+import qualified Data.Map as Map
+import qualified Data.Aeson as A
+import qualified Data.ByteString as BS
 
 import PoriTT.Distill (DistillOpts (..))
 import PoriTT.Main    (batchFile, builtinEnvironment)
@@ -19,23 +25,18 @@ import PoriTT.PP      (PPOpts' (..))
 main :: IO ()
 main = do
     cwd
-    examples <- sort . filter (\fn -> takeExtension fn == ".ptt") <$> listFilesRecursively "examples"
+    tree' <- sort <$> fileTree "examples"
+    tree <- readConfigs tree'
     withSystemTempDirectory "poritt-tests" $ \tmpDir -> do
-        defaultMain $ testGroup "poritt" $ regroup
-            [   ( goldenVsFileDiff (dropExtension ex) diff out tmp $
-                    withFile tmp WriteMode $ \hdl -> do
-                        env <- builtinEnvironment hdl opts
-                        handle (exitCode hdl) $ void $ batchFile inp env
-
-                , goldenVsFileDiff (dropExtension ex) diff out tmp $
-                    withFile tmp WriteMode $ \hdl -> do
-                        env <- builtinEnvironment hdl opts { elaborate = True }
-                        handle (exitCode hdl) $ void $ batchFile inp env
-                )
-            | ex <- examples
-            , let tmp = tmpDir </> takeFileName ex -<.> "tmp"
-            , let out = "examples" </> ex -<.> "stdout"
-            , let inp = "examples" </> ex
+        defaultMain $ testGroup "poritt"
+            [ testGroup dir $ case Map.toList configs of
+                [ ("", config) ] -> tests tmpDir dir config files
+                configs' ->
+                    [ testGroup name $ tests tmpDir dir config files
+                    | (name, config) <- configs'
+                    ]
+            | (dir, configs, files) <- tree
+            , not (null configs)
             ]
   where
     opts = defaultOpts
@@ -45,31 +46,67 @@ main = do
         , distillOpts = DistillOpts True True True True True
         }
 
-    diff ref new = ["diff", "-u", ref, new]
+    tests :: FilePath -> FilePath -> Config -> [FilePath] -> [TestTree]
+    tests tmpDir dir config files =
+        [ goldenVsFileDiff (dropExtension ex) diff out tmp $
+            withFile tmp WriteMode $ \hdl -> do
+                env <- builtinEnvironment hdl opts
+                handle (exitCode config hdl) $ void $ batchFile inp env
+        | ex <- files
+        , let tmp = tmpDir </> takeFileName ex -<.> "tmp" -- TODO: variant
+        , let out = dir </> ex -<.> "stdout"
+        , let inp = dir </> ex                
+        ]
 
-    regroup :: [(TestTree, TestTree)] -> [TestTree]
-    regroup xs = case unzip xs of
-        (ys, zs) ->
-            [ testGroup "conv" ys
-            , testGroup "elab" zs
-            ]
+diff :: FilePath -> FilePath -> [FilePath]
+diff ref new = ["diff", "-u", ref, new]
 
-    exitCode :: Handle -> ExitCode -> IO ()
-    exitCode hdl (ExitFailure _) = hPutStrLn hdl "ExitFailure"
-    exitCode _ _               = return ()
+exitCode :: Config -> Handle -> ExitCode -> IO ()
+exitCode cfg hdl (ExitFailure _)
+    | cfg.expectFailure = hPutStrLn hdl "ExitFailure"
+    | otherwise         = fail "unexpected failure exit code"
+exitCode cfg _   ExitSuccess  
+    | cfg.expectFailure = fail "unexpected success exit code"
+    | otherwise         = return ()
 
-listFilesRecursively :: FilePath -> IO [FilePath]
-listFilesRecursively = go "" where
-    go :: FilePath -> FilePath -> IO [FilePath]
-    go pfx dir = do
-        xs <- listDirectory dir
-        fmap concat $ forM xs $ \x -> do
-            does <- doesDirectoryExist (dir </> x)
-            if does
-            then go (pfx </> x) (dir </> x)
-            else return [pfx </> x]
+readConfigs :: [(FilePath, [FilePath])] -> IO [(FilePath, Map TestName Config, [FilePath])]
+readConfigs = traverse $ \(dir, files) -> do
+    let configFileName = "config.json"
+    configs <-
+        if configFileName `elem` files
+        then do
+            contents <- BS.readFile (dir </> configFileName)
+            A.throwDecodeStrict contents 
+        else return $ Map.singleton "" defaultConfig
+    return (dir, configs, filter (\ex -> takeExtension ex == ".ptt") files)
 
+fileTree :: FilePath -> IO [(FilePath, [FilePath])]
+fileTree dir = do
+    es <- listDirectory dir
+    (recs, fs) <- fmap partitionEithers $ forM es $ \e -> do
+        does <- doesDirectoryExist (dir </> e)
+        if does
+        then Left <$> fileTree (dir </> e)
+        else return (Right e)
+
+    return $ (dir, sort fs) : concat recs
+
+-- | Change directory in multipackage projects
 cwd :: IO ()
 cwd = do
     here <- doesFileExist "poritt.cabal"
     if here then return () else setCurrentDirectory "poritt"
+
+data Config = Config
+    { expectFailure :: Bool
+    }
+
+defaultConfig :: Config
+defaultConfig = Config
+    { expectFailure = False
+    }
+
+instance A.FromJSON Config where
+    parseJSON = A.withObject "Config" $ \obj -> pure Config
+        <*> obj A..:? "expectFailure" A..!= False
+ 

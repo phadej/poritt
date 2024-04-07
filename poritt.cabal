@@ -183,10 +183,13 @@ test-suite poritt-tests
   -- library dependencies
   build-depends:
     , base
+    , bytestring
+    , containers
     , poritt
 
   -- test dependencies
   build-depends:
+    , aeson         ^>=2.2.1.0
     , directory     ^>=1.3.6.2
     , filepath      ^>=1.4.2.2
     , tasty         ^>=1.5
