@@ -1,0 +1,6 @@
+include "../lib/leibniz.ptt"
+
+type refl {_} _ : Id {_} Unit Unit
+
+-- TODO: add more tests
+

@@ -1,4 +1,4 @@
-Error: examples/staging/hasty.ptt:4:56: Variable used at different stage
+Error: examples/staging/errors/hasty.ptt:4:56: Variable used at different stage
   • variable: A
   • expected: 1
   • actual:   0

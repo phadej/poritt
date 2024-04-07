@@ -2,24 +2,24 @@ module Main (main) where
 
 import Control.Exception (handle)
 import Control.Monad     (forM, void)
+import Data.Either       (partitionEithers)
 import Data.List         (sort)
-import Data.Either (partitionEithers)
+import Data.Map          (Map)
 import System.Directory  (doesDirectoryExist, doesFileExist, listDirectory, setCurrentDirectory)
 import System.Exit       (ExitCode (..))
 import System.FilePath   (dropExtension, takeExtension, takeFileName, (-<.>), (</>))
 import System.IO         (Handle, IOMode (WriteMode), hPutStrLn, withFile)
 import System.IO.Temp    (withSystemTempDirectory)
-import Test.Tasty        (TestTree, TestName, defaultMain, testGroup)
+import Test.Tasty        (TestName, TestTree, defaultMain, testGroup)
 import Test.Tasty.Golden (goldenVsFileDiff)
-import Data.Map (Map)
 
-import qualified Data.Map as Map
-import qualified Data.Aeson as A
+import qualified Data.Aeson      as A
 import qualified Data.ByteString as BS
+import qualified Data.Map        as Map
 
 import PoriTT.Distill (DistillOpts (..))
 import PoriTT.Main    (batchFile, builtinEnvironment)
-import PoriTT.Opts    (Opts (..), ThreeWay (..), defaultOpts)
+import PoriTT.Opts    (Opts (..), ThreeWay (..), defaultOpts, parseOptsEndo)
 import PoriTT.PP      (PPOpts' (..))
 
 main :: IO ()
@@ -30,7 +30,7 @@ main = do
     withSystemTempDirectory "poritt-tests" $ \tmpDir -> do
         defaultMain $ testGroup "poritt"
             [ testGroup dir $ case Map.toList configs of
-                [ ("", config) ] -> tests tmpDir dir config files
+                [ (_, config) ] -> tests tmpDir dir config files
                 configs' ->
                     [ testGroup name $ tests tmpDir dir config files
                     | (name, config) <- configs'
@@ -50,12 +50,12 @@ main = do
     tests tmpDir dir config files =
         [ goldenVsFileDiff (dropExtension ex) diff out tmp $
             withFile tmp WriteMode $ \hdl -> do
-                env <- builtinEnvironment hdl opts
+                env <- builtinEnvironment hdl $ config.optsEndo opts
                 handle (exitCode config hdl) $ void $ batchFile inp env
         | ex <- files
         , let tmp = tmpDir </> takeFileName ex -<.> "tmp" -- TODO: variant
         , let out = dir </> ex -<.> "stdout"
-        , let inp = dir </> ex                
+        , let inp = dir </> ex
         ]
 
 diff :: FilePath -> FilePath -> [FilePath]
@@ -65,18 +65,18 @@ exitCode :: Config -> Handle -> ExitCode -> IO ()
 exitCode cfg hdl (ExitFailure _)
     | cfg.expectFailure = hPutStrLn hdl "ExitFailure"
     | otherwise         = fail "unexpected failure exit code"
-exitCode cfg _   ExitSuccess  
+exitCode cfg _   ExitSuccess
     | cfg.expectFailure = fail "unexpected success exit code"
     | otherwise         = return ()
 
 readConfigs :: [(FilePath, [FilePath])] -> IO [(FilePath, Map TestName Config, [FilePath])]
 readConfigs = traverse $ \(dir, files) -> do
-    let configFileName = "config.json"
+    let configFileName = "config.json" -- TODO: make mandatory
     configs <-
         if configFileName `elem` files
         then do
             contents <- BS.readFile (dir </> configFileName)
-            A.throwDecodeStrict contents 
+            A.throwDecodeStrict contents
         else return $ Map.singleton "" defaultConfig
     return (dir, configs, filter (\ex -> takeExtension ex == ".ptt") files)
 
@@ -99,14 +99,20 @@ cwd = do
 
 data Config = Config
     { expectFailure :: Bool
+    , optsEndo      :: Opts -> Opts
     }
 
 defaultConfig :: Config
 defaultConfig = Config
     { expectFailure = False
+    , optsEndo      = id
     }
 
 instance A.FromJSON Config where
-    parseJSON = A.withObject "Config" $ \obj -> pure Config
-        <*> obj A..:? "expectFailure" A..!= False
- 
+    parseJSON = A.withObject "Config" $ \obj -> do
+        expectFailure <- obj A..:? "expectFailure" A..!= False
+        optsEndo <- do
+            obj A..:? "options" >>= \case
+                Nothing   -> return id
+                Just strs -> either fail return (parseOptsEndo strs)
+        return Config {..}

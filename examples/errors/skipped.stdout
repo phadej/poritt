@@ -1,8 +1,8 @@
-include "lib/leibniz.ptt"
+include "../lib/leibniz.ptt"
 
-end-of-file "lib/leibniz.ptt"
+end-of-file "../lib/leibniz.ptt"
 
-Error: examples/skipped.ptt:3:23: Skipped term
+Error: examples/errors/skipped.ptt:3:23: Skipped term
   • type: U
   • When checking that _ has type U
   • When infering type of Id {_}

@@ -1,4 +1,4 @@
-Error: examples/staging/tardy.ptt:1:46: Variable used at different stage
+Error: examples/staging/errors/tardy.ptt:1:46: Variable used at different stage
   • variable: A
   • expected: -1
   • actual:   0
