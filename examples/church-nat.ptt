@@ -28,4 +28,4 @@ eval mult (succ two) two
 eval (\ n -> mult n (succ two)) : Nat -> Nat
 eval (\ n -> mult (succ two) n) : Nat -> Nat
 
-eval mult ?foo
+-- eval mult ?foo

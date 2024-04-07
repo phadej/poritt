@@ -1,6 +1,0 @@
-section "keywords like :true and :false are values of type Tag"
-
-type :true
-type :false
-
-type :true : Tag

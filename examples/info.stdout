@@ -3,6 +3,3 @@ define id : ∀ (A : U) → A → A = λ _ x ↦ x
 defined id
   : ∀ (A : U) → A → A
   = λ _ x ↦ x
-
-Error: nat is unknown
-ExitFailure

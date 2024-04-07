@@ -118,7 +118,7 @@ define ifte : Bool -> forall (A : U) -> A -> A -> A
 
 -- Empty set is... empty.
 
-define Empty : U = {}
+define Empty : U = #[]
 
 define absurd : Empty -> forall (A : U) -> A
               = \ x A -> switch x (\ _ -> A) {}
@@ -167,8 +167,8 @@ define NatD : Desc = `S NatC NatF
 define Nat : U = mu NatD
 
 -- And natural number constructors look like:
-define zero : Nat        =        con (:zero , :tt)
-define succ : Nat -> Nat = \ n -> con (:succ , n , :tt)
+define zero : Nat        =        con (:zero , tt)
+define succ : Nat -> Nat = \ n -> con (:succ , n , tt)
 
 -- for the rest see nat.ptt, and for list examples see list.ptt
 -- It is worth mentioning that we can define *dependent*

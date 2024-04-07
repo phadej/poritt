@@ -36,9 +36,3 @@ eval (λ n ↦ mult n (succ two)) : Nat → Nat
 eval (λ n ↦ mult (succ two) n) : Nat → Nat
   = λ n ↦ n Nat succ (plus n (plus n zero))
   : Nat → Nat
-
-Error: examples/church-nat.ptt:31:10: Checking a hole ?foo
-  • type: Nat
-  • When checking that ?foo has type Nat
-  • When infering type of mult ?foo
-ExitFailure

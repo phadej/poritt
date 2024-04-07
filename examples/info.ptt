@@ -2,9 +2,3 @@ define id : forall (A : U) -> A -> A
           = \ _ x -> x
 
 info id
-
-info nat
-
--- TODO: lookup constructors
-
-info notexisting
