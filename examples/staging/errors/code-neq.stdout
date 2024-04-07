@@ -1,0 +1,21 @@
+include "../../lib/bool.ptt"
+
+end-of-file "../../lib/bool.ptt"
+
+include "../../lib/leibniz.ptt"
+
+end-of-file "../../lib/leibniz.ptt"
+
+Error: examples/staging/errors/code-neq.ptt:6:6: Couldn't match types
+  • expected: C ⟦ not false ⟧
+  • actual: C ⟦ true ⟧
+  • not convertible (at level 0): not false /= true
+  • When checking that Cx has type C ⟦ not false ⟧
+  • When checking that λ Cx ↦ Cx has type C ⟦ true ⟧ → C ⟦ not false ⟧
+  • When checking that
+    λ _ Cx ↦ Cx
+    has type
+    Id {Code ⟦ Bool ⟧} ⟦ true ⟧ ⟦ not false ⟧
+  • When infering type of
+    (λ _ Cx ↦ Cx) : Id {Code ⟦ Bool ⟧} ⟦ true ⟧ ⟦ not false ⟧
+ExitFailure

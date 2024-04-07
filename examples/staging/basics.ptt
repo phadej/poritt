@@ -31,4 +31,4 @@ define twiceid2 = $(twice [| Bool |] (\x -> [| not $x |]))
 type %refl : Id {Code [| Bool |]} [| true |] [| true |]
 
 -- should this work or not?
-type %refl : Id {Code [| Bool |]} [| true |] [| not false |]
+-- type %refl : Id {Code [| Bool |]} [| true |] [| not false |]
