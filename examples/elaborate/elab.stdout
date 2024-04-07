@@ -1,5 +1,3 @@
-options --elaborate
-
 id : ∀ {A : U} → A → A
 id = λ {_} x ↦ x
 
