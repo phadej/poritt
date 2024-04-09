@@ -1,0 +1,72 @@
+
+
+
+[| \ A x -> id $(_) x |] : Code [| (A : U) -> A -> A |]
+
+1 A : U
+1 x : A
+
+[| \ A x -> id $(?0 [| A |] [| x |]) x |] : Code [| (A : U) -> A -> A |]
+
+?0 : (A : Code U) (x : Code A) -> Code U 
+
+$(?0 [| A |] [| x |]) ~ A
+
+?0 = \A x -> [| ?1 $A $x |]
+
+?1 : (A : U) (x : A) -> U
+
+?1 A x ~ A
+
+?1 = \A x -> A
+
+----
+
+idq : (A : Code U) (x : Code A) -> Code A
+idq = \A x -> [| id $(_) $x |]
+
+0 A : Code U
+0 x : Code A
+
+\A x -> [| id $(?0 A x) $x |]
+
+?0 : (A : Code U) (x : Code A) -> Code A
+
+$(?0 A x) ~ $A
+
+?0 = \A x -> [| ?1 $A $x |]
+
+?1 : (A : U) (x : A) -> U
+
+?1 $A $x ~ $A
+
+$1 = \ A x -> A
+
+----
+
+idp : (f : Code U -> Code U) (A : Code u) (x : Code (f A)) -> Code (f A)
+idp = \f A x -> [| id $(_) $x |]
+
+0 f : Code U -> Code U
+0 A : Code U
+0 x : Code (f A)
+
+idp : (f : Code U -> Code U) (A : Code u) (x : Code (f A)) -> Code (f A)
+idp = \f A x -> [| id $(?0 f A x) $x |]
+
+?0 : (f : Code U -> Code U) (A : Code U) (x : Code (f U)) -> Code (f U)
+
+$(?0 f A x) ~ $(f A)
+
+Do we need to eta expand?
+We need for first example.
+How much?
+
+$(?0 [| A |] [| x |]) ~ A
+==>
+?0 [| A |] [| x |] ~ [| A |]
+
+---
+
+idm : (A : Code U) -> Code [| $A -> $A |]
+idm = \A -> [| \x -> id _ x |]

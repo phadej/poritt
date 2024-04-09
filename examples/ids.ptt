@@ -1,0 +1,30 @@
+id : forall (A : U) -> A -> A
+id A x = x
+
+metac : forall (A : Code [| U |]) (x : Code A) -> Code [| U |]
+metac A x = A
+inline metac
+
+idc : Code [| forall (A : U) -> A -> A |]
+idc = [| \ A x -> id $((metac [| A |] [| x |] )) x |]
+
+metaq : forall (A : Code [| U |]) (x : Code A) -> Code [| U |]
+metaq A x = A
+inline metaq
+
+idq : forall (A : Code [| U |]) (x : Code A) -> Code A
+idq A x = [| id $((metaq A x)) $x |]
+
+metap : forall (f : Code [| U |] -> Code [| U |]) (A : Code [| U |]) (x : Code (f A)) -> Code [| U |]
+metap f A x = f A
+inline metap
+
+idp : forall (f : Code [| U |] -> Code [| U |]) (A : Code [| U |]) (x : Code (f A)) -> Code (f A)
+idp = \f A x -> [| id $((metap f A x)) $x |]
+
+metam : forall (A : Code [| U |]) (x : Code A) -> Code [| U |]
+metam A x = A
+inline metam
+
+idm : forall (A : Code [| U |]) -> Code [| $A -> $A |]
+idm = \A -> [| \x -> id $((metam A [| x |])) x |]
