@@ -415,7 +415,7 @@ elabTerm'' ctx ty@(VFin _) t =
 
 -- code
 elabTerm'' ctx (VCod a) (WQuo t) = do
-    t' <- elabTerm ctx { cstage = pred ctx.cstage } t (vsplCodArg ctx.size a)
+    t' <- elabTerm (quoteElabCtx ctx) t (vsplCodArg ctx.size a)
     return (Quo t')
 elabTerm'' ctx ty@(VCod _) t =
     invalidTerm ctx "Code" ty t
@@ -650,7 +650,7 @@ elabElim' ctx (WInd e m t) = do
             ]
 
 elabElim' ctx (WSpl e) = do
-    (e', et) <- elabElim ctx { cstage = succ ctx.cstage } e
+    (e', et) <- elabElim (spliceElabCtx ctx) e
     case force et of
         VCod a -> do
             return (Spl e', vsplCodArg ctx.size a)

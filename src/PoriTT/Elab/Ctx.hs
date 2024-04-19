@@ -3,6 +3,8 @@ module PoriTT.Elab.Ctx (
     bind,
     define,
     emptyElabCtx,
+    quoteElabCtx,
+    spliceElabCtx,
 ) where
 
 import PoriTT.Base
@@ -32,6 +34,7 @@ data ElabCtx ctx ctx' = ElabCtx
     , path   :: !(Path EmptyCtx ctx ctx')
     , stages :: !(Env ctx Stage)
     , cstage :: !Stage
+    , qstage :: !Natural
     , size   :: !(Size ctx')
     , wk     :: Wk ctx' ctx               -- ^ weakening from target context to source context. This is possible, as target context is the same except the let bound values are missing.
     , loc    :: !(Loc)
@@ -54,6 +57,7 @@ emptyElabCtx ns = ElabCtx
     , path   = PEnd
     , stages = EmptyEnv
     , cstage = stage0
+    , qstage = NZ
     , size   = SZ
     , wk     = IdWk
     , loc    = startLoc "<unknown>"
@@ -66,7 +70,7 @@ bind
     -> Name                     -- ^ name in types
     -> VTerm HasMetas ctx'      -- ^ type
     -> ElabCtx (S ctx) (S ctx')
-bind (ElabCtx xs xs' ns v ts ts' rs p ss cs s wk l pp) x x' a = ElabCtx
+bind (ElabCtx xs xs' ns v ts ts' rs p ss cs qs s wk l pp) x x' a = ElabCtx
     { names   = xs :> x
     , names'  = xs' :> x'
     , nscope  = ns
@@ -77,6 +81,7 @@ bind (ElabCtx xs xs' ns v ts ts' rs p ss cs s wk l pp) x x' a = ElabCtx
     , path    = PBind p x a
     , stages  = ss :> cs
     , cstage  = cs
+    , qstage  = qs
     , size    = SS s
     , wk      = KeepWk wk
     , loc     = l
@@ -91,7 +96,7 @@ define
     -> EvalElim HasMetas ctx'   -- ^ value
     -> VTerm HasMetas ctx'      -- ^ type
     -> ElabCtx (S ctx) ctx'
-define (ElabCtx xs xs' ns v ts ts' rs p ss cs s wk l pp) x t a = ElabCtx
+define (ElabCtx xs xs' ns v ts ts' rs p ss cs qs s wk l pp) x t a = ElabCtx
     { names   = xs :> x
     , names'  = xs'
     , nscope  = ns
@@ -102,8 +107,15 @@ define (ElabCtx xs xs' ns v ts ts' rs p ss cs s wk l pp) x t a = ElabCtx
     , path    = PDefine p x
     , stages  = ss :> cs
     , cstage  = cs
+    , qstage  = qs
     , size    = s
     , wk      = SkipWk wk
     , loc     = l
     , doc     = pp
     }
+
+quoteElabCtx :: ElabCtx ctx ctx' -> ElabCtx ctx ctx'
+quoteElabCtx ctx = ctx { cstage = succ ctx.cstage, qstage = NS ctx.qstage }
+
+spliceElabCtx :: ElabCtx ctx ctx' -> ElabCtx ctx ctx'
+spliceElabCtx ctx = ctx { cstage = pred ctx.cstage, qstage = predNat ctx.qstage }

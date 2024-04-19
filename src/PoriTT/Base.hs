@@ -5,6 +5,7 @@ module PoriTT.Base (
     TODO,
     pattern TODO,
     pattern NZ, pattern NS,
+    predNat,
     MonadThrowError (..),
 ) where
 
@@ -67,6 +68,10 @@ pattern NS n <- (safePred -> Just n)
 safePred :: Natural -> Maybe Natural
 safePred 0 = Nothing
 safePred n = Just (n - 1)
+
+predNat :: Natural -> Natural
+predNat 0 = 0
+predNat n = n - 1
 
 {-# COMPLETE NZ, NS #-}
 

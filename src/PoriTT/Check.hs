@@ -486,7 +486,7 @@ checkTerm'' ctx ty@(VFin _) t =
 
 -- code
 checkTerm'' ctx (VCod a) (WQuo t) = do
-    t' <- checkTerm ctx { cstage = pred ctx.cstage } t (vsplCodArg ctx.size a)
+    t' <- checkTerm ctx { cstage = succ ctx.cstage } t (vsplCodArg ctx.size a)
     return (Quo t')
 checkTerm'' ctx ty@(VCod _) t =
     invalidTerm ctx "Code" ty t
@@ -724,7 +724,7 @@ checkElim' ctx (WInd e m t) = do
             ]
 
 checkElim' ctx (WSpl e) = do
-    (e', et) <- checkElim ctx { cstage = succ ctx.cstage } e
+    (e', et) <- checkElim ctx { cstage = pred ctx.cstage } e
     case force et of
         VCod a -> do
             return (Spl e', vsplCodArg ctx.size a)
