@@ -3,7 +3,7 @@ id A x = x
 
 metac : forall (A : Code [| U |]) (x : Code A) -> Code [| U |]
 metac A x = A
-inline metac
+-- inline metac
 
 idc : Code [| forall (A : U) -> A -> A |]
 idc = [| \ A x -> id $((metac [| A |] [| x |] )) x |]
@@ -28,3 +28,10 @@ inline metam
 
 idm : forall (A : Code [| U |]) -> Code [| $A -> $A |]
 idm = \A -> [| \x -> id $((metam A [| x |])) x |]
+
+-- not clear what to do with lets
+metal : forall (A : Code [| U |]) -> let B : Code [| U |] = [| id U $A |] in forall (x : Code B) -> Code [| U |]
+metal A x = A
+
+idl : Code [| forall (A : U) -> A -> A |]
+idl = [| \A -> let B = id U A in (\x -> id $(( metal [| A |] [| x |] )) x) : B -> B |]
