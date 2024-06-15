@@ -116,10 +116,10 @@ library
 
   -- we use debruijn to keep variables in scope
   if flag(debruijn)
-    build-depends: debruijn
+    build-depends: debruijn ^>=0.2
 
   else
-    build-depends: debruijn-safe
+    build-depends: debruijn-safe ^>=0.2
 
   exposed-modules:
     PoriTT.Base

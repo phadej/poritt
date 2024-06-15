@@ -62,9 +62,10 @@ deriving instance Show (Well pass ctx)
 -- Renaming
 -------------------------------------------------------------------------------
 
-instance Renamable (Well pass) where rename = defaultRename; weaken = defaultWeaken
+instance Weaken (Well pass) where weaken = defaultWeaken
+instance Rename (Well pass) where rename = defaultRename
 
-instance RenamableA (Well pass) where
+instance RenameA (Well pass) where
     grename r (WLam x i t)     = WLam x i <$> grename (keep r) t
     grename r (WPie x i a b)   = WPie x i <$> grename r a <*> grename (keep r) b
     grename r (WSgm x i a b)   = WSgm x i <$> grename r a <*> grename (keep r) b

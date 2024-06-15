@@ -37,11 +37,13 @@ instance Show (RigidVar ctx) where
 prettyRigidVar :: RigidVar ctx -> Doc
 prettyRigidVar (RigidVar i) = ppAnnotate AErr (ppStr ('!' : show i))
 
-instance Renamable RigidVar where
-    rename = defaultRename
+instance Weaken RigidVar where
     weaken _ (RigidVar x) = RigidVar x
 
-instance RenamableA RigidVar where
+instance Rename RigidVar where
+    rename = defaultRename
+
+instance RenameA RigidVar where
     grename _ (RigidVar x) = pure (RigidVar x)
 
 instance Sinkable RigidVar where

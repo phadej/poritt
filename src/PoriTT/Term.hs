@@ -104,24 +104,28 @@ ann t       a = Ann t a
 -- Renaming
 -------------------------------------------------------------------------------
 
-instance Renamable (Term pass) where
-    rename = defaultRename
 
+instance Weaken (Term pass) where
     -- we have explicit weakening in the terms.
     -- it doesn't complicate evaluation nor linting,
     -- in these cases we don't end up traversing terms extra times.
     weaken w (WkT w' t) = WkT (compWk w' w) t
     weaken w t          = WkT w t
 
-instance Renamable (Elim pass) where
-    rename = defaultRename
+instance Weaken (Elim pass) where
     weaken w (WkE w' e) = WkE (compWk w' w) e
     weaken w (Var i)    = Var (weakenIdx w i)
     weaken w (Met m ts) = Met m (weakenPruning w ts)
     weaken _ (Gbl g)    = Gbl g
     weaken w e          = WkE w e
 
-instance RenamableA (Term pass) where
+instance Rename (Term pass) where
+    rename = defaultRename
+
+instance Rename (Elim pass) where
+    rename = defaultRename
+
+instance RenameA (Term pass) where
     grename r (Lam x i t)   = Lam x i <$> grename (keep r) t
     grename r (Pie x i a b) = Pie x i <$> grename r a <*> grename (keep r) b
     grename r (Sgm x i a b) = Sgm x i <$> grename r a <*> grename (keep r) b
@@ -142,7 +146,7 @@ instance RenamableA (Term pass) where
     grename r (Quo t)       = Quo <$> grename r t
     grename r (WkT w t)     = grename (weakenIdxMapping w r) t
 
-instance RenamableA (Elim pass) where
+instance RenameA (Elim pass) where
     grename r (Var i)         = Var <$> grename r i
     grename r (Met m xs)      = TODO
     grename r (Rgd x)         = Rgd <$> grename r x
