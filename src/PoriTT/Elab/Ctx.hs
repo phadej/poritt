@@ -5,11 +5,13 @@ module PoriTT.Elab.Ctx (
     emptyElabCtx,
     quoteElabCtx,
     spliceElabCtx,
+    prettyVTermCtx,
 ) where
 
 import PoriTT.Base
 import PoriTT.Loc
 import PoriTT.Name
+import PoriTT.Quote
 import PoriTT.PP
 import PoriTT.Rigid
 import PoriTT.Path
@@ -119,3 +121,6 @@ quoteElabCtx ctx = ctx { cstage = succ ctx.cstage, qstage = NS ctx.qstage }
 
 spliceElabCtx :: ElabCtx ctx ctx' -> ElabCtx ctx ctx'
 spliceElabCtx ctx = ctx { cstage = pred ctx.cstage, qstage = predNat ctx.qstage }
+
+prettyVTermCtx :: ElabCtx ctx ctx' -> VTerm HasMetas ctx' -> Doc
+prettyVTermCtx ctx = prettyVTerm ctx.size ctx.nscope ctx.names'

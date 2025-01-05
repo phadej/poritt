@@ -80,16 +80,28 @@ instance HasMetaGen ElabState where
     metaGen = #metaGen
 
 newMeta :: ElabCtx ctx ctx' -> VTerm HasMetas ctx' -> ElabM (Elim HasMetas ctx)
-newMeta ctx ty0 = do
-    unless (ctx.qstage == 0) $ throwError "cannot create metas in qstage /= 0"
-    ty <- case closeType ctx.size ty0 ctx.path of
-        Right ty -> return ty
-        Left err -> throwError $ fromString $ "cannot close type" ++ show err
-    -- traceM $ "hello" ++ show (ctx.cstage, ctx.qstage)
-    m <- newMetaVar
-    s <- get
-    put $! s { metas = insertMetaMap m (Unsolved ty) s.metas }
-    return (Met m (Pruning ctx.wk))
+newMeta ctx ty0 = case ctx.qstage of
+    NZ -> do
+        ty <- case closeType ctx.size ty0 ctx.path of
+            Right ty -> return ty
+            Left err -> throwError $ fromString $ "cannot close type" ++ show err
+        -- traceM $ "hello" ++ show (ctx.cstage, ctx.qstage)
+        m <- newMetaVar
+        s <- get
+        put $! s { metas = insertMetaMap m (Unsolved ty) s.metas }
+        return (Met m (Pruning ctx.wk))
+
+    NS _q -> do
+        traceM $ show $ prettyVTermCtx ctx ty0
+        traceM $ show $ prettyVTermCtx ctx $ VCod $ VQuo (aux ty0) ty0
+        res <- newMeta (spliceElabCtx ctx) ty0
+        return (Spl res)
+  where
+    -- convert VTerm into corresponding STerm
+    -- should we simplty quote and stage?
+    aux :: VTerm pass ctx -> STerm pass ctx
+    aux VUni = SUni
+    aux _ = error "TODO"
 
 solveMeta :: MetaVar -> VTerm HasMetas EmptyCtx -> ElabM (VTerm HasMetas EmptyCtx)
 solveMeta m v = do

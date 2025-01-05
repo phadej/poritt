@@ -84,9 +84,6 @@ invalidTerm ctx cls ty t = elabError ctx ("Checking against" <+> cls)
     , "term:" <+> prettyWell ctx.nscope ctx.names 0 t
     ]
 
-prettyVTermCtx :: ElabCtx ctx ctx' -> VTerm HasMetas ctx' -> Doc
-prettyVTermCtx ctx = prettyVTerm ctx.size ctx.nscope ctx.names'
-
 prettyNamesTypes :: Size ctx' -> NameScope -> Env ctx' Name -> Env ctx Name -> Env ctx (VTerm HasMetas ctx') -> [Doc]
 prettyNamesTypes _ _  _   EmptyEnv  EmptyEnv  =  []
 prettyNamesTypes s ns env (xs :> x) (ts :> t) =
