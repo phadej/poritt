@@ -64,7 +64,7 @@ prenSpine :: PRenEnv ctx ctx' -> Elim HasMetas ctx' -> Spine HasMetas ctx -> Eit
 prenSpine _   h VNil         = pure h
 prenSpine env h (VApp sp i t) = App i <$> prenSpine env h sp <*> prenTerm env t
 
-prenSpine _env _ _ = TODO
+prenSpine _env _ _ = throwError "cannot rename spine" -- TODO
 
 prenSTerm :: TODO
 prenSTerm = prenSTerm

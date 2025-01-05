@@ -81,7 +81,9 @@ instance HasMetaGen ElabState where
 
 newMeta :: ElabCtx ctx ctx' -> VTerm HasMetas ctx' -> ElabM (Elim HasMetas ctx)
 newMeta ctx ty0 = do
+    unless (ctx.qstage == 0) $ throwError "cannot create metas in qstage /= 0"
     let Right ty = closeType ctx.size ty0 ctx.path
+    -- traceM $ "hello" ++ show (ctx.cstage, ctx.qstage)
     m <- newMetaVar
     s <- get
     put $! s { metas = insertMetaMap m (Unsolved ty) s.metas }

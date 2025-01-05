@@ -25,7 +25,6 @@ import PoriTT.Name
 import PoriTT.Nice
 import PoriTT.PP
 import PoriTT.Quote
-import PoriTT.Rigid
 import PoriTT.Stage
 import PoriTT.Term
 import PoriTT.Unify
