@@ -1,2 +1,5 @@
 packages: .
 tests: True
+
+package poritt
+  -- ghc-options: -Werror

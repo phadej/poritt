@@ -157,7 +157,7 @@ unifySTerm' _ _      VUni    SOne               SOne =
 unifySTerm' l ctx    VUni    (SPie x i a1 av b1) (SPie _ j a2 _ b2) = do
     unifyIcit ctx i j
     a <- unifySTerm' l ctx VUni a1 a2
-    b <- unifySTerm' l (bind x av ctx) VUni (runSTZ l ctx.size b1) (runSTZ l ctx.size b2)
+    _b <- unifySTerm' l (bind x av ctx) VUni (runSTZ l ctx.size b1) (runSTZ l ctx.size b2)
     return (SPie x i a av b1) -- (makeClosureS ctx.size b))
 unifySTerm' l env ty@VUni    a                  b =
     notConvertibleST l env ty a b
@@ -225,7 +225,7 @@ unifySElim' l env a@SVar {} b = notConvertibleSE l env a b
 unifySElim' _      env (SSpN e1)   (SSpN e2) = do
     (e, ty) <- unifyNeut env e1 e2
     forceM env.size ty >>= \case
-        VCod a -> return (vsplCodArg env.size a, SSpN TODO)
+        VCod a -> return (vsplCodArg env.size a, SSpN $ TODO e)
         _ -> throwError ("splice argument does not have Code-type" <+> ppSep
             [ "actual:" <+> prettyVTermCtx env ty
             ])
@@ -269,7 +269,7 @@ unifySElim' l      env (SLet x t1 s1) (SLet _ t2 s2) = do
     (env', r) <- newUnifyRigid env ty
     let v = EvalElim (VErr TODO) (SRgd r)
     (ty', s) <- unifySElim l env' (runSE l env.size s1 v) (runSE l env.size s2 v)
-    return (ty', SLet x t TODO)
+    return (ty', SLet x t $ TODO s)
 
 unifySElim' l      env a@SLet {} b = notConvertibleSE l env a b
 
@@ -282,9 +282,9 @@ unifySElim' _ env (SRgd x) (SRgd y)
 unifySElim' l      env a@SRgd {} b = notConvertibleSE l env a b
 
 unifySElim' l      env (SAnn t1 a1 v) (SAnn t2 a2 _) = do
-    a <- unifySTerm l env VUni a2 a2
+    a <- unifySTerm l env VUni a1 a2
     t <- unifySTerm l env v    t1 t2
-    return (v, SAnn t1 a1 v)
+    return (v, SAnn t a v)
 unifySElim' l      env a@SAnn {} b = notConvertibleSE l env a b
 
 
@@ -686,7 +686,7 @@ vappType _   h ty VNil = pure (h, ty)
 vappType env h ty (VApp sp i t) = do
     (h', ty') <- vappType env h ty sp
     case ty' of
-        VPie _y j a b ->
+        VPie _y _j a b ->
             return (vapp env.size i h' t, run env.size b (vann t a))
 
         _ -> TODO

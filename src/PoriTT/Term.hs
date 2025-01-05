@@ -148,7 +148,7 @@ instance RenameA (Term pass) where
 
 instance RenameA (Elim pass) where
     grename r (Var i)         = Var <$> grename r i
-    grename r (Met m xs)      = TODO
+    grename _ (Met _ _)       = TODO -- there shouldn't be metas.
     grename r (Rgd x)         = Rgd <$> grename r x
     grename _ (Gbl g)         = pure (Gbl g)
     grename r (App i f t)     = App i <$> grename r f <*> grename r t

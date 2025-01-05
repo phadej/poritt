@@ -30,7 +30,7 @@ zonkTerm :: ZonkEnv ctx -> Term pass ctx -> Maybe (Term NoMetas ctx)
 zonkTerm env (Emb (Met x pr)) = case lookupMetaMap x env.metas of
     Just (Solved ty t) -> case quoteElim UnfoldNone env.size (vappPruning env.size (sinkSize env.size (vann t ty)) pr) of
         Right e -> zonkTerm env (emb e)
-        Left err -> Nothing -- TODO
+        Left _err -> Nothing -- TODO
     _ -> Nothing
 
 zonkTerm env (Emb e)       = Emb <$> zonkElim env e
@@ -57,7 +57,7 @@ zonkElim :: ZonkEnv ctx -> Elim pass ctx -> Maybe (Elim NoMetas ctx)
 zonkElim env (Met x pr)      = case lookupMetaMap x env.metas of
     Just (Solved ty t) -> case quoteElim UnfoldNone env.size (vappPruning env.size (sinkSize env.size (vann t ty)) pr) of
         Right e -> zonkElim env e
-        Left err -> Nothing -- TODO
+        Left _err -> Nothing -- TODO
     _ -> Nothing
 zonkElim _   (Rgd _)         = Nothing
 zonkElim _   (Var x)         = pure (Var x)

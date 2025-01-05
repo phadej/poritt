@@ -82,7 +82,9 @@ instance HasMetaGen ElabState where
 newMeta :: ElabCtx ctx ctx' -> VTerm HasMetas ctx' -> ElabM (Elim HasMetas ctx)
 newMeta ctx ty0 = do
     unless (ctx.qstage == 0) $ throwError "cannot create metas in qstage /= 0"
-    let Right ty = closeType ctx.size ty0 ctx.path
+    ty <- case closeType ctx.size ty0 ctx.path of
+        Right ty -> return ty
+        Left err -> throwError $ fromString $ "cannot close type" ++ show err
     -- traceM $ "hello" ++ show (ctx.cstage, ctx.qstage)
     m <- newMetaVar
     s <- get
