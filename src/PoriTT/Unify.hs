@@ -340,10 +340,10 @@ unifyTerm' ctx VUni (VEmb e1)        (VEmb e2) =
     unifyEmbTerm ctx e1 e2
 -- TBW comment: flex terms
 unifyTerm' ctx VUni (VEmb (VFlx x sp)) t = do
-    _ <- solve ctx x sp t
+    _ <- solve ctx x sp (vann t VUni)
     pure t
 unifyTerm' ctx VUni t (VEmb (VFlx x sp)) = do
-    _ <- solve ctx x sp t
+    _ <- solve ctx x sp (vann t VUni)
     pure t
 unifyTerm' ctx VUni x                y              =
     notConvertible ctx VUni x y
@@ -480,8 +480,8 @@ unifyElim' ctx e              (VAnn t ty)   = do
 unifyElim' _   (VErr msg)     _             = throwError $ ppStr $ show msg
 unifyElim' _   _              (VErr msg)    = throwError $ ppStr $ show msg
 unifyElim' _   (VFlx _ _)     (VFlx _ _)    = throwError "flex-flex TODO"
-unifyElim' env (VFlx m sp)    e             = solve env m sp (vemb e)
-unifyElim' env e              (VFlx m sp)   = solve env m sp (vemb e)
+unifyElim' env (VFlx m sp)    e             = solve env m sp e
+unifyElim' env e              (VFlx m sp)   = solve env m sp e
 
 unifyNeut' :: UnifyEnv ctx -> VNeut HasMetas ctx -> VNeut HasMetas ctx -> ElabM (VElim HasMetas ctx, VTerm HasMetas ctx)
 -- Globals
@@ -610,20 +610,21 @@ unifySpine ctx headLvl sp1' sp2' = do
 
 -- TODO: return Env ctx' Icit
 data Invert ctx where
-    Invert :: Size ctx' -> PRen ctx ctx' -> Invert ctx
+    -- TODO: add Names ctx'
+    Invert :: Size ctx' -> Env ctx' Name -> PRen ctx ctx' -> Invert ctx
 
 deriving instance Show (Invert ctx)
 
 --  invert : (Γ : Cxt) → (spine : Sub Δ Γ) → PRen Γ Δ
 invert :: UnifyEnv ctx -> Spine HasMetas ctx -> ElabM (Invert ctx)
-invert env VNil             = return (Invert SZ (emptyLvlMap env.size))
+invert env VNil             = return (Invert SZ EmptyEnv (emptyLvlMap env.size))
 invert env (VApp sp Ecit t) = do
-    Invert s' pren <- invert env sp
+    Invert s' names pren <- invert env sp
     t' <- forceM env.size t
     case t' of
         VEmb (VVar l) -> case lookupLvlMap l pren of
             -- TODO: i'm not sure if we want lvlZ or lvlTop?
-            Nothing -> return $ Invert (SS s') (insertLvlMap l (lvlZ s') (mapSink pren))
+            Nothing -> return $ Invert (SS s') (names :> lookupLvl env l) (insertLvlMap l (lvlZ s') (mapSink pren))
             Just _  -> throwError $ "non-linear spine" <+> prettyVTermCtx env t'
 
         _ -> throwError $ "non-variable spine element" <+> prettyVTermCtx env t'
@@ -666,16 +667,18 @@ solve gamma m sp rhs = do
 -}
 
 -- TODO: take icits
--- TODO: take type / names
-sizeLams :: Size ctx -> Term HasMetas ctx -> Term HasMetas EmptyCtx
-sizeLams SZ t     = t
-sizeLams (SS s) t = sizeLams s (Lam "ds" Ecit t)
+-- TODO: take type (name)
+sizeLams :: Size ctx -> Env ctx Name -> Term HasMetas ctx -> Term HasMetas EmptyCtx
+sizeLams SZ     _            t = t
+sizeLams (SS s) (names :> n) t = sizeLams s names (Lam n Ecit t)
 
-solve :: UnifyEnv ctx -> MetaVar -> Spine HasMetas ctx -> VTerm HasMetas ctx -> ElabM (VElim HasMetas ctx, VTerm HasMetas ctx)
+solve :: UnifyEnv ctx -> MetaVar -> Spine HasMetas ctx -> VElim HasMetas ctx -> ElabM (VElim HasMetas ctx, VTerm HasMetas ctx)
 solve env m sp rhs = do
-    Invert s' pren <- invert env sp
-    rhs' <- either throwError return $ prenTerm (PRenEnv env.size s' pren m) rhs
-    let rhs'' = sizeLams s' rhs'
+    Invert s' names' pren <- invert env sp
+    rhs' <- either throwError return $ prenTerm (PRenEnv env.size s' pren m) (vemb rhs)
+    traceM $ show $ prettyTerm env.nscope names' 0 rhs'
+    let rhs'' = sizeLams s' names' rhs'
+    traceM $ show $ prettyTerm env.nscope EmptyEnv 0 rhs''
     let rhs''' = evalTerm SZ EmptyEnv rhs''
     mty <- solveMeta m rhs'''
     vappType env (sinkSize env.size (vann rhs''' mty)) (sinkSize env.size mty) sp

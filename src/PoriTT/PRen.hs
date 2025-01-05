@@ -3,6 +3,7 @@ module PoriTT.PRen (
     PRen,
     PRenEnv (..),
     prenTerm,
+    prenElim,
 ) where
 
 import PoriTT.Base
