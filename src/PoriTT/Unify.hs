@@ -673,6 +673,9 @@ sizeLams SZ     _            t = t
 sizeLams (SS s) (names :> n) t = sizeLams s names (Lam n Ecit t)
 
 solve :: UnifyEnv ctx -> MetaVar -> Spine HasMetas ctx -> VTerm HasMetas ctx -> ElabM (VElim HasMetas ctx, VTerm HasMetas ctx)
+solve env m (VSpl sp) rhs = do
+    traceM $ "solve m .splice" ++ show (m, sp, rhs)
+    solve env m sp (vquo rhs)
 solve env m sp rhs = do
     Invert s' names' pren <- invert env sp
     rhs' <- either throwError return $ prenTerm (PRenEnv env.size s' pren m) rhs

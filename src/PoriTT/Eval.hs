@@ -336,8 +336,10 @@ etaLam s i f = vemb (vapp (SS s) i (sink f) (vemb (valZ s)))
 -------------------------------------------------------------------------------
 
 vquo :: VTerm pass ctx -> VTerm pass ctx
-vquo t = VQuo (aux t) t
+vquo (VEmb (VRgd l (VSpl sp))) = VEmb (VRgd l sp)
+vquo (VEmb e) = TODO e
+vquo t = traceShowId $ VQuo (aux t) t
   where
     aux :: VTerm pass ctx -> STerm pass ctx
     aux VUni = SUni
-    aux t' = TODO t'
+    aux t' =  error $ show t'

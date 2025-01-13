@@ -80,7 +80,7 @@ instance HasMetaGen ElabState where
     metaGen = #metaGen
 
 newMeta :: ElabCtx ctx ctx' -> VTerm HasMetas ctx' -> ElabM (Elim HasMetas ctx)
-newMeta ctx ty0 = case ctx.qstage of
+newMeta ctx ty0 = traceShow ty0 $ case ctx.qstage of
     NZ -> do
         ty <- case closeType ctx.size ty0 ctx.path of
             Right ty -> return ty
@@ -92,9 +92,7 @@ newMeta ctx ty0 = case ctx.qstage of
         return (Met m (Pruning ctx.wk))
 
     NS _q -> do
-        traceM $ show $ prettyVTermCtx ctx ty0
-        traceM $ show $ prettyVTermCtx ctx $ VCod $ vquo ty0
-        res <- newMeta (spliceElabCtx ctx) ty0
+        res <- newMeta (spliceElabCtx ctx) $ VCod $ vquo ty0
         return (Spl res)
 
 solveMeta :: MetaVar -> VTerm HasMetas EmptyCtx -> ElabM (VTerm HasMetas EmptyCtx)

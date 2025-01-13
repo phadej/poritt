@@ -40,3 +40,6 @@ metal = λ A x ↦ A
 
 idl : Code ⟦ ∀ (A : U) → A → A ⟧
 idl = ⟦ λ A ↦ let B = id U A in (λ x ↦ id ∫(metal ⟦ A ⟧ ⟦ x ⟧) x) : B → B ⟧
+
+idm2 : ∀ (A : Code ⟦ U ⟧) → Code ⟦ ∫A → ∫A ⟧
+idm2 = λ A ↦ ⟦ λ x ↦ id ∫A x ⟧
