@@ -93,15 +93,9 @@ newMeta ctx ty0 = case ctx.qstage of
 
     NS _q -> do
         traceM $ show $ prettyVTermCtx ctx ty0
-        traceM $ show $ prettyVTermCtx ctx $ VCod $ VQuo (aux ty0) ty0
+        traceM $ show $ prettyVTermCtx ctx $ VCod $ vquo ty0
         res <- newMeta (spliceElabCtx ctx) ty0
         return (Spl res)
-  where
-    -- convert VTerm into corresponding STerm
-    -- should we simplty quote and stage?
-    aux :: VTerm pass ctx -> STerm pass ctx
-    aux VUni = SUni
-    aux _ = error "TODO"
 
 solveMeta :: MetaVar -> VTerm HasMetas EmptyCtx -> ElabM (VTerm HasMetas EmptyCtx)
 solveMeta m v = do
