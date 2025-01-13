@@ -11,6 +11,8 @@ import PoriTT.Term
 import PoriTT.Value
 
 -- | A "context zipper", used for creating types for fresh metas.
+--
+-- TODO: Add stages
 type Path :: Ctx -> Ctx -> Ctx -> Type
 data Path ctx ctx' ctx'' where
     PEnd    :: Path ctx ctx ctx
