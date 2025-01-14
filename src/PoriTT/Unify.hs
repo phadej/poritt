@@ -678,6 +678,7 @@ solve env m (VSpl sp) rhs = do
     solve env m sp (vquo rhs)
 solve env m sp rhs = do
     Invert s' names' pren <- invert env sp
+    traceM $ "invert done " ++ show s'
     rhs' <- either throwError return $ prenTerm (PRenEnv env.size s' pren m) rhs
     traceM $ show $ prettyTerm env.nscope names' 0 rhs'
     let rhs'' = sizeLams s' names' rhs'

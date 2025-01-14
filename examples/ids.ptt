@@ -6,7 +6,11 @@ metac A x = A
 -- inline metac
 
 idc : Code [| forall (A : U) -> A -> A |]
-idc = [| \ A x -> id $((metac [| A |] [| x |] )) x |]
+idc = [| \ A x -> id $(metac [| A |] [| x |]) x |]
+
+-- this doesn't work as we don't quote context in newMeta/closeType yet
+-- idc2 : Code [| forall (A : U) -> A -> A |]
+-- idc2 = [| \ A x -> id _ x |]
 
 metaq : forall (A : Code [| U |]) (x : Code A) -> Code [| U |]
 metaq A x = A
@@ -20,7 +24,10 @@ metap f A x = f A
 inline metap
 
 idp : forall (f : Code [| U |] -> Code [| U |]) (A : Code [| U |]) (x : Code (f A)) -> Code (f A)
-idp = \f A x -> [| id $((metap f A x)) $x |]
+idp = \f A x -> [| id $(metap f A x) $x |]
+
+idp2 : forall (f : Code [| U |] -> Code [| U |]) (A : Code [| U |]) (x : Code (f A)) -> Code (f A)
+idp2 = \f A x -> [| id _ $x |]
 
 metam : forall (A : Code [| U |]) (x : Code A) -> Code [| U |]
 metam A x = A

@@ -67,9 +67,15 @@ prenSpine env h (VApp sp i t) = App i <$> prenSpine env h sp <*> prenTerm env t
 
 prenSpine _env _ _ = throwError "cannot rename spine" -- TODO
 
-prenSTerm :: TODO
-prenSTerm = prenSTerm
+prenSTerm :: PRenEnv ctx ctx' -> Natural -> STerm HasMetas ctx -> Either Doc (Term HasMetas ctx')
+prenSTerm env n (SEmb e) = emb <$> prenSElim env n e
+prenSTerm _ _ t = error $ show t
 
+prenSElim :: PRenEnv ctx ctx' -> Natural -> SElim HasMetas ctx -> Either Doc (Elim HasMetas ctx')
+prenSElim env _ (SVar l) = case lookupLvlMap l env.pren of
+    Nothing -> throwError "scope error, escaping variable"
+    Just l' -> return (Var (lvlToIdx env.size' l'))
+prenSElim _ _ e = error $ show e
 
 {-
 

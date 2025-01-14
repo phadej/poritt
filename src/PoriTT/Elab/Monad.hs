@@ -79,14 +79,24 @@ newRigid ctx ty = do
 instance HasMetaGen ElabState where
     metaGen = #metaGen
 
+-- TODO:
+-- newMeta (Stage 0,PBind (PBind PEnd "A" (Stage 1) VUni) "x" (Stage 1) (VEmb (VRgd 0 VNil)))
+--
+-- Wrong:
+-- newMeta VPie "A" Ecit VUni (Closure EmptyEnv (Pie "x" Ecit (Emb (Var 0)) (Cod (Quo Uni))))
+-- forall (A : U) -> forall (x : A) -> Code [| A |]
+--
+-- Right:
+-- forall (A : Code [| U |]) -> forall (x : Code A) -> Code A
+
 newMeta :: ElabCtx ctx ctx' -> VTerm HasMetas ctx' -> ElabM (Elim HasMetas ctx)
 newMeta ctx ty0 = traceShow ty0 $ case ctx.qstage of
     NZ -> do
-        traceM $ "newMeta " ++ show ctx.path
+        traceM $ "newMeta " ++ show (ctx.cstage, ctx.path)
         ty <- case closeType ctx.cstage ctx.size ty0 ctx.path of
             Right ty -> return ty
             Left err -> throwError $ fromString $ "cannot close type" ++ show err
-        -- traceM $ "hello" ++ show (ctx.cstage, ctx.qstage)
+        traceM $ "newMeta " ++ show ty
         m <- newMetaVar
         s <- get
         put $! s { metas = insertMetaMap m (Unsolved ty) s.metas }
