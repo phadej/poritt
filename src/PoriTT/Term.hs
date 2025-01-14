@@ -7,6 +7,8 @@ module PoriTT.Term (
     prettyElim',
     emb,
     ann,
+    quo,
+    spl,
     coeNoMetasElim,
     coeSizeElim,
 ) where
@@ -99,6 +101,14 @@ emb e         = Emb e
 ann :: Term pass ctx -> Term pass ctx -> Elim pass ctx
 ann (Emb e) _ = e
 ann t       a = Ann t a
+
+quo :: Term pass ctx -> Term pass ctx
+quo (Emb (Spl e)) = Emb e
+quo t = Quo t
+
+spl :: Elim pass ctx -> Elim pass ctx
+spl (Ann (Quo t) (Cod a)) = Ann t a
+spl e                     = Spl e
 
 -------------------------------------------------------------------------------
 -- Renaming
