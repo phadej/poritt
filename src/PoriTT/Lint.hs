@@ -599,7 +599,7 @@ lintPruning :: forall ctx ctx' pass. LintCtx pass ctx ctx'
            -> VTerm pass ctx'
            -> Pruning ctx
            -> LintM (VTerm pass ctx')
-lintPruning env ty0 (Some1 wk) =
+lintPruning env ty0 (Pruning wk) =
     go (weakenEnv wk (tabulateEnv (sizeEnv env.names) id)) ty0
   where
     go :: Env ctx'' (Idx ctx) -> VTerm pass ctx' -> LintM (VTerm pass ctx')

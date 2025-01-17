@@ -117,7 +117,7 @@ evalElim' s env (Let _ t r)     = evalElim' s (env :> velim (evalElim' s env t))
 evalElim' s env (WkE w e)       = evalElim' s (weakenEnv w env) e
 
 evalPruning :: Size ctx' -> EvalEnv pass ctx ctx' -> Pruning ctx -> Spine pass ctx'
-evalPruning _s env0 (Some1 xs) = go (weakenEnv xs env0) where
+evalPruning _s env0 (Pruning xs) = go (weakenEnv xs env0) where
     go :: Env ctx1 (EvalElim pass ctx') -> Spine pass ctx'
     go EmptyEnv              = VNil
     go (env :> EvalElim e _) = VApp (go env) Ecit (vemb e)

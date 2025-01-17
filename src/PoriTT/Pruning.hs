@@ -9,8 +9,6 @@ module PoriTT.Pruning (
     weakenQruning,
     weakenQruningL,
     compQrunning,
-    -- * Some1
-    Some1 (..),
 ) where
 
 import PoriTT.Base
@@ -19,19 +17,16 @@ import PoriTT.Base
 -- Quoting
 -------------------------------------------------------------------------------
 
-type Some1 :: (Ctx -> Ctx -> Type) -> Ctx -> Type
-data Some1 f ctx where
-    Some1 :: f ctx ctx' -> Some1 f ctx'
+data Pruning ctx where
+    Pruning :: Wk ctx ctx' -> Pruning ctx' 
 
-type Pruning ctx = Some1 Wk ctx
-
-deriving instance (forall ctx'. Show (f ctx' ctx)) => Show (Some1 f ctx)
+deriving instance Show (Pruning ctx)
 
 weakenPruning :: Wk n m -> Pruning n -> Pruning m
-weakenPruning w (Some1 xs) = Some1 (compWk xs w)
+weakenPruning w (Pruning xs) = Pruning (compWk xs w)
 
 emptyPruning :: Size ctx -> Pruning ctx
-emptyPruning = Some1 . go where
+emptyPruning = Pruning . go where
     go :: Size ctx -> Wk EmptyCtx ctx
     go SZ     = IdWk
     go (SS s) = SkipWk (go s)

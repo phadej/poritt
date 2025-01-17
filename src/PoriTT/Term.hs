@@ -290,7 +290,7 @@ instance ToRaw (Elim pass) where
     toRaw ns env (WkE w e)       = toRaw ns (weakenEnv w env) e
 
 rappPruning :: Env ctx Name -> Raw -> Pruning ctx -> Raw
-rappPruning ns0 h0 (Some1 wk) = go (weakenEnv wk ns0) h0 where
+rappPruning ns0 h0 (Pruning wk) = go (weakenEnv wk ns0) h0 where
     go :: Env ctx Name -> Raw -> Raw
     go EmptyEnv  h = h
     go (ts :> t) h = rapp Ecit (go ts h) (RVar t)
