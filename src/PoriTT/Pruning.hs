@@ -18,7 +18,7 @@ import PoriTT.Base
 -------------------------------------------------------------------------------
 
 data Pruning ctx where
-    Pruning :: Wk ctx ctx' -> Pruning ctx' 
+    Pruning :: Wk ctx ctx' -> Pruning ctx'
 
 deriving instance Show (Pruning ctx)
 
