@@ -336,9 +336,10 @@ etaLam s i f = vemb (vapp (SS s) i (sink f) (vemb (valZ s)))
 -------------------------------------------------------------------------------
 
 vquo :: VTerm pass ctx -> VTerm pass ctx
+-- TODO: experiment with commenting next line
 vquo (VEmb (VRgd l (VSpl sp))) = VEmb (VRgd l sp)
 -- vquo (VEmb e) = error $ "vquo: " ++ show e
-vquo t = traceShowId $ VQuo (auxT t) t
+vquo term = traceShowId $ VQuo (auxT term) term
   where
     auxT :: VTerm pass ctx -> STerm pass ctx
     auxT VUni = SUni
@@ -347,6 +348,11 @@ vquo t = traceShowId $ VQuo (auxT t) t
 
     auxE :: VElim pass ctx -> SElim pass ctx
     auxE (VRgd l VNil) = SVar l
+    auxE (VRgd l sp) = auxSpine (SVar l) sp
     auxE e = error $ "auxE:" ++ show e
 
-    -- TODO: auxSpine :: ->
+    auxSpine :: SElim pass ctx -> Spine pass ctx -> SElim pass ctx
+    auxSpine h VNil = h
+    auxSpine h (VApp sp i t) = SApp i (auxSpine h sp) (auxT t) t
+    auxSpine h (VSpl sp) = SSpl (auxSpine h sp) (error "here2")
+    auxSpine _ sp = error $ show sp
