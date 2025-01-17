@@ -80,7 +80,7 @@ bind (ElabCtx xs xs' ns v ts ts' rs p ss cs qs s wk l pp) x x' a = ElabCtx
     , types   = mapSink ts :> sink a
     , types'  = mapSink ts' :> sink a
     , rigids  = rigidMapSink (mapSink rs)
-    , path    = PBind p x cs a
+    , path    = PBind p x cs a'
     , stages  = ss :> cs
     , cstage  = cs
     , qstage  = qs
@@ -91,6 +91,8 @@ bind (ElabCtx xs xs' ns v ts ts' rs p ss cs qs s wk l pp) x x' a = ElabCtx
     }
   where
     t = evalZ s
+
+    Right a' = quoteTerm UnfoldNone s a
 
 define
     :: ElabCtx ctx ctx'

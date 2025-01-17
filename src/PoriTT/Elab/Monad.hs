@@ -21,6 +21,7 @@ import PoriTT.Term
 import PoriTT.Pruning
 import PoriTT.Value
 import PoriTT.Path
+import PoriTT.Quote
 
 type ElabM = ExceptState Doc ElabState
 
@@ -92,14 +93,16 @@ instance HasMetaGen ElabState where
 newMeta :: ElabCtx ctx ctx' -> VTerm HasMetas ctx' -> ElabM (Elim HasMetas ctx)
 newMeta ctx ty0 = traceShow ty0 $ case ctx.qstage of
     NZ -> do
+        ty00 <- either (throwError . fromString . show) return $ quoteTerm UnfoldNone ctx.size ty0
         traceM $ "newMeta " ++ show (ctx.cstage, ctx.path)
-        ty <- case closeType ctx.cstage ctx.size ty0 ctx.path of
+        ty <- case closeType ctx.cstage ctx.size ty00 ctx.path of
             Right ty -> return ty
             Left err -> throwError $ fromString $ "cannot close type" ++ show err
         traceM $ "newMeta " ++ show ty
         m <- newMetaVar
         s <- get
-        put $! s { metas = insertMetaMap m (Unsolved ty) s.metas }
+        let ety = evalTerm SZ EmptyEnv ty
+        put $! s { metas = insertMetaMap m (Unsolved ety) s.metas }
         return (Met m (Pruning ctx.wk))
 
     NS _q -> do
