@@ -188,21 +188,29 @@ instance Var (Term pass) where
 -- Renamings with Qruning
 -------------------------------------------------------------------------------
 
+-- TODO: change so we use Env Natural ctx'
 qrenameTerm :: Qruning ctx ctx' -> Term pass ctx -> Term pass ctx'
 qrenameTerm _  Uni     = Uni
+qrenameTerm _  One     = One
+qrenameTerm qr (Pie x i a b) = Pie x i (qrenameTerm qr a) (qrenameTerm (KeepQ 0 qr) b)
+qrenameTerm qr (Cod a) = Cod (qrenameTerm qr a)
+qrenameTerm qr (Quo a) = Quo (qrenameTerm qr a)
 qrenameTerm qr (Emb e) = Emb (qrenameElim qr e)
 qrenameTerm _ t = error $ "qrenameTerm: " ++ show t
 
 qrenameElim :: Qruning ctx ctx' -> Elim pass ctx -> Elim pass ctx'
 qrenameElim qr (Var x)   = qrenameVar qr x
+qrenameElim qr (App i f t) = App i (qrenameElim qr f) (qrenameTerm qr t)
+qrenameElim qr (Spl e) = Spl (qrenameElim qr e)
 qrenameElim qr (WkE w e) = qrenameElim (weakenQruningL w qr ) e
 qrenameElim _ e = error $ "qrenameElim: " ++ show e
 
+-- TODO: not very efficient, but will be improved with change to Env Natural ctx'
 qrenameVar :: Qruning ctx ctx' -> Idx ctx -> Elim pass ctx'
 qrenameVar NilQ i = absurdIdx i
 qrenameVar (KeepQ i _) IZ     = quotSpl i $ Var IZ
-qrenameVar (KeepQ _ q) (IS x) = error "TODO" q x
-qrenameVar (SkipQ q) x = error "TODO" q x
+qrenameVar (KeepQ _ q) (IS x) = weaken wk1 $ qrenameVar q x
+qrenameVar (SkipQ q) x = weaken wk1 $ qrenameVar q x
 
 quotSpl :: Int -> Elim pass ctx -> Elim pass ctx
 quotSpl i e = case compare i 0 of
