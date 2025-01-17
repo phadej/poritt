@@ -6,6 +6,10 @@ module PoriTT.Pruning (
 
 import PoriTT.Base
 
+-------------------------------------------------------------------------------
+-- Quoting
+-------------------------------------------------------------------------------
+
 data Pruning ctx where
     Pruning :: Wk ctx ctx' -> Pruning ctx'
 
@@ -22,3 +26,9 @@ emptyPruning = Pruning . go where
     go :: Size ctx -> Wk EmptyCtx ctx
     go SZ     = IdWk
     go (SS s) = SkipWk (go s)
+
+-------------------------------------------------------------------------------
+-- Pruning with quoted variables
+-------------------------------------------------------------------------------
+
+data QRunning

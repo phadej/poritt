@@ -103,7 +103,7 @@ newMeta ctx ty0 = traceShow ty0 $ case ctx.qstage of
         s <- get
         let ety = evalTerm SZ EmptyEnv ty
         put $! s { metas = insertMetaMap m (Unsolved ety) s.metas }
-        return (Met m (Pruning ctx.wk))
+        return (Met m (Pruning ctx.wk)) -- TODO: quoted pruning
 
     NS _q -> do
         res <- newMeta (spliceElabCtx ctx) $ VCod $ vquo ty0

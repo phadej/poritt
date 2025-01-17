@@ -1,3 +1,4 @@
+{-# LANGUAGE InstanceSigs #-}
 module PoriTT.Term (
     TermPass (..),
     Term (..),
@@ -179,7 +180,15 @@ instance Var (Elim pass) where
     var = Var
 
 instance Var (Term pass) where
+    var :: Idx ctx -> Term pass ctx
     var = Emb . Var
+
+substTerm :: Sub (Elim pass) ctx ctx' -> Term pass ctx -> Term pass ctx'
+substTerm = TODO
+
+substElim :: Sub (Elim pass) ctx ctx' -> Elim pass ctx -> Elim pass ctx'
+substElim sub (WkE w e) = substElim (weakenSub w sub) e
+substElim _ e = error $ show e
 
 -------------------------------------------------------------------------------
 -- Pretty printing

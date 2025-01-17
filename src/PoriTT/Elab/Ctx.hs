@@ -33,7 +33,7 @@ data ElabCtx ctx ctx' = ElabCtx
     , types  :: !(Env ctx (VTerm HasMetas ctx'))
     , types' :: !(Env ctx' (VTerm HasMetas ctx'))
     , rigids :: !(RigidMap ctx' (VTerm HasMetas ctx'))
-    , path   :: !(Path EmptyCtx ctx ctx')
+    , path   :: !(Path ctx ctx')
     , stages :: !(Env ctx Stage)
     , cstage :: !Stage
     , qstage :: !Natural
