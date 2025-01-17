@@ -331,6 +331,7 @@ runSE q s (Closure env f) e = stageElim q s (env :> e) f
 etaLam :: Size ctx -> Icit -> VElim pass ctx -> VTerm pass (S ctx)
 etaLam s i f = vemb (vapp (SS s) i (sink f) (vemb (valZ s)))
 
+
 -------------------------------------------------------------------------------
 -- Quoting
 -------------------------------------------------------------------------------
@@ -343,10 +344,10 @@ vquo t = traceShowId $ VQuo (auxT t) t
     auxT :: VTerm pass ctx -> STerm pass ctx
     auxT VUni = SUni
     auxT (VEmb e) = SEmb (auxE e)
-    auxT t' =  error $ show t'
+    auxT t' =  error $ "auxT: " ++ show t'
 
     auxE :: VElim pass ctx -> SElim pass ctx
     auxE (VRgd l VNil) = SVar l
-    auxE e = error $ show e
+    auxE e = error $ "auxE:" ++ show e
 
     -- TODO: auxSpine :: ->

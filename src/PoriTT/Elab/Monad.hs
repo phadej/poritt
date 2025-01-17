@@ -91,19 +91,20 @@ instance HasMetaGen ElabState where
 -- forall (A : Code [| U |]) -> forall (x : Code A) -> Code A
 
 newMeta :: ElabCtx ctx ctx' -> VTerm HasMetas ctx' -> ElabM (Elim HasMetas ctx)
-newMeta ctx ty0 = traceShow ty0 $ case ctx.qstage of
+newMeta ctx ty = do
+    ty' <- either (throwError . fromString . show) return $ quoteTerm UnfoldNone ctx.size ty
+    newMeta' ctx ty'
+
+newMeta' :: ElabCtx ctx ctx' -> Term HasMetas ctx' -> ElabM (Elim HasMetas ctx)
+newMeta' ctx ty0 = traceShow ty0 $ case ctx.qstage of
     NZ -> do
-        ty00 <- either (throwError . fromString . show) return $ quoteTerm UnfoldNone ctx.size ty0
         traceM $ "newMeta " ++ show (ctx.cstage, ctx.path)
-        ty <- case closeType ctx.cstage ctx.size ty00 ctx.path of
-            Right ty -> return ty
-            Left err -> throwError $ fromString $ "cannot close type" ++ show err
 
         (ty2, args) <- case closeType2 ctx.cstage ctx.path of
-            Right (ty, args) -> return (ty ty00, args)
+            Right (ty, args) -> return (ty ty0, args)
             Left err -> throwError $ fromString $ "cannot close type" ++ show err
 
-        traceM $ "newMeta1 " ++ show ty -- TODO: OLD remove me
+        -- traceM $ "newMeta1 " ++ show ty -- TODO: OLD remove me
         traceM $ "newMeta2 " ++ show ty2
         traceM $ "newMetaA " ++ show (weakenQruning ctx.wk args)
         m <- newMetaVar
@@ -113,7 +114,7 @@ newMeta ctx ty0 = traceShow ty0 $ case ctx.qstage of
         return (Met m (Pruning ctx.wk)) -- TODO: quoted pruning
 
     NS _q -> do
-        res <- newMeta (spliceElabCtx ctx) $ VCod $ vquo ty0
+        res <- newMeta' (spliceElabCtx ctx) $ Cod $ Quo ty0
         return (Spl res)
 
 solveMeta :: MetaVar -> VTerm HasMetas EmptyCtx -> ElabM (VTerm HasMetas EmptyCtx)
