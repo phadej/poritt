@@ -1,6 +1,7 @@
 module PoriTT.Path (
     Path (..),
     closeType,
+    closeType2,
 ) where
 
 import PoriTT.Base
@@ -17,7 +18,7 @@ type Path :: Ctx -> Ctx -> Type
 data Path ctx' ctx'' where
     PEnd    :: Path EmptyCtx EmptyCtx
     PDefine :: !(Path ctx' ctx'') -> !Name -> !Stage -> Path (S ctx') ctx''
-    PBind   :: !(Path ctx' ctx'') -> !Name -> !Stage -> (Term HasMetas ctx'')-> Path (S ctx') (S ctx'')
+    PBind   :: !(Path ctx' ctx'') -> !Name -> !Stage -> Term HasMetas ctx''-> Path (S ctx') (S ctx'')
 
 deriving instance Show (Path ctx' ctx'')
 
@@ -32,5 +33,18 @@ closeType cs (SS s) b (PBind p x _s a)  = do
 
 type Args ctx = Size ctx
 
-closeType2 :: Stage -> Size ctx'' -> Path ctx' ctx'' -> Either EvalError (Term HasMetas ctx'' -> Term HasMetas EmptyCtx, Args ctx'')
-closeType2 = TODO
+closeType2 :: forall ctx ctx'. Stage -> Size ctx' -> Path ctx ctx' -> Either EvalError (Term HasMetas ctx' -> Term HasMetas EmptyCtx, Qruning ctx' ctx')
+closeType2 cs s0 = go where
+    go ::  Path a b
+        -> Either EvalError (Term HasMetas b -> Term HasMetas EmptyCtx, Qruning b b)
+    go PEnd = return (id, NilQ)
+    go (PBind p x s a) = do
+        (mk, args) <- go p
+        return (mk . Pie x Ecit (tyQuote s (qrenameTerm args a)), KeepQ (stageDiff s cs) args)
+    go (PDefine _ _ _) = error "TODO"
+
+    tyQuote :: Stage -> Term pass c -> Term pass c
+    tyQuote s t = case compare s cs of
+        EQ -> t
+        GT -> tyQuote (pred s) (Cod $ quo t)
+        LT -> error $ "tyQuote" ++ show (s, cs) -- TODO: can this happen?

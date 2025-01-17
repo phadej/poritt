@@ -33,6 +33,7 @@ import Unsafe.Coerce (unsafeCoerce)
 
 import PoriTT.Base
 import PoriTT.Enum
+import PoriTT.EvalError
 import PoriTT.Icit
 import PoriTT.Meta.Var
 import PoriTT.Name
@@ -40,24 +41,6 @@ import PoriTT.Rigid
 import PoriTT.Term
 
 import {-# SOURCE #-} PoriTT.Global (Global)
-
--------------------------------------------------------------------------------
--- Evaluation errors
--------------------------------------------------------------------------------
-
--- | Evaluation error.
---
--- These shouldn't happen if we evaluate type-correct code.
---
-data EvalError
-    = EvalErrorApp  -- ^ error in function application
-    | EvalErrorSel  -- ^ error in selector application
-    | EvalErrorSwh  -- ^ error in @switch@
-    | EvalErrorDeI  -- ^ error in @indDesc@
-    | EvalErrorInd  -- ^ error in @ind@
-    | EvalErrorSpl  -- ^ error in @spl@
-    | EvalErrorStg  -- ^ error in staging.
-  deriving Show
 
 -------------------------------------------------------------------------------
 -- VTerm and VElim

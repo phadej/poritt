@@ -12,6 +12,7 @@ module PoriTT.Term (
     spl,
     coeNoMetasElim,
     coeSizeElim,
+    qrenameTerm,
 ) where
 
 import Unsafe.Coerce (unsafeCoerce)
@@ -183,12 +184,31 @@ instance Var (Term pass) where
     var :: Idx ctx -> Term pass ctx
     var = Emb . Var
 
-substTerm :: Sub (Elim pass) ctx ctx' -> Term pass ctx -> Term pass ctx'
-substTerm = TODO
+-------------------------------------------------------------------------------
+-- Renamings with Qruning
+-------------------------------------------------------------------------------
 
-substElim :: Sub (Elim pass) ctx ctx' -> Elim pass ctx -> Elim pass ctx'
-substElim sub (WkE w e) = substElim (weakenSub w sub) e
-substElim _ e = error $ show e
+qrenameTerm :: Qruning ctx ctx' -> Term pass ctx -> Term pass ctx'
+qrenameTerm _  Uni     = Uni
+qrenameTerm qr (Emb e) = Emb (qrenameElim qr e)
+qrenameTerm _ t = error $ "qrenameTerm: " ++ show t
+
+qrenameElim :: Qruning ctx ctx' -> Elim pass ctx -> Elim pass ctx'
+qrenameElim qr (Var x)   = qrenameVar qr x
+qrenameElim qr (WkE w e) = qrenameElim (weakenQruningL w qr ) e
+qrenameElim _ e = error $ "qrenameElim: " ++ show e
+
+qrenameVar :: Qruning ctx ctx' -> Idx ctx -> Elim pass ctx'
+qrenameVar NilQ i = absurdIdx i
+qrenameVar (KeepQ i _) IZ     = quotSpl i $ Var IZ
+qrenameVar (KeepQ _ q) (IS x) = error "TODO" q x
+qrenameVar (SkipQ q) x = error "TODO" q x 
+
+quotSpl :: Int -> Elim pass ctx -> Elim pass ctx
+quotSpl i e = case compare i 0 of
+    EQ -> e
+    GT -> spl (quotSpl (i - 1) e)
+    LT -> error "shouldn't happen"
 
 -------------------------------------------------------------------------------
 -- Pretty printing

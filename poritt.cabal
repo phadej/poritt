@@ -132,6 +132,7 @@ library
     PoriTT.Elab.Monad
     PoriTT.Enum
     PoriTT.Eval
+    PoriTT.EvalError
     PoriTT.ExceptState
     PoriTT.Global
     PoriTT.Icit

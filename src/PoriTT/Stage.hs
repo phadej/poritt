@@ -2,6 +2,7 @@ module PoriTT.Stage (
     -- * Stage
     Stage,
     stage0,
+    stageDiff,
     prettyStage,
 ) where
 
@@ -13,7 +14,7 @@ import PoriTT.PP
 -------------------------------------------------------------------------------
 
 newtype Stage = Stage Int
-  deriving (Eq, Show)
+  deriving (Eq, Ord, Show)
 
 instance Enum Stage where
     succ (Stage s) = Stage (s + 1)
@@ -24,6 +25,9 @@ instance Enum Stage where
 
 stage0 :: Stage
 stage0 = Stage 0
+
+stageDiff :: Stage -> Stage -> Int
+stageDiff (Stage a) (Stage b) = a - b
 
 prettyStage :: Stage -> Doc
 prettyStage (Stage s) = ppInt s

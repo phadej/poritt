@@ -98,10 +98,17 @@ newMeta ctx ty0 = traceShow ty0 $ case ctx.qstage of
         ty <- case closeType ctx.cstage ctx.size ty00 ctx.path of
             Right ty -> return ty
             Left err -> throwError $ fromString $ "cannot close type" ++ show err
-        traceM $ "newMeta " ++ show ty
+
+        (ty2, args) <- case closeType2 ctx.cstage ctx.size ctx.path of
+            Right (ty, args) -> return (ty ty00, args)
+            Left err -> throwError $ fromString $ "cannot close type" ++ show err
+
+        traceM $ "newMeta1 " ++ show ty -- TODO: OLD remove me
+        traceM $ "newMeta2 " ++ show ty2
+        traceM $ "newMetaA " ++ show args
         m <- newMetaVar
         s <- get
-        let ety = evalTerm SZ EmptyEnv ty
+        let ety = evalTerm SZ EmptyEnv ty2
         put $! s { metas = insertMetaMap m (Unsolved ety) s.metas }
         return (Met m (Pruning ctx.wk)) -- TODO: quoted pruning
 
