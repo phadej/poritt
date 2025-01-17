@@ -1,0 +1,5 @@
+id : forall (A : U) -> A -> A
+id A x = x
+
+idc : Code [| forall (A : U) -> A -> A |]
+idc = [| \ A x -> id _ x |]
