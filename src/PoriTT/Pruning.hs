@@ -1,3 +1,4 @@
+{-# LANGUAGE UndecidableInstances #-}
 module PoriTT.Pruning (
     -- * Pruning
     Pruning (..),
@@ -8,6 +9,8 @@ module PoriTT.Pruning (
     weakenQruning,
     weakenQruningL,
     compQrunning,
+    -- * Some1
+    Some1 (..),
 ) where
 
 import PoriTT.Base
@@ -16,19 +19,19 @@ import PoriTT.Base
 -- Quoting
 -------------------------------------------------------------------------------
 
-data Pruning ctx where
-    Pruning :: Wk ctx ctx' -> Pruning ctx'
+type Some1 :: (Ctx -> Ctx -> Type) -> Ctx -> Type
+data Some1 f ctx where
+    Some1 :: f ctx ctx' -> Some1 f ctx'
 
-deriving instance Show (Pruning ctx)
+type Pruning ctx = Some1 Wk ctx
+
+deriving instance (forall ctx'. Show (f ctx' ctx)) => Show (Some1 f ctx)
 
 weakenPruning :: Wk n m -> Pruning n -> Pruning m
-weakenPruning w (Pruning xs) = Pruning (compWk xs w)
-
-instance Weaken Pruning where
-    weaken = weakenPruning
+weakenPruning w (Some1 xs) = Some1 (compWk xs w)
 
 emptyPruning :: Size ctx -> Pruning ctx
-emptyPruning = Pruning . go where
+emptyPruning = Some1 . go where
     go :: Size ctx -> Wk EmptyCtx ctx
     go SZ     = IdWk
     go (SS s) = SkipWk (go s)

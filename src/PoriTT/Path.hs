@@ -31,17 +31,15 @@ closeType cs s      b (PDefine p _s _x) = closeType cs s b p
 closeType cs (SS s) b (PBind p x _s a)  = do
     closeType cs s (Pie x Ecit a b) p
 
-type Args ctx = Size ctx
-
-closeType2 :: forall ctx ctx'. Stage -> Size ctx' -> Path ctx ctx' -> Either EvalError (Term HasMetas ctx' -> Term HasMetas EmptyCtx, Qruning ctx' ctx')
-closeType2 cs s0 = go where
+closeType2 :: forall ctx ctx'. Stage -> Path ctx ctx' -> Either EvalError (Term HasMetas ctx' -> Term HasMetas EmptyCtx, Qruning ctx' ctx')
+closeType2 cs = go where
     go ::  Path a b
         -> Either EvalError (Term HasMetas b -> Term HasMetas EmptyCtx, Qruning b b)
-    go PEnd = return (id, NilQ)
+    go PEnd            = return (id, NilQ)
+    go (PDefine p _ _) = go p
     go (PBind p x s a) = do
         (mk, args) <- go p
         return (mk . Pie x Ecit (tyQuote s (qrenameTerm args a)), KeepQ (stageDiff s cs) args)
-    go (PDefine _ _ _) = error "TODO"
 
     tyQuote :: Stage -> Term pass c -> Term pass c
     tyQuote s t = case compare s cs of

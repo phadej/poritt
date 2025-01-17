@@ -202,7 +202,7 @@ qrenameVar :: Qruning ctx ctx' -> Idx ctx -> Elim pass ctx'
 qrenameVar NilQ i = absurdIdx i
 qrenameVar (KeepQ i _) IZ     = quotSpl i $ Var IZ
 qrenameVar (KeepQ _ q) (IS x) = error "TODO" q x
-qrenameVar (SkipQ q) x = error "TODO" q x 
+qrenameVar (SkipQ q) x = error "TODO" q x
 
 quotSpl :: Int -> Elim pass ctx -> Elim pass ctx
 quotSpl i e = case compare i 0 of
@@ -282,7 +282,7 @@ instance ToRaw (Elim pass) where
     toRaw ns env (WkE w e)       = toRaw ns (weakenEnv w env) e
 
 rappPruning :: Env ctx Name -> Raw -> Pruning ctx -> Raw
-rappPruning ns0 h0 (Pruning wk) = go (weakenEnv wk ns0) h0 where
+rappPruning ns0 h0 (Some1 wk) = go (weakenEnv wk ns0) h0 where
     go :: Env ctx Name -> Raw -> Raw
     go EmptyEnv  h = h
     go (ts :> t) h = rapp Ecit (go ts h) (RVar t)
