@@ -22,7 +22,7 @@ metaEntryType (Unsolved ty) = ty
 
 forceElim :: Size ctx -> MetaMap MetaEntry -> VElim pass ctx -> VElim pass ctx
 forceElim s xs e = case e of
-    VFlx m sp | Just (Solved ty v) <- lookupMetaMap m xs ->
+    VNeu (VFlx m sp) | Just (Solved ty v) <- lookupMetaMap m xs ->
         forceElim s xs (vappSpine s (sinkSize s (vann v ty)) sp)
     _                       -> e
 

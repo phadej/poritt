@@ -1,3 +1,4 @@
+{-# LANGUAGE InstanceSigs #-}
 module PoriTT.Value (
     -- * Values
     VTerm (..),
@@ -66,29 +67,27 @@ data VTerm pass ctx where
     VFin :: ![Label] -> VTerm pass ctx
     VCod :: VTerm pass ctx -> VTerm pass ctx
     VQuo :: STerm pass ctx -> VTerm pass ctx -> VTerm pass ctx -- we preserve the syntax, but also evalute.
-    VEmb :: VElim pass ctx -> VTerm pass ctx  -- no VAnn
+    VEmb :: VNeut pass ctx -> VTerm pass ctx  -- no VAnn
 
 -- | Semantic elimination
 type VElim :: TermPass -> Ctx -> Type
 data VElim pass ctx where
     VErr :: EvalError -> VElim pass ctx
     VAnn :: VTerm pass ctx -> VTerm pass ctx -> VElim pass ctx
+    VNeu :: VNeut pass ctx -> VElim pass ctx
     VGbl :: !Global -> !(Spine pass ctx) -> VElim pass ctx -> VElim pass ctx
-    VRgd :: Lvl ctx -> Spine pass ctx -> VElim pass ctx
-    VFlx :: MetaVar -> Spine HasMetas ctx -> VElim HasMetas ctx
 
 pattern VVar :: Lvl ctx -> VElim pass ctx
-pattern VVar l = VRgd l VNil
+pattern VVar l = VNeu (VRgd l VNil)
 
 pattern VMet :: MetaVar -> VElim HasMetas ctx
-pattern VMet m = VFlx m VNil
+pattern VMet m = VNeu (VFlx m VNil)
 
 -- | Neutral term is elimination which is not annotation.
 type VNeut :: TermPass -> Ctx -> Type
 data VNeut pass ctx where
-    VNErr :: EvalError -> VNeut pass ctx
-    VNRgd :: Lvl ctx -> Spine pass ctx -> VNeut pass ctx
-    VNFlx :: MetaVar -> Spine HasMetas ctx -> VNeut HasMetas ctx
+    VRgd :: Lvl ctx -> Spine pass ctx -> VNeut pass ctx
+    VFlx :: MetaVar -> Spine HasMetas ctx -> VNeut HasMetas ctx
 
 deriving instance Show (VTerm pass ctx)
 deriving instance Show (VElim pass ctx)
@@ -115,16 +114,15 @@ instance Sinkable (VTerm pass) where
     mapLvl f (VEmb e)        = VEmb (mapLvl f e)
 
 instance Sinkable (VElim pass) where
+
     mapLvl _ (VErr msg)    = VErr msg
-    mapLvl f (VRgd l sp)   = VRgd (mapLvl f l) (mapLvl f sp)
-    mapLvl f (VFlx m sp)   = VFlx m (mapLvl f sp)
+    mapLvl f (VNeu e)      = VNeu (mapLvl f e)
     mapLvl f (VGbl g sp t) = VGbl g (mapLvl f sp) (mapLvl f t)
     mapLvl f (VAnn t s)    = VAnn (mapLvl f t) (mapLvl f s)
 
 instance Sinkable (VNeut pass) where
-    mapLvl _ (VNErr msg)    = VNErr msg
-    mapLvl f (VNRgd l sp)   = VNRgd (mapLvl f l) (mapLvl f sp)
-    mapLvl f (VNFlx m sp)   = VNFlx m (mapLvl f sp)
+    mapLvl f (VRgd l sp)   = VRgd (mapLvl f l) (mapLvl f sp)
+    mapLvl f (VFlx m sp)   = VFlx m (mapLvl f sp)
 
 -- | 'VElim' with no metas can be coerced to 'VElim' with metas.
 coeNoMetasVElim :: VElim NoMetas ctx -> VElim pass ctx
@@ -209,7 +207,7 @@ instance Sinkable (Closure term pass) where
     mapLvl f (Closure env t) = Closure (fmap (mapLvl f) env) t
 
 valZ :: Size ctx -> VElim pass (S ctx)
-valZ s = VRgd (lvlZ s) VNil
+valZ s = VNeu (VRgd (lvlZ s) VNil)
 
 evalZ :: Size ctx -> EvalElim pass (S ctx)
 evalZ s = EvalElim (valZ s) (svalZ s)

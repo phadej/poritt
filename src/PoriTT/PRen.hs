@@ -55,7 +55,7 @@ prenTerm env (VQuo t _)      = Quo <$> prenSTerm env NZ t
 prenTerm env (VEmb e)        = emb <$> prenElim env e
 
 prenElim :: PRenEnv ctx ctx' -> VElim HasMetas ctx -> Either Doc (Elim HasMetas ctx')
-prenElim env (VRgd l sp) = case lookupLvlMap l env.pren of
+prenElim env (VNeu (VRgd l sp)) = case lookupLvlMap l env.pren of
     Nothing -> throwError "scope error, escaping variable"
     Just l' -> prenSpine env (Var (lvlToIdx env.size' l')) sp
 

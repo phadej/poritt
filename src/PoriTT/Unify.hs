@@ -339,10 +339,10 @@ unifyTerm' ctx VUni (VCod x)         (VCod y) =
 unifyTerm' ctx VUni (VEmb e1)        (VEmb e2) =
     unifyEmbTerm ctx e1 e2
 -- TBW comment: flex terms
-unifyTerm' ctx VUni (VEmb (VFlx x sp)) t = do
+unifyTerm' ctx VUni (VEmb (VNeu (VFlx x sp))) t = do
     _ <- solve ctx x sp t
     pure t
-unifyTerm' ctx VUni t (VEmb (VFlx x sp)) = do
+unifyTerm' ctx VUni t (VEmb (VNeu (VFlx x sp))) = do
     _ <- solve ctx x sp t
     pure t
 unifyTerm' ctx VUni x                y              =
@@ -470,7 +470,7 @@ unifyElim' env e@(VGbl g1 VNil _) (VGbl g2 VNil _)
 -- otherwise we check the values
 unifyElim' ctx (VGbl _ _ t)   u             = unifyElim ctx t u
 unifyElim' ctx t              (VGbl _ _ u)  = unifyElim ctx t u
-unifyElim' ctx (VRgd h1 sp1)  (VRgd h2 sp2) = unifyRigidRigid ctx h1 sp1 h2 sp2
+unifyElim' ctx (VNeu (VRgd h1 sp1)) (VNeu (VRgd h2 sp2)) = unifyRigidRigid ctx h1 sp1 h2 sp2
 unifyElim' ctx (VAnn t ty)    e             = do
     t' <- unifyTerm ctx ty t (vemb e)
     return (VAnn t' ty, ty)
@@ -479,17 +479,15 @@ unifyElim' ctx e              (VAnn t ty)   = do
     return (VAnn t' ty, ty)
 unifyElim' _   (VErr msg)     _             = throwError $ ppStr $ show msg
 unifyElim' _   _              (VErr msg)    = throwError $ ppStr $ show msg
-unifyElim' _   (VFlx _ _)     (VFlx _ _)    = throwError "flex-flex TODO"
-unifyElim' env (VFlx m sp)    e             = solve env m sp (vemb e)
-unifyElim' env e              (VFlx m sp)   = solve env m sp (vemb e)
+unifyElim' _   (VNeu (VFlx _ _))     (VNeu (VFlx _ _))    = throwError "flex-flex TODO"
+unifyElim' env (VNeu (VFlx m sp))    e             = solve env m sp (vemb e)
+unifyElim' env e              (VNeu (VFlx m sp))   = solve env m sp (vemb e)
 
 unifyNeut' :: UnifyEnv ctx -> VNeut HasMetas ctx -> VNeut HasMetas ctx -> ElabM (VElim HasMetas ctx, VTerm HasMetas ctx)
 -- Globals
-unifyNeut' ctx (VNRgd h1 sp1)  (VNRgd h2 sp2) = unifyRigidRigid ctx h1 sp1 h2 sp2
-unifyNeut' _   (VNErr msg)     _             = throwError $ ppStr $ show msg
-unifyNeut' _   _              (VNErr msg)    = throwError $ ppStr $ show msg
-unifyNeut' _   (VNFlx _ _)     _             = throwError "flex c"
-unifyNeut' _   _              (VNFlx _ _)    = throwError "flex d"
+unifyNeut' ctx (VRgd h1 sp1)  (VRgd h2 sp2) = unifyRigidRigid ctx h1 sp1 h2 sp2
+unifyNeut' _   (VFlx _ _)     _             = throwError "flex c"
+unifyNeut' _   _              (VFlx _ _)    = throwError "flex d"
 
 -------------------------------------------------------------------------------
 -- Rigid-Rigid

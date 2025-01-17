@@ -103,7 +103,7 @@ evalTerm' s env (WkT w t)     = evalTerm' s (weakenEnv w env) t
 
 evalElim' :: Size ctx' -> EvalEnv pass ctx ctx' -> Elim pass ctx -> VElim pass ctx'
 evalElim' _ env (Var x)         = case lookupEnv x env of EvalElim v _ -> v
-evalElim' s env (Met m xs)      = VFlx m (evalPruning s env xs)
+evalElim' s env (Met m xs)      = VNeu $ VFlx m (evalPruning s env xs)
 evalElim' _ _   (Rgd _)         = TODO -- error?
 evalElim' s _   (Gbl g)         = vgbl s g
 evalElim' s env (Ann t a)       = vann (evalTerm' s env t) (evalTerm' s env a)
@@ -131,26 +131,30 @@ varr a b = VPie "_" Ecit a (Closure EmptyEnv b)
 
 vemb :: VElim pass ctx -> VTerm pass ctx
 vemb (VAnn t _) = t
-vemb e          = VEmb e
+vemb (VNeu n)   = VEmb n
+vemb (VErr {}) = TODO
+vemb (VGbl {}) = TODO
 
 -- this reduction is not confluent, but we make more progress using
 -- it -- and equate more things.
 vann :: VTerm pass ctx -> VTerm pass ctx -> VElim pass ctx
-vann (VEmb e) _ = e
+vann (VEmb e) _ = VNeu e
 vann t        s = VAnn t s
 
 vgbl :: Size ctx -> Global -> VElim pass ctx
 vgbl s g = VGbl g VNil (coeNoMetasVElim (sinkSize s g.val))
 
+vneu :: VNeut pass ctx -> (Spine pass ctx -> Spine pass ctx) -> VNeut pass ctx
+vneu (VRgd l sp) f = VRgd l (f sp)
+vneu (VFlx m sp) f = VFlx m (f sp)
+
 vapp :: Size ctx -> Icit -> VElim pass ctx -> VTerm pass ctx -> VElim pass ctx
 vapp s _ (VAnn (VLam _ _ clos) (force -> VPie _ _ a b)) t =
     let t' = vann t a
     in vann (run s clos t') (run s b t')
-
 vapp s i (VAnn (VEmb e) _) t = vapp s i e t
 vapp _ _ (VAnn _ _)        _ = VErr EvalErrorApp
-vapp _ i (VRgd l sp)       t = VRgd l (VApp sp i t)
-vapp _ i (VFlx m sp)       t = VFlx m (VApp sp i t)
+vapp _ i (VNeu n)          t = VNeu $ vneu n $ \sp -> VApp sp i t
 vapp s i (VGbl g sp h)     t = VGbl g (VApp sp i t) (vapp s i h t)
 vapp _ _ (VErr msg)        _ = VErr msg
 
@@ -179,8 +183,7 @@ vsel s (VAnn (VMul _ t r) (force -> VSgm _ _ a b)) z
 
 vsel s (VAnn (VEmb e) _) z = vsel s e z
 vsel _ (VAnn _ _)        _ = VErr EvalErrorSel
-vsel _ (VRgd l sp)       t = VRgd l (VSel sp t)
-vsel _ (VFlx m sp)       t = VFlx m (VSel sp t)
+vsel _ (VNeu n)          t = VNeu (vneu n $ \sp -> VSel sp t)
 vsel s (VGbl g sp h)     t = VGbl g (VSel sp t) (vsel s h t)
 vsel _ (VErr msg)        _ = VErr msg
 
@@ -190,8 +193,7 @@ vswh s (VAnn i@(VEIx i') ty@(force -> VFin _)) m ts = case lookupEnumList i' ts 
     Nothing -> VErr EvalErrorSwh
 vswh s (VAnn (VEmb e) _) m ts = vswh s e m ts
 vswh _ (VAnn _ _)        _ _  = VErr EvalErrorSwh
-vswh _ (VRgd l sp)       m ts = VRgd l (VSwh sp m ts)
-vswh _ (VFlx v sp)       m ts = VFlx v (VSwh sp m ts)
+vswh _ (VNeu n)          m ts = VNeu (vneu n (\sp -> VSwh sp m ts))
 vswh s (VGbl g sp h)     m ts = VGbl g (VSwh sp m ts) (vswh s h m ts)
 vswh _ (VErr msg)        _ _  = VErr msg
 
@@ -218,8 +220,7 @@ vdei s (VAnn (VDeX t) (force -> VDsc)) m x y z = do
 
 vdei s (VAnn (VEmb e) _) m x y z = vdei s e m x y z
 vdei _ (VAnn _ _)        _ _ _ _ = VErr EvalErrorDeI
-vdei _ (VRgd l sp)       m x y z = VRgd l (VDeI sp m x y z)
-vdei _ (VFlx v sp)       m x y z = VFlx v (VDeI sp m x y z)
+vdei _ (VNeu n)          m x y z = VNeu $ vneu n (\sp -> VDeI sp m x y z)
 vdei s (VGbl g sp h)     m x y z = VGbl g (VDeI sp m x y z) (vdei s h m x y z)
 vdei _ (VErr msg)        _ _ _ _ = VErr msg
 
@@ -240,8 +241,7 @@ vind s (VAnn (VCon d) (force -> VMuu dd)) m c = do
 
 vind s (VAnn (VEmb e) _) m t = vind s e m t
 vind _ (VAnn _ _)       _ _ = VErr EvalErrorInd
-vind _ (VRgd l sp)      m t = VRgd l (VInd sp m t)
-vind _ (VFlx v sp)      m t = VFlx v (VInd sp m t)
+vind _ (VNeu n)         m t = VNeu $ vneu n (\sp -> VInd sp m t)
 vind s (VGbl g sp h)    m t = VGbl g (VInd sp m t) (vind s h m t)
 vind _ (VErr msg)       _ _ = VErr msg
 
@@ -249,8 +249,7 @@ vspl :: Size ctx -> VElim pass ctx -> VElim pass ctx
 vspl s (VAnn (VQuo _ t) (force -> VCod a)) = vann t (vsplCodArg s a)
 vspl s (VAnn (VEmb e) _)                   = vspl s e
 vspl _ (VAnn _ _)                          = VErr EvalErrorSpl
-vspl _ (VRgd l sp)                         = VRgd l (VSpl sp)
-vspl _ (VFlx m sp)                         = VFlx m (VSpl sp)
+vspl _ (VNeu n)                            = VNeu $ vneu n VSpl
 vspl s (VGbl _ _ h)                        = vspl s h -- VGbl g (VSpl sp) (vspl s h)
 vspl _ (VErr msg)                          = VErr msg
 
@@ -292,9 +291,8 @@ sspl _ _ (VAnn (VQuo (SEmb e') _) (force -> VCod (VQuo _ _))) = e'
 sspl s _ (VAnn (VQuo t' _) (force -> VCod (VQuo a av))) = SAnn t' a (vsplCodArg s av)
 sspl _ _ t@(VAnn _ _)                                     = SErr $ error $ show t
 sspl s e (VGbl _ _ h)                                   = sspl s e h
-sspl _ _ (VFlx h sp)                                    = SSpN (VNFlx h sp)
-sspl _ _ (VRgd h sp)                                    = SSpN (VNRgd h sp)
 sspl _ _ (VErr err)                                     = SErr err
+sspl _ _ (VNeu n)                                       = SSpN n
 
 stageElim :: Natural -> Size ctx' -> EvalEnv pass ctx ctx' -> Elim pass ctx -> SElim pass ctx'
 stageElim _ _ env (Var x)   = case lookupEnv x env of
@@ -337,7 +335,7 @@ etaLam s i f = vemb (vapp (SS s) i (sink f) (vemb (valZ s)))
 
 vquo :: VTerm pass ctx -> VTerm pass ctx
 -- TODO: experiment with commenting next line
-vquo (VEmb (VRgd l (VSpl sp))) = VEmb (VRgd l sp)
+vquo (VEmb (VNeu (VRgd l (VSpl sp)))) = VEmb (VNeu (VRgd l sp))
 -- vquo (VEmb e) = error $ "vquo: " ++ show e
 vquo term = traceShowId $ VQuo (auxT term) term
   where
@@ -347,8 +345,8 @@ vquo term = traceShowId $ VQuo (auxT term) term
     auxT t' =  error $ "auxT: " ++ show t'
 
     auxE :: VElim pass ctx -> SElim pass ctx
-    auxE (VRgd l VNil) = SVar l
-    auxE (VRgd l sp) = auxSpine (SVar l) sp
+    auxE (VNeu (VRgd l VNil)) = SVar l
+    auxE (VNeu (VRgd l sp)) = auxSpine (SVar l) sp
     auxE e = error $ "auxE:" ++ show e
 
     auxSpine :: SElim pass ctx -> Spine pass ctx -> SElim pass ctx

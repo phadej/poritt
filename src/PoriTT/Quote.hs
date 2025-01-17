@@ -62,8 +62,7 @@ quoteTerm _ s (VQuo t _)      = Quo <$> quoteSTerm NZ s t
 quoteTerm u s (VEmb e)        = emb <$> quoteElim u s e
 
 quoteElim :: Unfold -> Size ctx -> VElim pass ctx -> Either EvalError (Elim pass ctx)
-quoteElim u s (VRgd l sp)   = quoteSpine (unfoldSp u) s (pure (Var (lvlToIdx s l))) sp
-quoteElim u s (VFlx m sp)   = quoteSpine (unfoldSp u) s (pure (Met m (emptyPruning s))) sp
+quoteElim u s (VNeu n)      = quoteNeut u s n
 quoteElim u s (VGbl g sp t) = case u of
     UnfoldAll  -> quoteElim u s t
     UnfoldElim -> quoteElim u s t
@@ -72,9 +71,8 @@ quoteElim u s (VAnn t a)    = ann <$> quoteTerm u s t <*> quoteTerm u s a
 quoteElim _ _ (VErr msg)    = Left msg
 
 quoteNeut :: Unfold -> Size ctx -> VNeut pass ctx -> Either EvalError (Elim pass ctx)
-quoteNeut u s (VNRgd l sp)   = quoteSpine (unfoldSp u) s (pure (Var (lvlToIdx s l))) sp
-quoteNeut u s (VNFlx m sp)   = quoteSpine (unfoldSp u) s (pure (Met m (emptyPruning s))) sp
-quoteNeut _ _ (VNErr msg)    = Left msg
+quoteNeut u s (VRgd l sp)   = quoteSpine (unfoldSp u) s (pure (Var (lvlToIdx s l))) sp
+quoteNeut u s (VFlx m sp)   = quoteSpine (unfoldSp u) s (pure (Met m (emptyPruning s))) sp
 
 unfoldSp :: Unfold -> Unfold
 unfoldSp UnfoldElim = UnfoldNone
