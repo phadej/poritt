@@ -1,0 +1,58 @@
+include "lib/leibniz.ptt"
+
+end-of-file "lib/leibniz.ptt"
+
+id : ∀ (A : U) → A → A
+id = λ _ x ↦ x
+
+type %refl : Id {U} Unit (id U Unit) : Id {U} Unit (id U Unit)
+
+fail %refl : Id {Code ⟦ U ⟧} ⟦ Unit ⟧ ⟦ id U Unit ⟧
+  examples/paradox.ptt:10:6: Couldn't match types
+    • expected: C ⟦ id U Unit ⟧
+    • actual: C ⟦ Unit ⟧
+    • not convertible (at level 0): U : id U Unit /= Unit
+    • When checking that Cx has type C ⟦ id U Unit ⟧
+    • When checking that λ Cx ↦ Cx has type C ⟦ Unit ⟧ → C ⟦ id U Unit ⟧
+    • When checking that
+      λ _ Cx ↦ Cx
+      has type
+      Id {Code ⟦ U ⟧} ⟦ Unit ⟧ ⟦ id U Unit ⟧
+    • When infering type of
+      (λ _ Cx ↦ Cx) : Id {Code ⟦ U ⟧} ⟦ Unit ⟧ ⟦ id U Unit ⟧
+
+ex1 : Code ⟦ id U Unit ⟧
+ex1 = ⟦ tt ⟧
+
+ex2 : Code ⟦ Unit ⟧
+ex2 = ⟦ tt ⟧
+
+ex3 : U → U
+ex3 = λ x ↦ x
+
+ex4 : Unit → Unit
+ex4 = λ x ↦ x
+
+fail %refl : Id {U} U Unit
+  examples/paradox.ptt:22:6: Couldn't match types
+    • expected: C Unit
+    • actual: C U
+    • not convertible: U : Unit /= U
+    • When checking that Cx has type C Unit
+    • When checking that λ Cx ↦ Cx has type C U → C Unit
+    • When checking that λ _ Cx ↦ Cx has type Id {U} U Unit
+    • When infering type of (λ _ Cx ↦ Cx) : Id {U} U Unit
+
+fail (⟦ tt ⟧ : Code ⟦ id U Unit ⟧) : Code ⟦ Unit ⟧
+  examples/paradox.ptt:25:6: Couldn't match types
+    • expected: Code ⟦ Unit ⟧
+    • actual: Code ⟦ id U Unit ⟧
+    • not convertible (at level 0): U : Unit /= id U Unit
+    • When checking that ⟦ tt ⟧ : Code ⟦ id U Unit ⟧ has type Code ⟦ Unit ⟧
+    • When infering type of (⟦ tt ⟧ : Code ⟦ id U Unit ⟧) : Code ⟦ Unit ⟧
+
+ex5 : Code ⟦ id U Unit ⟧
+ex5 = ⟦ tt ⟧
+
+ex6 : Code ⟦ id U Unit ⟧
+ex6 = ⟦ tt ⟧

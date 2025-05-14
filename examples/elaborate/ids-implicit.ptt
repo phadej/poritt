@@ -1,0 +1,17 @@
+id : forall {A : U} -> A -> A
+id x = x
+
+idc : Code [| forall (A : U) -> A -> A |]
+idc = [| \ A x -> id x |]
+
+idq : forall (A : Code [| U |]) (x : Code A) -> Code A
+idq A x = [| id $x |]
+
+idp : forall (f : Code [| U |] -> Code [| U |]) (A : Code [| U |]) (x : Code (f A)) -> Code (f A)
+idp = \f A x -> [| id $x |]
+
+idm : forall (A : Code [| U |]) -> Code [| $A -> $A |]
+idm = \A -> [| \x -> id x |]
+
+idl : Code [| forall (A : U) -> A -> A |]
+idl = [| \A -> let B = id A in (\x -> id x) : B -> B |]

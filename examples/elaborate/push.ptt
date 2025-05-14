@@ -1,0 +1,57 @@
+include "../lib/nat.ptt"
+include "../lib/list.ptt"
+include "../lib/leibniz.ptt"
+
+Sum : forall (Cons : U) -> (Cons -> U) -> U
+Sum Cons Vals = exists (tag : Cons) * (Vals tag)
+
+shape' : U -> U -> #[ :nil :cons] -> U
+shape' A B = [Unit (A * B)]
+
+shape : U -> U -> U
+shape A B = Sum #[ :nil :cons ] [Unit (A * B)]
+
+elimShape : forall (R : U) -> forall {A B : U} -> shape A B -> R -> (A -> B -> R) -> R
+elimShape R {A} {B} sh n c = (switch (sh .fst) (\tag -> shape' A B tag -> R)
+    { :nil  -> \_ -> n
+    ; :cons -> \s -> c (s .fst) (s .snd)
+    }) (sh .snd) -- TODO: fix parens, parser
+
+stream : Code [| U |] -> U
+stream A = forall (R : Code [| U |]) -> (shape (Code A) (Code R) -> Code R) -> Code R
+
+listStream : forall {A : Code [| U |]} -> Code [| List $A |] -> stream A
+listStream {A} xs R f = [| foldr (\x r -> $(f (:cons , [| x |] , [| r |]))) $(f (:nil , tt)) $xs |]
+
+foldS : forall {A R : Code [| U |]} -> Code [| $A -> $R -> $R |] -> Code R -> stream A -> Code R
+foldS {A} {R} f z str = str R \sh ->
+    (switch (sh .fst) (\ tag -> switch tag (\_ -> U) { :nil -> Unit; :cons -> Code A * Code R } -> Code R)
+        { :nil  -> \_ -> z
+        ; :cons -> \s -> [| $f $(s .fst) $(s .snd) |]
+        }) (sh .snd) -- TODO: fix parens, parser
+
+-- TODO: substitute metas in types of holes, this is an example
+-- mapS : forall {A B : Code [| U |]} -> (Code A -> Code B) -> stream A -> stream B
+-- mapS {A} {B} f str R kont = str R \sh -> elimShape (Code R) sh
+--    (kont (:nil , tt))
+--    ?
+
+mapS : forall {A B : Code [| U |]} -> (Code A -> Code B) -> stream A -> stream B
+mapS {A} {B} f str R kont = str R \sh -> elimShape (Code R) sh
+    (kont (:nil , tt))
+    (\ a r -> kont (:cons , f a , r))
+
+foldr2 : forall (A B : U) -> (A -> B -> B) -> B -> List A -> B
+foldr2 A B f z xs = $(foldS [| f |] [| z |] (listStream [| xs |]))
+
+foldrMap' : forall (A B C : U) -> (B -> C -> C) -> C -> (A -> B) -> List A -> C
+foldrMap' A B C f z g xs = foldr f z (map g xs)
+
+foldrMap : forall (A B C : U) -> (B -> C -> C) -> C -> (A -> B) -> List A -> C
+foldrMap A B C f z g xs = $(
+    foldS [| f |] [| z |] (
+    mapS (\x -> [| g $x |]) ( -- TODO: check typo g -> f
+    listStream [| xs |])))
+
+eval foldrMap'
+eval foldrMap

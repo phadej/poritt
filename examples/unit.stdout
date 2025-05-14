@@ -1,0 +1,15 @@
+type Unit : U
+
+type tt : Unit
+
+section Syntax sugar
+
+type [] : Unit : Unit
+
+options --no-distill
+
+eval tt = tt : Unit
+
+options --distill
+
+eval tt = [] : Unit

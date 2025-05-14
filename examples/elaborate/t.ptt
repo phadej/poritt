@@ -1,0 +1,8 @@
+-- this is ill-staged program;
+-- however nothing "bad" happens in poritt if we turn stage checks off 
+options "--no-stage-check"
+
+t : forall {A : Code [| U |]} -> Code A -> $A
+t x = $x
+
+eval t [| tt |]

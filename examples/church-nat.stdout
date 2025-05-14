@@ -1,0 +1,38 @@
+define Nat : U = ∀ (r : U) → (r → r) → r → r
+
+define zero : Nat = λ _ _ z ↦ z
+
+define succ : Nat → Nat = λ n A s z ↦ n A s (s z)
+
+defined Nat
+  : U
+  = ∀ (r : U) → (r → r) → r → r
+
+type succ (succ zero) : Nat
+
+two : Nat
+two = succ (succ zero)
+
+type two : Nat
+
+eval two = λ A s z ↦ s (s z) : Nat
+
+define natInd : ∀ (A : U) → (A → A) → A → Nat → A = λ A s z n ↦ n A s z
+
+define plus : Nat → Nat → Nat = λ n m ↦ natInd Nat succ m n
+
+eval plus two two = λ A s z ↦ s (s (s (s z))) : Nat
+
+define mult : Nat → Nat → Nat = λ n m ↦ natInd Nat (plus m) zero n
+
+eval mult two (succ two) = λ A s z ↦ s (s (s (s (s (s z))))) : Nat
+
+eval mult (succ two) two = λ A s z ↦ s (s (s (s (s (s z))))) : Nat
+
+eval (λ n ↦ mult n (succ two)) : Nat → Nat
+  = λ n ↦ n Nat (plus (succ two)) zero
+  : Nat → Nat
+
+eval (λ n ↦ mult (succ two) n) : Nat → Nat
+  = λ n ↦ n Nat succ (plus n (plus n zero))
+  : Nat → Nat

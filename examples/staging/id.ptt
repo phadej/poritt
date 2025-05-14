@@ -1,0 +1,15 @@
+define CodeU : U = Code [| U |]
+
+define id1 : forall (A : U) -> A -> A
+           = \ _ x -> x
+
+-- inline id1
+
+define id2 : forall (B : CodeU) -> Code B -> Code B
+           = \ B y -> [| id1 $B $y |]
+
+define id3 : forall (C : U) -> C -> C
+           = \ C z -> $(id2 [| C |] [| z |])
+
+id4 : forall {D : U} -> D -> D
+id4 x = x

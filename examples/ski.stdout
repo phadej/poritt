@@ -1,0 +1,19 @@
+define I : ∀ (A : U) → A → A = λ _ x ↦ x
+
+type I : ∀ (A : U) → A → A
+
+define K : ∀ (A : U) (B : U) → A → B → A = λ _ _ x _ ↦ x
+
+eval K = λ _ _ x _ ↦ x : ∀ (A : U) (B : U) → A → B → A
+
+define S
+  : ∀ (A : U) (B : U) (C : U) → (A → B → C) → (A → B) → A → C
+  = λ _ _ _ x y z ↦ x z (y z)
+
+define I2 : ∀ (A : U) → A → A = λ A ↦ S A (A → A) A (K A (A → A)) (K A A)
+
+include "lib/leibniz.ptt"
+
+end-of-file "lib/leibniz.ptt"
+
+type %refl : Id {∀ (A : U) → A → A} I I2 : Id {∀ (A : U) → A → A} I I2

@@ -1,0 +1,10 @@
+include "../lib/nat.ptt"
+
+liftNat : Nat -> Code [| Nat |]
+liftNat = iterNat (Code [| Nat |]) [| zero |] (\n -> [| succ $n |])
+
+codeFive : Code [| Nat |]
+codeFive = liftNat five
+
+eval codeFive
+

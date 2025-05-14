@@ -1,0 +1,11 @@
+define A : U = #[:foo :foo]
+
+define fst : A = :foo
+
+define fst' : A = :foo
+
+define snd : A = :1
+
+define toSet : A → U = [ A U ]
+
+define toSet' : A → U = [ A U ]

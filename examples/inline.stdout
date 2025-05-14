@@ -1,0 +1,6 @@
+define id : ∀ (A : U) → A → A = λ _ x ↦ x
+
+inline id
+
+id2 : ∀ (B : U) → B → B
+id2 = (let _ = ∀ (B : U) → B → B : U in (λ x ↦ x) : _ → _) (λ _ x ↦ x)

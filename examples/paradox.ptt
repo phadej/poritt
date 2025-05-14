@@ -1,0 +1,29 @@
+include "lib/leibniz.ptt"
+
+id : forall (A : U) -> A -> A
+id _ x = x 
+
+-- Unit and id U Unit are beta-equivalent
+type %refl : Id {U} Unit (id U Unit)
+
+-- but we don't reduce inside the quotations
+fail %refl : Id {Code [| U |]} [| Unit |] [| id U Unit |]
+
+-- however
+ex1 = [| tt |] : Code [| id U Unit |]
+ex2 = [| tt |] : Code [| Unit |]
+
+-- that is not different than
+
+ex3 = (\x -> x) : U -> U
+ex4 = (\x -> x) : Unit -> Unit
+
+-- we do have
+fail %refl : Id {U} U Unit
+
+-- note that this also fails
+fail ([| tt |] : Code [| id U Unit |]) : Code [| Unit |]
+
+-- but these are fine
+ex5 = [| tt : Unit |] : Code [| id U Unit |]
+ex6 = [| $([| tt |] : Code [| Unit |]) |] : Code [| id U Unit |]

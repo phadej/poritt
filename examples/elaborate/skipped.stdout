@@ -1,0 +1,5 @@
+include "../lib/leibniz.ptt"
+
+end-of-file "../lib/leibniz.ptt"
+
+type refl {_} _ : Id {_} Unit Unit : Id {U} Unit Unit

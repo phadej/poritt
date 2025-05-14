@@ -1,0 +1,60 @@
+-- Description for natural numbers:
+-- constructors, fields, and the description itself.
+NatC = #[ :zero :succ   ]
+
+NatF : NatC -> Desc
+NatF =  [ `1    (`X `1) ]
+
+NatD = `S NatC NatF
+
+-- Natural numbers
+Nat = mu NatD
+eval Nat
+
+zero : Nat
+zero = :zero
+
+succ : Nat -> Nat
+succ n = :succ n
+
+one   = succ zero
+two   = succ one
+three = succ two
+four  = succ three
+five  = succ four
+
+indNat
+  : forall (M : Nat -> U)
+           (Mzero : M zero)
+           (Msucc : forall (n : Nat) -> M n -> M (succ n))
+           (e : Nat) -> M e
+indNat M Mzero Msucc e =
+  ind e M \ d ->
+  (switch (d .fst) (\ c' -> forall (y : evalDesc (NatF c') Nat) -> All (NatF c') Nat M y -> M (con (c' , y)))
+     { :succ -> \ n Mn -> Msucc (n .fst) (Mn .fst)
+     ; :zero -> \ _ _ -> Mzero
+     })
+  (d .snd)
+
+iterNat : forall (A : U) -> A -> (A -> A) -> Nat -> A
+iterNat = \ A z s -> indNat (\ _ -> A) z (\ _ n -> s n)
+
+paraNat : forall (A : U) -> A -> (Nat -> A -> A) -> Nat -> A
+paraNat = \ A z s -> indNat (\ _ -> A) z (\ n a -> s n a)
+
+caseNat : Nat -> forall (A : U) -> A -> (Nat -> A) -> A
+caseNat m A z s = paraNat A z (\n _ -> s n) m
+
+plus : Nat -> Nat -> Nat
+plus n m = iterNat Nat m succ n
+
+mult : Nat -> Nat -> Nat
+mult n m = iterNat Nat zero (plus m) n
+
+include "bool.ptt"
+
+isZero : Nat -> Bool
+isZero n = caseNat n Bool true (\_ -> false)
+
+eqNat : Nat -> Nat -> Bool
+eqNat = iterNat (Nat -> Bool) isZero (\rec m -> caseNat m Bool false rec)

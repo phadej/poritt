@@ -1,0 +1,49 @@
+-- Lists
+
+ListC : U
+ListC = #[ :nil :cons ]
+
+ListF : U -> ListC -> Desc
+ListF A = [ `1   (`S A \ _ -> `X  `1) ]
+
+ListD : U -> Desc
+ListD A = `S ListC (ListF A)
+
+List : U -> U
+List A = mu (ListD A)
+
+nil  : forall (A : U) -> List A
+nil _ = :nil
+
+cons : forall (A : U) -> A -> List A -> List A
+cons _ x xs = :cons x xs
+
+-- Or we can define macros
+macro %nil       = con [:nil]
+macro %cons x xs = con [:cons x xs]
+
+foldr : forall {A B : U} -> (A -> B -> B) -> B -> List A -> B
+foldr {A} {B} consC nilC e =
+  ind e (\ _ -> B) \ d ->
+  (switch (d .fst) (\ c' -> forall (y : evalDesc (ListF A c') (List A)) -> All (ListD A) (mu (ListD A)) (\ _ -> B) (c' , y) -> B)
+    { :cons -> \ x acc -> consC (x .fst) (acc .fst)
+    ; :nil  -> \ _ _   -> nilC
+    })
+  (d .snd)
+
+map : forall {A B : U} -> (A -> B) -> List A -> List B
+map {A} {B} f = foldr {A} {List B} (\h t -> %cons (f h) t) %nil
+
+indList : forall
+  (A : U)
+  (M : List A -> U)
+  (Mnil : M (nil A))
+  (Mcons : forall (x : A) (xs : List A) -> M xs -> M (cons A x xs))
+  (e : List A) -> M e
+indList A M Mnil Mcons e =
+  ind e M \ d ->
+  (switch (d .fst) (\ c' -> forall (y : evalDesc (ListF A c') (List A)) -> All (ListD A) (mu (ListD A)) M (c' , y) -> M (con (c' , y)))
+    { :cons -> \ e' allE -> Mcons (e' .fst) (e' .snd .fst) (allE .fst)
+    ; :nil  -> \ e' allE -> Mnil
+    })
+  (d .snd)

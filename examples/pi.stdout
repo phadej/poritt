@@ -1,0 +1,7 @@
+define pi : ∀ (A : U) → (A → U) → U = λ A B ↦ ∀ (x : A) → B x
+
+define indPi
+  : ∀
+    (A : U) (B : A → U) (e : pi A B) (M : pi A B → U) →
+    (∀ (y : ∀ (x : A) → B x) → M (λ x ↦ y x)) → M e
+  = λ A B e M m ↦ m e

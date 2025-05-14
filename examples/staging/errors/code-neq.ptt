@@ -1,0 +1,6 @@
+include "../../lib/bool.ptt"
+include "../../lib/leibniz.ptt"
+
+-- should this work or not?
+-- in poritt, these are different codes: quotations aren't normalised
+type %refl : Id {Code [| Bool |]} [| true |] [| not false |]

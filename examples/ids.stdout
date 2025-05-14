@@ -1,0 +1,42 @@
+id : ∀ (A : U) → A → A
+id = λ A x ↦ x
+
+metac : ∀ (A : Code ⟦ U ⟧) → Code A → Code ⟦ U ⟧
+metac = λ A x ↦ A
+
+idc : Code ⟦ ∀ (A : U) → A → A ⟧
+idc = ⟦ λ A x ↦ id ∫(metac ⟦ A ⟧ ⟦ x ⟧) x ⟧
+
+metaq : ∀ (A : Code ⟦ U ⟧) → Code A → Code ⟦ U ⟧
+metaq = λ A x ↦ A
+
+inline metaq
+
+idq : ∀ (A : Code ⟦ U ⟧) → Code A → Code A
+idq = λ A x ↦ ⟦ id ∫A ∫x ⟧
+
+metap
+  : ∀ (f : Code ⟦ U ⟧ → Code ⟦ U ⟧) (A : Code ⟦ U ⟧) → Code (f A) → Code ⟦ U ⟧
+metap = λ f A x ↦ f A
+
+inline metap
+
+idp : ∀ (f : Code ⟦ U ⟧ → Code ⟦ U ⟧) (A : Code ⟦ U ⟧) → Code (f A) → Code (f A)
+idp = λ f A x ↦ ⟦ id ∫(f A) ∫x ⟧
+
+metam : ∀ (A : Code ⟦ U ⟧) → Code A → Code ⟦ U ⟧
+metam = λ A x ↦ A
+
+inline metam
+
+idm : ∀ (A : Code ⟦ U ⟧) → Code ⟦ ∫A → ∫A ⟧
+idm = λ A ↦ ⟦ λ x ↦ id ∫A x ⟧
+
+metal
+  : ∀
+    (A : Code ⟦ U ⟧) →
+    (let B = ⟦ id U ∫A ⟧ : Code ⟦ U ⟧ in Code B → Code ⟦ U ⟧ : U)
+metal = λ A x ↦ A
+
+idl : Code ⟦ ∀ (A : U) → A → A ⟧
+idl = ⟦ λ A ↦ let B = id U A in (λ x ↦ id ∫(metal ⟦ A ⟧ ⟦ x ⟧) x) : B → B ⟧

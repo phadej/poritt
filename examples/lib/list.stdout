@@ -1,0 +1,61 @@
+ListC : U
+ListC = #[:nil :cons]
+
+ListF : U → ListC → Desc
+ListF = λ A ↦ [ `1 (`S A (λ _ ↦ `X `1)) ]
+
+ListD : U → Desc
+ListD = λ A ↦ `S ListC (ListF A)
+
+List : U → U
+List = λ A ↦ μ (ListD A)
+
+nil : ∀ (A : U) → List A
+nil = λ _ ↦ :nil
+
+cons : ∀ (A : U) → A → List A → List A
+cons = λ _ x xs ↦ :cons x xs
+
+macro %nil 
+  = con [ :nil ]
+
+macro %cons x xs
+  = con [ :cons x xs ]
+
+foldr : ∀ {A : U} {B : U} → (A → B → B) → B → List A → B
+foldr
+  = λ {A} {B} consC nilC e ↦
+    ind
+      e
+      (λ _ ↦ B)
+      (λ d ↦
+         (switch (d .fst) (λ c' ↦
+                             ∀
+                               (y : evalDesc (ListF A c') (List A)) →
+                               All (ListD A) (μ (ListD A)) (λ _ ↦ B) (c' , y) →
+                               B)
+            {:nil ↦ λ _ _ ↦ nilC; :cons ↦ λ x acc ↦ consC (x .fst) (acc .fst)})
+           (d .snd))
+
+map : ∀ {A : U} {B : U} → (A → B) → List A → List B
+map = λ {A} {B} f ↦ foldr {A} {List B} (λ h t ↦ :cons (f h) t) :nil
+
+indList
+  : ∀
+    (A : U) (M : List A → U) →
+    M (nil A) →
+    (∀ (x : A) (xs : List A) → M xs → M (cons A x xs)) → ∀ (e : List A) → M e
+indList
+  = λ A M Mnil Mcons e ↦
+    ind
+      e
+      M
+      (λ d ↦
+         (switch (d .fst) (λ c' ↦
+                             ∀
+                               (y : evalDesc (ListF A c') (List A)) →
+                               All (ListD A) (μ (ListD A)) M (c' , y) →
+                               M (con (c' , y)))
+            {:nil ↦ λ e' allE ↦ Mnil;
+             :cons ↦ λ e' allE ↦ Mcons (e' .fst) (e' .snd .fst) (allE .fst)})
+           (d .snd))

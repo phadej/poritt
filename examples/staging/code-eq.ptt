@@ -1,0 +1,38 @@
+include "../lib/leibniz.ptt"
+
+type %refl : Id {Code [| U |]} [| Unit -> Unit |] [| Unit -> Unit |]
+
+fail %refl : Id {Code [| U |]} [| Unit -> Unit |] [| Unit -> U |]
+
+id : forall {A : U} -> A -> A
+id {_} x = x
+
+type %refl : Id {Code [| U |]} [| let x = Unit in id {U} Unit |] [| let x = Unit in id {U} Unit |]
+
+fail %refl : Id {Code [| U |]} [| let x = Unit in id {U} Unit |] [| let x = Unit in id {U} x |]
+
+type %refl : Id {Code [| Unit |]}
+  [| let x = tt : Unit in x |]
+  [| let x = tt : Unit in x |]
+
+type %refl : Id {Code [| Unit |]}
+  [| let x = tt : Unit in let y = tt : Unit in x |]
+  [| let u = tt : Unit in let v = tt : Unit in u |]
+
+fail %refl : Id {Code [| Unit |]}
+  [| let x = tt : Unit in let y = tt : Unit in x |]
+  [| let u = tt : Unit in let v = tt : Unit in v |]
+
+type
+  let x = tt in
+  $(let unused = %refl : Id {Code [| Unit |]} [| x |] [| x |] in ([| tt |] : Code [| Unit |]))
+
+type
+  let x = tt in
+  let y = tt in
+  $(let unused = %refl : Id {Code [| Unit |]} [| x |] [| x |] in ([| tt |] : Code [| Unit |]))
+
+fail
+  let x = tt in
+  let y = tt in
+  $(let unused = %refl : Id {Code [| Unit |]} [| x |] [| y |] in ([| tt |] : Code [| Unit |]))

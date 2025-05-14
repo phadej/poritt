@@ -1,0 +1,6 @@
+options --no-stage-check
+
+t : ∀ {A : Code ⟦ U ⟧} → Code A → ∫A
+t = λ {A} x ↦ ∫x
+
+eval t ⟦ tt ⟧ = [] : Unit

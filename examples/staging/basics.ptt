@@ -1,0 +1,34 @@
+include "../lib/bool.ptt"
+include "../lib/leibniz.ptt"
+
+define CodeU : U = Code [| U |]
+
+define CU : Code [| U |] = [| U |]
+
+define U1 : U = $CU
+define U2 : $CU = $CU
+
+define timely : forall (A : CodeU) -> Code [| $A -> $A |]
+              = \ A -> [| \ x -> x |]
+
+-- non dependent application.
+define appE : forall (A B : CodeU) -> Code [| $A -> $B |] -> Code A -> Code B
+            = \ A B f x -> [| $f $x |]
+
+-- dependent application
+define depAppE : forall (A : CodeU) (B : Code [| $A -> U |]) (f : Code [| forall (x : $A) -> $B x |]) (x : Code A) -> Code [| $B $x |]
+             = \ _ _ f x -> [| $f $x |]
+
+define twice : forall (A : CodeU) -> (Code A -> Code A) -> Code [| $A -> $A |]
+             = \A f -> [| \ x -> $(f (f [| x |])) |]
+
+define twiceid  = twice [| Bool |] (\x -> [| not $x |])
+define twiceid1 = $twiceid
+
+define twiceid2 = $(twice [| Bool |] (\x -> [| not $x |]))
+
+-- Code's are different.
+type %refl : Id {Code [| Bool |]} [| true |] [| true |]
+
+-- should this work or not?
+-- type %refl : Id {Code [| Bool |]} [| true |] [| not false |]

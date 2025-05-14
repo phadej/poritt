@@ -1,0 +1,132 @@
+include "../lib/leibniz.ptt"
+
+end-of-file "../lib/leibniz.ptt"
+
+type %refl : Id {Code ⟦ U ⟧} ⟦ Unit → Unit ⟧ ⟦ Unit → Unit ⟧
+  : Id {Code ⟦ U ⟧} ⟦ Unit → Unit ⟧ ⟦ Unit → Unit ⟧
+
+fail %refl : Id {Code ⟦ U ⟧} ⟦ Unit → Unit ⟧ ⟦ Unit → U ⟧
+  examples/staging/code-eq.ptt:5:6: Couldn't match types
+    • expected: C ⟦ Unit → U ⟧
+    • actual: C ⟦ Unit → Unit ⟧
+    • not convertible (at level 0): U : U /= Unit
+    • When checking that Cx has type C ⟦ Unit → U ⟧
+    • When checking that λ Cx ↦ Cx has type C ⟦ Unit → Unit ⟧ → C ⟦ Unit → U ⟧
+    • When checking that
+      λ _ Cx ↦ Cx
+      has type
+      Id {Code ⟦ U ⟧} ⟦ Unit → Unit ⟧ ⟦ Unit → U ⟧
+    • When infering type of
+      (λ _ Cx ↦ Cx) : Id {Code ⟦ U ⟧} ⟦ Unit → Unit ⟧ ⟦ Unit → U ⟧
+
+id : ∀ {A : U} → A → A
+id = λ {_} x ↦ x
+
+type %refl
+    : Id
+      {Code ⟦ U ⟧}
+      ⟦ let x = Unit in id {U} Unit ⟧
+      ⟦ let x = Unit in id {U} Unit ⟧
+  : Id
+    {Code ⟦ U ⟧}
+    ⟦ let x = Unit : U in id {U} Unit ⟧
+    ⟦ let x = Unit : U in id {U} Unit ⟧
+
+fail %refl
+    : Id
+      {Code ⟦ U ⟧}
+      ⟦ let x = Unit in id {U} Unit ⟧
+      ⟦ let x = Unit in id {U} x ⟧
+  examples/staging/code-eq.ptt:12:6: Couldn't match types
+    • expected: C ⟦ let x = Unit : U in id {U} x ⟧
+    • actual: C ⟦ let x = Unit : U in id {U} Unit ⟧
+    • not convertible (at level 0): U : !0 /= Unit
+    • When checking that Cx has type C ⟦ let x = Unit : U in id {U} x ⟧
+    • When checking that
+      λ Cx ↦ Cx
+      has type
+      C ⟦ let x = Unit : U in id {U} Unit ⟧ → C ⟦ let x = Unit : U in id {U} x ⟧
+    • When checking that
+      λ _ Cx ↦ Cx
+      has type
+      Id
+        {Code ⟦ U ⟧}
+        ⟦ let x = Unit : U in id {U} Unit ⟧
+        ⟦ let x = Unit : U in id {U} x ⟧
+    • When infering type of
+      (λ _ Cx ↦ Cx)
+        : Id
+          {Code ⟦ U ⟧}
+          ⟦ let x = Unit in id {U} Unit ⟧
+          ⟦ let x = Unit in id {U} x ⟧
+
+type %refl
+    : Id {Code ⟦ Unit ⟧} ⟦ let x = tt : Unit in x ⟧ ⟦ let x = tt : Unit in x ⟧
+  : Id {Code ⟦ Unit ⟧} ⟦ let x = tt : Unit in x ⟧ ⟦ let x = tt : Unit in x ⟧
+
+type %refl
+    : Id
+      {Code ⟦ Unit ⟧}
+      ⟦ let x = tt : Unit in let y = tt : Unit in x ⟧
+      ⟦ let u = tt : Unit in let v = tt : Unit in u ⟧
+  : Id
+    {Code ⟦ Unit ⟧}
+    ⟦ let x = tt : Unit in let y = tt : Unit in x ⟧
+    ⟦ let u = tt : Unit in let v = tt : Unit in u ⟧
+
+fail %refl
+    : Id
+      {Code ⟦ Unit ⟧}
+      ⟦ let x = tt : Unit in let y = tt : Unit in x ⟧
+      ⟦ let u = tt : Unit in let v = tt : Unit in v ⟧
+  examples/staging/code-eq.ptt:22:6: Couldn't match types
+    • expected: C ⟦ let u = tt : Unit in let v = tt : Unit in v ⟧
+    • actual: C ⟦ let x = tt : Unit in let y = tt : Unit in x ⟧
+    • not convertible (at level 0): !1 /= !0
+    • When checking that
+      Cx
+      has type
+      C ⟦ let u = tt : Unit in let v = tt : Unit in v ⟧
+    • When checking that
+      λ Cx ↦ Cx
+      has type
+      C ⟦ let x = tt : Unit in let y = tt : Unit in x ⟧ →
+      C ⟦ let u = tt : Unit in let v = tt : Unit in v ⟧
+    • When checking that
+      λ _ Cx ↦ Cx
+      has type
+      Id
+        {Code ⟦ Unit ⟧}
+        ⟦ let x = tt : Unit in let y = tt : Unit in x ⟧
+        ⟦ let u = tt : Unit in let v = tt : Unit in v ⟧
+    • When infering type of
+      (λ _ Cx ↦ Cx)
+        : Id
+          {Code ⟦ Unit ⟧}
+          ⟦ let x = tt : Unit in let y = tt : Unit in x ⟧
+          ⟦ let u = tt : Unit in let v = tt : Unit in v ⟧
+
+type let x = tt in ∫(let unused = %refl
+                       : Id {Code ⟦ Unit ⟧} ⟦ x ⟧ ⟦ x ⟧ in ⟦ tt ⟧
+                       : Code ⟦ Unit ⟧)
+  : Unit
+
+type let x = tt in let y = tt in ∫(let unused = %refl
+                                     : Id {Code ⟦ Unit ⟧} ⟦ x ⟧ ⟦ x ⟧ in ⟦ tt ⟧
+                                     : Code ⟦ Unit ⟧)
+  : Unit
+
+fail let x = tt in let y = tt in ∫(let unused = %refl
+                                     : Id {Code ⟦ Unit ⟧} ⟦ x ⟧ ⟦ y ⟧ in ⟦ tt ⟧
+                                     : Code ⟦ Unit ⟧)
+  examples/staging/code-eq.ptt:38:17: Couldn't match types
+    • expected: C ⟦ !1 ⟧
+    • actual: C ⟦ !0 ⟧
+    • not convertible (at level 0): !1 /= !0
+    • When checking that Cx has type C ⟦ !1 ⟧
+    • When checking that λ Cx ↦ Cx has type C ⟦ !0 ⟧ → C ⟦ !1 ⟧
+    • When checking that λ _ Cx ↦ Cx has type Id {Code ⟦ Unit ⟧} ⟦ !0 ⟧ ⟦ !1 ⟧
+    • When infering type of (λ _ Cx ↦ Cx) : Id {Code ⟦ Unit ⟧} ⟦ x ⟧ ⟦ y ⟧
+    • When infering type of
+      let unused = (λ _ Cx ↦ Cx) : Id {Code ⟦ Unit ⟧} ⟦ x ⟧ ⟦ y ⟧ in ⟦ tt ⟧
+        : Code ⟦ Unit ⟧

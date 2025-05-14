@@ -1,0 +1,76 @@
+NatC : U
+NatC = #[:zero :succ]
+
+NatF : NatC → Desc
+NatF = [ `1 (`X `1) ]
+
+NatD : Desc
+NatD = `S NatC NatF
+
+Nat : U
+Nat = μ NatD
+
+eval Nat = μ (`S #[:zero :succ] [ `1 (`X `1) ]) : U
+
+zero : Nat
+zero = :zero
+
+succ : Nat → Nat
+succ = λ n ↦ :succ n
+
+one : Nat
+one = succ zero
+
+two : Nat
+two = succ one
+
+three : Nat
+three = succ two
+
+four : Nat
+four = succ three
+
+five : Nat
+five = succ four
+
+indNat
+  : ∀
+    (M : Nat → U) →
+    M zero → (∀ (n : Nat) → M n → M (succ n)) → ∀ (e : Nat) → M e
+indNat
+  = λ M Mzero Msucc e ↦
+    ind
+      e
+      M
+      (λ d ↦
+         (switch (d .fst) (λ c' ↦
+                             ∀
+                               (y : evalDesc (NatF c') Nat) →
+                               All (NatF c') Nat M y → M (con (c' , y)))
+            {:zero ↦ λ _ _ ↦ Mzero; :succ ↦ λ n Mn ↦ Msucc (n .fst) (Mn .fst)})
+           (d .snd))
+
+iterNat : ∀ (A : U) → A → (A → A) → Nat → A
+iterNat = λ A z s ↦ indNat (λ _ ↦ A) z (λ _ n ↦ s n)
+
+paraNat : ∀ (A : U) → A → (Nat → A → A) → Nat → A
+paraNat = λ A z s ↦ indNat (λ _ ↦ A) z (λ n a ↦ s n a)
+
+caseNat : Nat → ∀ (A : U) → A → (Nat → A) → A
+caseNat = λ m A z s ↦ paraNat A z (λ n _ ↦ s n) m
+
+plus : Nat → Nat → Nat
+plus = λ n m ↦ iterNat Nat m succ n
+
+mult : Nat → Nat → Nat
+mult = λ n m ↦ iterNat Nat zero (plus m) n
+
+include "bool.ptt"
+
+end-of-file "bool.ptt"
+
+isZero : Nat → Bool
+isZero = λ n ↦ caseNat n Bool :true (λ _ ↦ :false)
+
+eqNat : Nat → Nat → Bool
+eqNat = iterNat (Nat → Bool) isZero (λ rec m ↦ caseNat m Bool :false rec)

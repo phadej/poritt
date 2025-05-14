@@ -1,0 +1,27 @@
+include "../lib/nat.ptt"
+
+end-of-file "../lib/nat.ptt"
+
+define power
+  : Nat → Nat → Nat
+  = λ n m ↦ iterNat Nat (succ zero) (λ acc ↦ mult m acc) n
+
+power5 : Nat → Nat
+power5 = power five
+
+define powerCode
+  : Nat → Code ⟦ Nat ⟧ → Code ⟦ Nat ⟧
+  = λ n m ↦ iterNat (Code ⟦ Nat ⟧) ⟦ succ zero ⟧ (λ acc ↦ ⟦ mult ∫m ∫acc ⟧) n
+
+define power5'
+  : Nat → Nat
+  = λ p ↦ mult p (mult p (mult p (mult p (mult p (succ zero)))))
+
+include "../lib/leibniz.ptt"
+
+end-of-file "../lib/leibniz.ptt"
+
+type %refl : Id {Nat} (power5 two) (power5' two)
+  : Id {Nat} (power5 two) (power5' two)
+
+type %refl : Id {Nat → Nat} power5 power5' : Id {Nat → Nat} power5 power5'

@@ -1,0 +1,43 @@
+include "lib/nat.ptt"
+
+end-of-file "lib/nat.ptt"
+
+include "lib/leibniz.ptt"
+
+end-of-file "lib/leibniz.ptt"
+
+section numbers
+
+eval two = :succ (:succ :zero) : Nat
+
+eval three = :succ (:succ (:succ :zero)) : Nat
+
+section Nat iteration
+
+eval iterNat
+  = λ A z s e ↦
+    ind
+      e
+      (λ _ ↦ A)
+      (λ d ↦
+         (switch (d .fst) (λ c' ↦
+                             ∀
+                               (y : evalDesc (NatF c') Nat) →
+                               All (NatF c') Nat (λ _ ↦ A) y → A)
+            {:zero ↦ λ _ _ ↦ z; :succ ↦ λ n Mn ↦ s (Mn .fst)})
+           (d .snd))
+  : ∀ (A : U) → A → (A → A) → Nat → A
+
+section Arithmetic examples
+
+eval plus two two = :succ (:succ (:succ (:succ :zero))) : Nat
+
+eval mult two three = :succ (:succ (:succ (:succ (:succ (:succ :zero))))) : Nat
+
+eval mult three two = :succ (:succ (:succ (:succ (:succ (:succ :zero))))) : Nat
+
+section Syntax sugar
+
+type :zero : Nat : Nat
+
+type (λ n ↦ :succ n) : Nat → Nat : Nat → Nat

@@ -1,0 +1,24 @@
+id : ∀ {A : U} → A → A
+id = λ {_} x ↦ x
+
+eval id {Unit} tt = [] : Unit
+
+eval id {_} tt = [] : Unit
+
+eval id tt = [] : Unit
+
+id' : ∀ {A : U} → A → A
+id' = λ {A} x ↦ x
+
+eval id' {Unit} tt = [] : Unit
+
+eval id' {_} tt = [] : Unit
+
+eval id' tt = [] : Unit
+
+eval let unused = tt in id' tt = [] : Unit
+
+eval (λ _ ↦ id' tt) : Unit → Unit = λ _ ↦ [] : Unit → Unit
+
+id'' : ∀ {A : U} → A → A
+id'' = λ {A} x ↦ id' {A} x

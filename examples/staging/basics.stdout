@@ -1,0 +1,43 @@
+include "../lib/bool.ptt"
+
+end-of-file "../lib/bool.ptt"
+
+include "../lib/leibniz.ptt"
+
+end-of-file "../lib/leibniz.ptt"
+
+define CodeU : U = Code ⟦ U ⟧
+
+define CU : Code ⟦ U ⟧ = ⟦ U ⟧
+
+define U1 : U = U
+
+define U2 : U = U
+
+define timely : ∀ (A : CodeU) → Code ⟦ ∫A → ∫A ⟧ = λ A ↦ ⟦ λ x ↦ x ⟧
+
+define appE
+  : ∀ (A : CodeU) (B : CodeU) → Code ⟦ ∫A → ∫B ⟧ → Code A → Code B
+  = λ A B f x ↦ ⟦ ∫f ∫x ⟧
+
+define depAppE
+  : ∀
+    (A : CodeU) (B : Code ⟦ ∫A → U ⟧) →
+    Code ⟦ ∀ (x : ∫A) → ∫B x ⟧ → ∀ (x : Code A) → Code ⟦ ∫B ∫x ⟧
+  = λ _ _ f x ↦ ⟦ ∫f ∫x ⟧
+
+define twice
+  : ∀ (A : CodeU) → (Code A → Code A) → Code ⟦ ∫A → ∫A ⟧
+  = λ A f ↦ ⟦ λ x ↦ ∫(f (f ⟦ x ⟧)) ⟧
+
+twiceid : Code ⟦ Bool → Bool ⟧
+twiceid = twice ⟦ Bool ⟧ (λ x ↦ ⟦ not ∫x ⟧)
+
+twiceid1 : Bool → Bool
+twiceid1 = λ x ↦ not (not x)
+
+twiceid2 : Bool → Bool
+twiceid2 = λ x ↦ not (not x)
+
+type %refl : Id {Code ⟦ Bool ⟧} ⟦ true ⟧ ⟦ true ⟧
+  : Id {Code ⟦ Bool ⟧} ⟦ true ⟧ ⟦ true ⟧

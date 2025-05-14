@@ -1,0 +1,29 @@
+Bool : U
+Bool = #[ :false :true ]
+
+true : Bool
+true = :true
+
+false : Bool
+false = :false
+
+inline true
+inline false
+
+if : Bool -> forall (A : U) -> A -> A -> A
+if = [ (\_ t f -> f) (\_ t f -> t) ]
+
+not : Bool -> Bool
+not = [:true :false]
+
+and : Bool -> Bool -> Bool
+and = [ (\_ -> :false) (\y -> y) ]
+
+or : Bool -> Bool -> Bool
+or = [ (\y -> y)      (\_ -> :true) ]
+
+eqBool : Bool -> Bool -> Bool
+eqBool = [ [:true :false] [:false :true ] ]
+
+eqUnit : Unit -> Unit -> Bool
+eqUnit = \ _ _ -> :true

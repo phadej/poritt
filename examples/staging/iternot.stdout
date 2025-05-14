@@ -1,0 +1,28 @@
+include "../lib/nat.ptt"
+
+end-of-file "../lib/nat.ptt"
+
+include "../lib/bool.ptt"
+
+end-of-file "../lib/bool.ptt"
+
+define iterNot : Nat → Bool → Bool = λ n m ↦ iterNat Bool m (λ acc ↦ not acc) n
+
+iterNot3 : Bool → Bool
+iterNot3 = iterNot three
+
+define iterNotCode
+  : Nat → Code ⟦ Bool ⟧ → Code ⟦ Bool ⟧
+  = λ n m ↦ iterNat (Code ⟦ Bool ⟧) m (λ acc ↦ ⟦ not ∫acc ⟧) n
+
+define iterNot3' : Bool → Bool = λ p ↦ not (not (not p))
+
+include "../lib/leibniz.ptt"
+
+end-of-file "../lib/leibniz.ptt"
+
+type %refl : Id {Bool} (iterNot3 true) (iterNot3' true)
+  : Id {Bool} (iterNot3 true) (iterNot3' true)
+
+type %refl : Id {Bool → Bool} iterNot3 iterNot3'
+  : Id {Bool → Bool} iterNot3 iterNot3'

@@ -1,0 +1,59 @@
+define id : ∀ (A : U) → A → A = λ _ x ↦ x
+
+eval id (∀ (B : U) → B → B) id = λ _ x ↦ x : ∀ (B : U) → B → B
+
+define typeInType : U = U
+
+define somethingElse : U → U = λ x ↦ x
+
+define the : ∀ (A : U) → A → A = λ _ x ↦ x
+
+define Pointed : U = ∃ (A : U) × A
+
+define Pair : U → U → U = λ A B ↦ A × B
+
+define fst : ∀ (A : U) (B : U) → A × B → A = λ _ _ p ↦ p .fst
+
+define indExists
+  : ∀
+    (A : U) (B : A → U) (e : ∃ (x : A) × B x) (M : ∃ (x : A) × B x → U) →
+    (∀ (x : A) (y : B x) → M (x , y)) → M e
+  = λ A B e M m ↦ m (e .fst) (e .snd)
+
+type Unit : U
+
+type tt : Unit
+
+define Bool : U = #[:false :true]
+
+define true : Bool = :true
+
+define false : Bool = :false
+
+define ifte
+  : Bool → ∀ (A : U) → A → A → A
+  = λ b A t f ↦ switch b (λ _ ↦ A) {:false ↦ f; :true ↦ t}
+
+define Empty : U = #[]
+
+define absurd : Empty → ∀ (A : U) → A = λ x A ↦ switch x (λ _ ↦ A) {}
+
+define NatC : U = #[:zero :succ]
+
+define NatF : NatC → Desc = [ `1 (`X `1) ]
+
+define NatD : Desc = `S NatC NatF
+
+define Nat : U = μ NatD
+
+define zero : Nat = :zero
+
+define succ : Nat → Nat = λ n ↦ :succ n
+
+eval succ (succ (succ zero)) = :succ (:succ (:succ :zero)) : Nat
+
+defined succ
+  : Nat → Nat
+  = λ n ↦ con (:1 , n , tt)
+
+type succ (succ zero) : Nat

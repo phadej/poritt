@@ -1,0 +1,180 @@
+include "lib/bool.ptt"
+
+end-of-file "lib/bool.ptt"
+
+include "lib/nat.ptt"
+
+end-of-file "lib/nat.ptt"
+
+include "lib/list.ptt"
+
+end-of-file "lib/list.ptt"
+
+include "lib/leibniz.ptt"
+
+end-of-file "lib/leibniz.ptt"
+
+section Records
+
+define RecDef : U = ∃ (A : U) × (A → U)
+
+define mkRecord : RecDef → U = λ def ↦ ∀ (field : def .fst) → def .snd field
+
+Foo : U
+Foo = mkRecord [ #[:foo :bar :quu] Bool Nat Unit ]
+
+define foo1 : Foo = [ :true two [] ]
+
+define foo2 : Foo = [ :true three [] ]
+
+type %refl : Id {Nat} (foo1 :bar) two : Id {Nat} (foo1 :bar) two
+
+section Equality
+
+define eqFoo
+  : Foo → Foo → Bool
+  = λ x y ↦
+    and
+      (eqBool (x :foo) (y :foo))
+      (and (eqNat (x :bar) (y :bar)) (and (eqUnit (x :quu) (y :quu)) :true))
+
+section NP generics
+
+define I : U → U = λ x ↦ x
+
+define NP
+  : ∀ (k : U) → (k → U) → List k → U
+  = λ k F ↦ foldr {k} {U} (λ x acc ↦ F x × acc) Unit
+
+define Generic
+  : U → U
+  = λ A ↦ ∃ (desc : List U) × (A → NP U I desc) × (NP U I desc → A)
+
+define genericEq'
+  : ∀
+    (xs : List U) → NP U (λ x ↦ x → x → Bool) xs → NP U I xs → NP U I xs → Bool
+  = indList
+    U
+    (λ ys ↦ NP U (λ x ↦ x → x → Bool) ys → NP U I ys → NP U I ys → Bool)
+    (λ es ls rs ↦ :true)
+    (λ z zs rec es ls rs ↦
+       and (es .fst (ls .fst) (rs .fst)) (rec (es .snd) (ls .snd) (rs .snd)))
+
+define genericEq
+  : ∀
+    (A : U) (g : Generic A) → NP U (λ x ↦ x → x → Bool) (g .fst) → A → A → Bool
+  = λ _ g eq x y ↦ genericEq' (g .fst) eq (g .snd .fst x) (g .snd .fst y)
+
+section Generic Foo equality
+
+define FooDesc : List U = :cons Bool (:cons Nat (:cons Unit :nil))
+
+define fromFoo : Foo → NP U I FooDesc = λ x ↦ [ (x :foo) (x :bar) (x :quu) ]
+
+define toFoo
+  : NP U I FooDesc → Foo
+  = λ x ↦ [ (x .fst) (x .snd .fst) (x .snd .snd .fst) ]
+
+define GenericFoo : Generic Foo = FooDesc , fromFoo , toFoo
+
+define eqFooG
+  : Foo → Foo → Bool
+  = genericEq Foo GenericFoo [ eqBool eqNat eqUnit ]
+
+section Staged NP-generics
+
+define CodeU : U = Code ⟦ U ⟧
+
+define C : CodeU → U = λ x ↦ Code x
+
+define Staged
+  : U → U
+  = λ A ↦
+    ∃
+      (CA : CodeU) (desc : List CodeU) ×
+      (Code CA → ∀ (r : CodeU) → (NP CodeU C desc → Code r) → Code r) ×
+      (NP CodeU C desc → Code CA)
+
+define stagedEq'
+  : ∀
+    (xs : List CodeU) →
+    NP CodeU (λ x ↦ Code ⟦ ∫x → ∫x → Bool ⟧) xs →
+    NP CodeU C xs → NP CodeU C xs → C ⟦ Bool ⟧
+  = indList
+    CodeU
+    (λ ys ↦
+       NP CodeU (λ x ↦ Code ⟦ ∫x → ∫x → Bool ⟧) ys →
+       NP CodeU C ys → NP CodeU C ys → C ⟦ Bool ⟧)
+    (λ _ _ _ ↦ ⟦ :1 ⟧)
+    (λ z zs rec es ls rs ↦
+       ⟦ and
+         (∫(es .fst) ∫(ls .fst) ∫(rs .fst))
+         ∫(rec (es .snd) (ls .snd) (rs .snd)) ⟧)
+
+define stagedEq
+  : ∀
+    (A : U) (g : Staged A) →
+    NP CodeU (λ x ↦ Code ⟦ ∫x → ∫x → Bool ⟧) (g .snd .fst) →
+    Code (g .fst) → Code (g .fst) → Code ⟦ Bool ⟧
+  = λ _ g eq x y ↦
+    g
+      .snd
+      .snd
+      .fst
+      x
+      ⟦ Bool ⟧
+      (λ x' ↦
+         g .snd .snd .fst y ⟦ Bool ⟧ (λ y' ↦ stagedEq' (g .snd .fst) eq x' y'))
+
+section Staged Foo equality
+
+define FooCodeDesc
+  : List CodeU
+  = con (:1 , ⟦ Bool ⟧ , con (:1 , ⟦ Nat ⟧ , con (:1 , ⟦ Unit ⟧ , con (:0 , tt) , tt) , tt) , tt)
+
+define sfromFoo
+  : Code ⟦ Foo ⟧ → ∀ (r : CodeU) → (NP CodeU C FooCodeDesc → Code r) → Code r
+  = λ x _r kont ↦ kont (⟦ ∫x :0 ⟧ , ⟦ ∫x :1 ⟧ , ⟦ ∫x :2 ⟧ , tt)
+
+define stoFoo
+  : NP CodeU C FooCodeDesc → Code ⟦ Foo ⟧
+  = λ x ↦
+    ⟦ λ field ↦
+      switch field (λ field0 ↦
+                      switch field0 (λ ds ↦ U) {:0 ↦ Bool; :1 ↦ Nat; :2 ↦ Unit})
+        {:0 ↦ ∫(x .fst); :1 ↦ ∫(x .snd .fst); :2 ↦ ∫(x .snd .snd .fst)} ⟧
+
+define StagedFoo : Staged Foo = ⟦ Foo ⟧ , FooCodeDesc , sfromFoo , stoFoo
+
+define eqFooS
+  : Foo → Foo → Bool
+  = λ x y ↦
+    and
+      (eqBool (x :foo) (y :foo))
+      (and (eqNat (x :bar) (y :bar)) (and (eqUnit (x :quu) (y :quu)) :true))
+
+section Tests
+
+type %refl : Id {Foo → Foo → Bool} eqFoo eqFooS
+  : Id {Foo → Foo → Bool} eqFoo eqFooS
+
+type %refl : Id {Foo → Foo → Bool} eqFoo eqFooG
+  : Id {Foo → Foo → Bool} eqFoo eqFooG
+
+type %refl : Id {Bool} (eqFoo foo1 foo1) :true
+  : Id {Bool} (eqFoo foo1 foo1) :true
+
+type %refl : Id {Bool} (eqFooS foo1 foo1) :true
+  : Id {Bool} (eqFooS foo1 foo1) :true
+
+type %refl : Id {Bool} (eqFooG foo1 foo1) :true
+  : Id {Bool} (eqFooG foo1 foo1) :true
+
+type %refl : Id {Bool} (eqFoo foo1 foo2) :false
+  : Id {Bool} (eqFoo foo1 foo2) :false
+
+type %refl : Id {Bool} (eqFooS foo1 foo2) :false
+  : Id {Bool} (eqFooS foo1 foo2) :false
+
+type %refl : Id {Bool} (eqFooG foo1 foo2) :false
+  : Id {Bool} (eqFooG foo1 foo2) :false

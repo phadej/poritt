@@ -1,0 +1,121 @@
+include "../lib/nat.ptt"
+
+end-of-file "../lib/nat.ptt"
+
+include "../lib/list.ptt"
+
+end-of-file "../lib/list.ptt"
+
+include "../lib/leibniz.ptt"
+
+end-of-file "../lib/leibniz.ptt"
+
+Sum : ∀ (Cons : U) → (Cons → U) → U
+Sum = λ Cons Vals ↦ ∃ (tag : Cons) × Vals tag
+
+shape' : U → U → #[:nil :cons] → U
+shape' = λ A B ↦ [ Unit (A × B) ]
+
+shape : U → U → U
+shape = λ A B ↦ Sum #[:nil :cons] [ Unit (A × B) ]
+
+elimShape : ∀ (R : U) {A : U} {B : U} → shape A B → R → (A → B → R) → R
+elimShape
+  = λ R {A} {B} sh n c ↦
+    (switch (sh .fst) (λ tag ↦ shape' A B tag → R)
+       {:nil ↦ λ _ ↦ n; :cons ↦ λ s ↦ c (s .fst) (s .snd)})
+      (sh .snd)
+
+stream : Code ⟦ U ⟧ → U
+stream = λ A ↦ ∀ (R : Code ⟦ U ⟧) → (shape (Code A) (Code R) → Code R) → Code R
+
+listStream : ∀ {A : Code ⟦ U ⟧} → Code ⟦ List ∫A ⟧ → stream A
+listStream
+  = λ {A} xs R f ↦
+    ⟦ foldr {∫A} {∫R} (λ x r ↦ ∫(f (:1 , ⟦ x ⟧ , ⟦ r ⟧))) ∫(f (:0 , tt)) ∫xs ⟧
+
+foldS
+  : ∀
+    {A : Code ⟦ U ⟧} {R : Code ⟦ U ⟧} →
+    Code ⟦ ∫A → ∫R → ∫R ⟧ → Code R → stream A → Code R
+foldS
+  = λ {A} {R} f z str ↦
+    str
+      R
+      (λ sh ↦
+         (switch (sh .fst) (λ tag ↦
+                              (switch tag (λ _ ↦ U)
+                                 {:0 ↦ Unit; :1 ↦ Code A × Code R}) →
+                              Code R)
+            {:0 ↦ λ _ ↦ z; :1 ↦ λ s ↦ ⟦ ∫f ∫(s .fst) ∫(s .snd) ⟧})
+           (sh .snd))
+
+mapS
+  : ∀
+    {A : Code ⟦ U ⟧} {B : Code ⟦ U ⟧} → (Code A → Code B) → stream A → stream B
+mapS
+  = λ {A} {B} f str R kont ↦
+    str
+      R
+      (λ sh ↦
+         elimShape
+           (Code R)
+           {Code A}
+           {Code R}
+           sh
+           (kont (:0 , tt))
+           (λ a r ↦ kont (:1 , f a , r)))
+
+foldr2 : ∀ (A : U) (B : U) → (A → B → B) → B → List A → B
+foldr2 = λ A B f z xs ↦ foldr {A} {B} (λ x r ↦ f x r) z xs
+
+foldrMap' : ∀ (A : U) (B : U) (C : U) → (B → C → C) → C → (A → B) → List A → C
+foldrMap' = λ A B C f z g xs ↦ foldr {B} {C} f z (map {A} {B} g xs)
+
+foldrMap : ∀ (A : U) (B : U) (C : U) → (B → C → C) → C → (A → B) → List A → C
+foldrMap = λ A B C f z g xs ↦ foldr {A} {C} (λ x r ↦ f (g x) r) z xs
+
+eval foldrMap'
+  = λ A B C f z g xs ↦
+    ind
+      (ind
+         xs
+         (λ _ ↦ List B)
+         (λ d ↦
+            (switch (d .fst) (λ c' ↦
+                                ∀
+                                  (y : evalDesc (ListF A c') (List A)) →
+                                  All
+                                    (ListD A)
+                                    (μ (ListD A))
+                                    (λ _ ↦ List B)
+                                    (c' , y) →
+                                  List B)
+               {:nil ↦ λ _ _ ↦ :nil;
+                :cons ↦ λ x acc ↦ :cons (g (x .fst)) (acc .fst)})
+              (d .snd)))
+      (λ _ ↦ C)
+      (λ d ↦
+         (switch (d .fst) (λ c' ↦
+                             ∀
+                               (y : evalDesc (ListF B c') (List B)) →
+                               All (ListD B) (μ (ListD B)) (λ _ ↦ C) (c' , y) →
+                               C)
+            {:nil ↦ λ _ _ ↦ z; :cons ↦ λ x acc ↦ f (x .fst) (acc .fst)})
+           (d .snd))
+  : ∀ (A : U) (B : U) (C : U) → (B → C → C) → C → (A → B) → List A → C
+
+eval foldrMap
+  = λ A B C f z g xs ↦
+    ind
+      xs
+      (λ _ ↦ C)
+      (λ d ↦
+         (switch (d .fst) (λ c' ↦
+                             ∀
+                               (y : evalDesc (ListF A c') (List A)) →
+                               All (ListD A) (μ (ListD A)) (λ _ ↦ C) (c' , y) →
+                               C)
+            {:nil ↦ λ _ _ ↦ z; :cons ↦ λ x acc ↦ f (g (x .fst)) (acc .fst)})
+           (d .snd))
+  : ∀ (A : U) (B : U) (C : U) → (B → C → C) → C → (A → B) → List A → C

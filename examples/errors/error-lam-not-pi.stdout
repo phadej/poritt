@@ -1,0 +1,6 @@
+Error: examples/errors/error-lam-not-pi.ptt:1:17: Checking against U
+  • type: U
+  • term: λ x ↦ x
+  • When checking that λ x ↦ x has type U
+  • When infering type of (λ x ↦ x) : U
+ExitFailure

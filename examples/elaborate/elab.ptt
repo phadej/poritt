@@ -1,0 +1,19 @@
+id : forall {A : U} -> A -> A
+id {_} x = x
+
+eval id {Unit} tt
+eval id {_} tt
+eval id tt
+
+id' : forall {A : U} -> A -> A
+id' x = x
+
+eval id' {Unit} tt
+eval id' {_} tt
+eval id' tt
+
+eval let unused = tt in id' tt
+eval (\ _ -> id' tt) : Unit -> Unit
+
+id'' : forall {A : U} -> A -> A
+id'' x = id' x

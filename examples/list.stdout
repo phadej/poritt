@@ -1,0 +1,68 @@
+include "lib/list.ptt"
+
+end-of-file "lib/list.ptt"
+
+include "lib/bool.ptt"
+
+end-of-file "lib/bool.ptt"
+
+define ex
+  : List Bool
+  = cons
+    Bool
+    :true
+    (cons Bool :false (cons Bool :true (cons Bool :false (nil Bool))))
+
+eval ex
+  = :cons :true (:cons :false (:cons :true (:cons :false :nil)))
+  : List Bool
+
+define ex'
+  : List Bool
+  = :cons :true (:cons :false (:cons :true (:cons :false :nil)))
+
+eval ex'
+  = :cons :true (:cons :false (:cons :true (:cons :false :nil)))
+  : List Bool
+
+eval foldr {Bool} {Bool} and :true ex = :false : Bool
+
+eval foldr {Bool} {Bool} or :false ex = :true : Bool
+
+define NP
+  : ∀ (k : U) → (k → U) → List k → U
+  = λ k F ↦ foldr {k} {U} (λ x acc ↦ F x × acc) #[:tt]
+
+define nilNP : ∀ (k : U) (F : k → U) → NP k F (nil k) = λ _ _ ↦ :tt
+
+define consNP
+  : ∀
+    (k : U) (F : k → U) (x : k) →
+    F x → ∀ (xs : List k) → NP k F xs → NP k F (cons k x xs)
+  = λ k F x fx xs fxs ↦ fx , fxs
+
+define curryFun
+  : ∀ (k : U) → (k → U) → List k → U → U
+  = λ k F As B ↦ foldr {k} {U} (λ x y ↦ F x → y) B As
+
+eval curryFun U (λ x ↦ x) (cons U #[:a :b :c] (cons U #[:x :y :z] (nil U))) Bool
+  = #[:a :b :c] → #[:x :y :z] → #[:false :true]
+  : U
+
+curryNP
+  : ∀
+    (K : U) (F : K → U) (xs : List K) (B : U) →
+    (NP K F xs → B) → curryFun K F xs B
+curryNP
+  = λ K F xs B ↦
+    indList
+      K
+      (λ xs' ↦ (NP K F xs' → B) → curryFun K F xs' B)
+      (λ f ↦ f :tt)
+      (λ k ks Mks f x ↦ Mks (λ xs0 ↦ f (x , xs0)))
+      xs
+
+eval curryNP U (λ x ↦ x) (cons U #[:a :b :c] (cons U #[:x :y :z] (nil U))) Bool
+  = λ f x x0 ↦ f (x , x0 , :tt)
+  : (NP U (λ x ↦ x) (cons U #[:a :b :c] (cons U #[:x :y :z] (nil U))) → Bool) →
+  curryFun U (λ x ↦ x) (cons U #[:a :b :c] (cons U #[:x :y :z] (nil U))) Bool

@@ -1,0 +1,37 @@
+define Unit' : U = #[:tt]
+
+define tt' : Unit' = :tt
+
+define elimUnit'
+  : ∀ (M : Unit' → U) → M tt' → ∀ (x : Unit') → M x
+  = λ M Mtt' ↦ [ Mtt' ]
+
+eval elimUnit' (λ _ ↦ Unit') tt' tt' = :tt : Unit'
+
+define Leibniz : ∀ (A : U) → A → A → U = λ A x y ↦ ∀ (C : A → U) → C x → C y
+
+type (λ _ _ Cx ↦ Cx) : ∀ (tt' : Unit') → Leibniz Unit' tt' :tt
+  : ∀ (tt'0 : Unit') → Leibniz Unit' tt'0 :tt
+
+define Bool : U = #[:false :true]
+
+define true : Bool = :true
+
+define false : Bool = :false
+
+define if
+  : Bool → ∀ (A : U) → A → A → A
+  = λ b A t f ↦ switch b (λ _ ↦ A) {:false ↦ f; :true ↦ t}
+
+define not : Bool → Bool = λ b ↦ if b Bool false true
+
+type (λ _ Cx ↦ Cx) : Leibniz Bool (not (not true)) true
+  : Leibniz Bool (not (not true)) true
+
+eval not (not true) = :true : Bool
+
+define Void : U = #[]
+
+define absurd : Void → ∀ (A : U) → A = λ x A ↦ switch x (λ _ ↦ A) {}
+
+define absurd' : Void → ∀ (A : U) → A = []

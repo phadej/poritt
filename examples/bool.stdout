@@ -1,0 +1,5 @@
+include "lib/bool.ptt"
+
+end-of-file "lib/bool.ptt"
+
+eval or true false = :true : Bool

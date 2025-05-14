@@ -1,0 +1,4 @@
+define id : forall (A : U) -> A -> A
+          = \ _ x -> x
+
+info id

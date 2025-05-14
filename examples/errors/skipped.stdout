@@ -1,0 +1,12 @@
+include "../lib/leibniz.ptt"
+
+end-of-file "../lib/leibniz.ptt"
+
+Error: examples/errors/skipped.ptt:3:23: Skipped term
+  • type: U
+  • When checking that _ has type U
+  • When infering type of Id {_}
+  • When infering type of Id {_} Unit
+  • When infering type of Id {_} Unit Unit
+  • When checking that Id {_} Unit Unit has type U
+ExitFailure

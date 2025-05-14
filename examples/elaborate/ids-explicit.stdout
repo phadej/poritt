@@ -1,0 +1,17 @@
+id : ∀ (A : U) → A → A
+id = λ A x ↦ x
+
+idc : Code ⟦ ∀ (A : U) → A → A ⟧
+idc = ⟦ λ A x ↦ id A x ⟧
+
+idq : ∀ (A : Code ⟦ U ⟧) → Code A → Code A
+idq = λ A x ↦ ⟦ id ∫A ∫x ⟧
+
+idp : ∀ (f : Code ⟦ U ⟧ → Code ⟦ U ⟧) (A : Code ⟦ U ⟧) → Code (f A) → Code (f A)
+idp = λ f A x ↦ ⟦ id ∫(f A) ∫x ⟧
+
+idm : ∀ (A : Code ⟦ U ⟧) → Code ⟦ ∫A → ∫A ⟧
+idm = λ A ↦ ⟦ λ x ↦ id ∫A x ⟧
+
+idl : Code ⟦ ∀ (A : U) → A → A ⟧
+idl = ⟦ λ A ↦ let B = id U A in (λ x ↦ id A x) : B → B ⟧

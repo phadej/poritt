@@ -1,0 +1,19 @@
+-- Sigma type
+sig : forall (A : U) (B : A -> U) -> U
+sig A B = exists (x : A) * B x
+
+-- Sigma induction
+--
+-- Without eta-expansion of sigma this fails with:
+--
+--  * expected: M e
+--  * actual: M (e .fst , e .snd)
+--
+indSig
+  : forall (A : U)
+           (B : A -> U)
+           (e : sig A B)
+           (M : sig A B -> U)
+           (m : forall (x : A) (y : B x) -> M (x , y))
+        -> M e
+indSig = \ A B e M m -> m (e .fst) (e .snd)

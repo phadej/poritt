@@ -1,0 +1,9 @@
+define U1 : U = U
+
+define U2 : U = U
+
+define U3 : U = U
+
+define U4 : U = U
+
+define T : Code ⟦ U ⟧ = ⟦ let x = U : U in x ⟧
