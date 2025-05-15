@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -- | Partial renaming
 module PoriTT.LvlMap (
     LvlMap,
@@ -9,6 +10,8 @@ module PoriTT.LvlMap (
 ) where
 
 import PoriTT.Base
+
+#ifdef MIN_VERSION_debruijn
 
 import DeBruijn.Internal.Lvl
 
@@ -32,3 +35,28 @@ deleteLvlMap  (UnsafeLvl k) (UnsafeLvlMap m) = UnsafeLvlMap (IM.delete k m)
 
 sinkLvlMap :: LvlMap ctx a -> LvlMap (S ctx) a
 sinkLvlMap = coerce
+
+#else
+
+import qualified Data.Map as M
+
+type LvlMap :: Ctx -> Type -> Type
+newtype LvlMap ctx a = LvlMap (M.Map (Lvl ctx) a)
+  deriving (Functor, Show)
+
+lookupLvlMap :: Lvl ctx -> LvlMap ctx a -> Maybe a
+lookupLvlMap i (LvlMap m) = M.lookup i m
+
+emptyLvlMap :: Size ctx -> LvlMap ctx a
+emptyLvlMap _s = LvlMap M.empty
+
+insertLvlMap :: Lvl ctx -> a -> LvlMap ctx a -> LvlMap ctx a
+insertLvlMap k v (LvlMap m) = LvlMap (M.insert k v m)
+
+deleteLvlMap :: Lvl ctx -> LvlMap ctx a -> LvlMap ctx a
+deleteLvlMap  k (LvlMap m) = LvlMap (M.delete k m)
+
+sinkLvlMap :: LvlMap ctx a -> LvlMap (S ctx) a
+sinkLvlMap (LvlMap m) = LvlMap (M.mapKeys sink m)
+
+#endif

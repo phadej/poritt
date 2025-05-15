@@ -14,8 +14,12 @@
 #
 name: Haskell-CI
 on:
-  - push
-  - pull_request
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
 jobs:
   linux:
     name: Haskell-CI - Linux - ${{ matrix.compiler }}
@@ -213,6 +217,16 @@ jobs:
         run: |
           rm -f cabal.project.local
           $CABAL v2-build $ARG_COMPILER --disable-tests --disable-benchmarks all
+      - name: prepare for constraint sets
+        run: |
+          rm -f cabal.project.local
+      - name: constraint set debruijn-safe
+        run: |
+          $CABAL v2-build $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='poritt -debruijn' all --dry-run
+          cabal-plan topo | sort
+          $CABAL v2-build $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='poritt -debruijn' --dependencies-only -j2 all
+          $CABAL v2-build $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='poritt -debruijn' all
+          $CABAL v2-test $ARG_COMPILER --enable-tests --disable-benchmarks --constraint='poritt -debruijn' all
       - name: save cache
         if: always()
         uses: actions/cache/save@v4
