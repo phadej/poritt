@@ -75,7 +75,7 @@ defaultOpts = Opts
         }
     , simplify = True
     , simplOpts = SimplOpts
-        { iters = 3
+        { iters = 4 -- TODO: change to 3 and investigate why debruijn-safe differs.
         }
     , levelCheck = True
     }
